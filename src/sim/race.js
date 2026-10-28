@@ -13,6 +13,7 @@ const NEAR = 1, NEAR_SPEED = 8, NEAR_EVERY = 360;
 const DRAFT_NEAR = 4, DRAFT_FAR = 14, DRAFT_LAT = 1.6, DRAFT_SPEED = 40;
 const HOLD = 600;
 const RESPAWN_GAS = 0.15;
+const STILL = 240, SINK = 6;
 const IDLE = { throttle: 0, brake: 0.3, steer: 0, pitch: 0, roll: 0, boost: 0, reset: 0 };
 
 export function quantize(v) {
@@ -68,7 +69,7 @@ function initEntry(e, world, event, slot) {
   car.gas = event.gas;
   const hint = car.hint;
   return Object.assign(e, {
-    car, next: 0, splits: [], lastIdx: g.i, lastSpeed: 0, used: new Set(), respawnIn: 0, lost: 0, resetHeld: false,
+    car, next: 0, splits: [], lastIdx: g.i, lastSpeed: 0, cpIdx: g.i, cpSpeed: 0, used: new Set(), respawnIn: 0, lost: 0, resetHeld: false,
     wrecks: 0, respawns: 0, tricks: 0, maxSpeed: 0, airTime: 0, still: 0, earned: {},
     done: false, total: 0, laps: [], lapStart: 0, prog: track.closed && hint > track.lap / 2 ? hint - track.lap : hint, lastHint: hint,
     pos: slot + 1, grid: slot + 1,
@@ -102,14 +103,22 @@ function emit(race, type, extra) {
   race.events.push(Object.assign({ type, tick: race.tick }, extra));
 }
 
-function respawn(race, e) {
+function safeAt(track, i) {
+  if (track.U[i * 3 + 1] <= 0.95 || track.gap[i] || track.loopMask[i]) return false;
+  return !track.jumps.some((j) => i >= j.from && i <= j.to);
+}
+
+function respawn(race, e, from = e.lastIdx, fromSpeed = e.lastSpeed) {
   const { track } = race.world;
   const c = e.car;
-  placeCar(c, track, e.lastIdx, e.lastSpeed, e.driver ? lineFor(track).off[e.lastIdx] : 0);
+  let i = from;
+  for (let n = 0; n < track.lap && !safeAt(track, i); n++) i = (i + track.lap - 1) % track.lap;
+  const speed = Math.min(fromSpeed, safeAt(track, c.hint) ? 90 : 45);
+  placeCar(c, track, i, speed, e.driver ? lineFor(track).off[i] : 0);
   c.gas = Math.max(c.gas, RESPAWN_GAS);
   e.lost = 0; e.respawnIn = 0; e.respawns++; e.still = 0;
-  e.lastHint = c.hint;
-  if (track.closed) e.prog = Math.floor(e.next / race.event.perLap) * track.lap + c.hint;
+  e.lastIdx = i;
+  progress(race, e);
   if (e === race) emit(race, 'respawn');
 }
 
@@ -163,11 +172,13 @@ function stepEntry(race, e, inp) {
 
   const k = c.hint * 3;
   const off = Math.hypot(c.x - track.H[k], c.y - track.H[k + 1], c.z - track.H[k + 2]);
-  e.lost = off > CP_RADIUS || (c.mode === 0 && c.air > 120 * 7) ? e.lost + 1 : 0;
-  e.still = e.driver && race.raceTick > 360 && !e.done && c.speed < 2 ? e.still + 1 : 0;
+  const sunk = c.mode === 2 && c.y < track.H[k + 1] - SINK;
+  e.lost = off > CP_RADIUS || sunk || (c.mode === 0 && c.air > 120 * 7) ? e.lost + 1 : 0;
+  e.still = race.raceTick > 360 && c.speed < 2 ? e.still + 1 : 0;
+  if (c.mode === 1 && !e.lost && !c.wrecked && safeAt(track, c.hint)) { e.lastIdx = c.hint; e.lastSpeed = c.speed; }
   if (c.wrecked && !e.respawnIn) e.respawnIn = 70;
   if (e.respawnIn && --e.respawnIn === 0) respawn(race, e);
-  else if (e.lost > 60 || e.still > 600) respawn(race, e);
+  else if (e.lost > 60 || e.still > STILL) respawn(race, e);
 
   const cp = race.event.cps[e.next];
   const q = cp * 3;
@@ -175,8 +186,8 @@ function stepEntry(race, e, inp) {
   const d1 = (c.x - track.H[q]) * track.T[q] + (c.y - track.H[q + 1]) * track.T[q + 1] + (c.z - track.H[q + 2]) * track.T[q + 2];
   if (d0 < 0 && d1 >= 0 && Math.hypot(c.x - track.H[q], c.y - track.H[q + 1], c.z - track.H[q + 2]) < CP_RADIUS) {
     e.splits.push(race.raceTick);
-    e.lastIdx = track.closed ? (cp + 2) % track.lap : Math.min(cp + 2, track.n - 2);
-    e.lastSpeed = Math.min(c.speed, 90);
+    e.cpIdx = track.closed ? (cp + 2) % track.lap : Math.min(cp + 2, track.n - 2);
+    e.cpSpeed = Math.min(c.speed, 90);
     e.next++;
     const lapEnd = race.event.perLap && e.next % race.event.perLap === 0;
     if (lapEnd) {
@@ -276,7 +287,7 @@ export function stepRace(race, inp) {
     }
   }
   if (race.phase === 'racing') {
-    if (inp.reset && !race.resetHeld) respawn(race, race);
+    if (inp.reset && !race.resetHeld) respawn(race, race, race.cpIdx, race.cpSpeed);
     race.resetHeld = !!inp.reset;
   }
   stepEntry(race, race, race.phase === 'racing' ? inp : IDLE);

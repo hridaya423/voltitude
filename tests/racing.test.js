@@ -153,3 +153,70 @@ test('respawn keeps the gas level, with a floor of 0.15', () => {
   assert.equal(respawnWith(0), 0.15);
   assert.equal(respawnWith(0.6), 0.6);
 });
+
+const LAUNCH = loadWorld('launch');
+const LAUNCH_GP = eventsFor(LAUNCH.track).find((e) => e.id === 'gp');
+
+function racing(w, ev) {
+  const race = createRace(w, { event: ev, seed: 1 });
+  race.phase = 'racing'; race.raceTick = 400;
+  return race;
+}
+
+function ticksToRespawn(race, inp, limit) {
+  for (let t = 1; t <= limit; t++) {
+    stepRace(race, inp);
+    const hit = race.events.some((e) => e.type === 'respawn');
+    race.events.length = 0;
+    if (hit) return t;
+  }
+  return Infinity;
+}
+
+test('the player under the course respawns within 2.5 s', () => {
+  const race = racing(LAUNCH, LAUNCH_GP);
+  placeCar(race.car, LAUNCH.track, 1858, 0, 0);
+  race.car.y -= 20;
+  race.lastIdx = 1700;
+  const t = ticksToRespawn(race, createInput(), 120 * 5);
+  assert.ok(t <= 300, `respawned after ${(t / 120).toFixed(2)} s`);
+});
+
+test('a player held still on the road respawns at 2 s', () => {
+  const race = racing(world, GP);
+  placeCar(race.car, world.track, 700, 0, 0);
+  race.lastIdx = 700;
+  const t = ticksToRespawn(race, createInput(), 120 * 5);
+  assert.ok(t >= 236 && t <= 250, `respawned after ${t} ticks`);
+});
+
+test('a respawn from a wall-ride sample lands on a flat sample', () => {
+  const race = racing(LAUNCH, LAUNCH_GP);
+  const { U } = LAUNCH.track;
+  assert.ok(U[1192 * 3 + 1] < 0.7);
+  placeCar(race.car, LAUNCH.track, 1192, 20, 0);
+  race.lastIdx = 1192; race.lastSpeed = 58; race.car.wrecked = true;
+  assert.ok(ticksToRespawn(race, createInput(), 120) <= 71);
+  const i = race.car.hint;
+  assert.ok(U[i * 3 + 1] > 0.95, `respawned at ${i}, U.y ${U[i * 3 + 1].toFixed(2)}`);
+  assert.ok(race.car.speed <= 45, `respawn speed ${race.car.speed.toFixed(1)}`);
+});
+
+test('three respawns in a row from mid-bank do not wreck', () => {
+  const race = racing(LAUNCH, LAUNCH_GP);
+  const inp = createInput();
+  const events = [];
+  for (let n = 0; n < 3; n++) {
+    placeCar(race.car, LAUNCH.track, 1192, 58, 0);
+    race.lastIdx = 1192; race.lastSpeed = 58; race.car.gas = 0.3; race.car.wrecked = true;
+    assert.ok(ticksToRespawn(race, inp, 120) <= 71);
+    for (let t = 0; t < 120 * 4; t++) {
+      botInput(race, inp, 0.97);
+      stepRace(race, inp);
+      events.push(...race.events);
+      race.events.length = 0;
+    }
+  }
+  assert.equal(events.filter((e) => e.type === 'wreck').length, 0);
+  assert.equal(events.filter((e) => e.type === 'respawn').length, 0);
+});
