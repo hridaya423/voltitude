@@ -155,7 +155,6 @@ export function createHud(world, settings) {
       setText(els.gasPct, `${Math.round(c.gas * 100)}`);
       toggle(els.gas, 'burn', c.boosting);
       toggle(els.gas, 'low', c.gas < 0.17);
-      toggle(els.gas, 'pump', !!c.pumping && race.phase === 'racing');
       els.gasEdge.style.left = `${(c.gas * 100).toFixed(1)}%`;
       if (c.gas >= 1 && lastGas < 1) { els.gas.classList.remove('full'); void els.gas.offsetWidth; els.gas.classList.add('full'); }
       lastGas = c.gas;

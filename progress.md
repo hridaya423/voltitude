@@ -721,3 +721,10 @@ The user played the build and called it "playable, but unpolished", far from the
 The design is `docs/plans/2026-10-28-thruster-festival-design.md`. The plan is `docs/plans/2026-10-28-thruster-festival-plan.md`: 24 tasks in 4 phases, each phase with a gate.
 
 Found while scoping: holding Shift without W gives infinite thrust. In the sim the car reaches 307 mph in 18 s; Shift + W reaches 243 mph. The regen pump in `src/sim/drive.js:481-482` refills the empty tank every step. Plan Task 1 fixes it. Nothing from the plan is implemented yet.
+
+## Thruster festival, Phase 1 (2026-10-28, executing session)
+
+Baseline commit `291e516` (whole tree; `.gitignore` drops `tools/node_modules/`). One commit per task after it.
+
+**Task 1: thrust needs gas (done).** Removed the regen pump: TUNING `pump`, `regenPower`, `regenTorque`, the `regen` accumulator, `c.pumping`, the HUD `.pump` class and its CSS, and the audio pump layer (`V.pump` was not reused). `c.boosting = !!inp.boost && c.gas > 1e-4`. Test "boost without throttle stops when the tank is empty" failed before (gas rose at 4.1 s) and passes after. Gas settles at a float residue below 1e-4, never exactly 0, so the test treats `<= 1e-4` as empty.
+- `npm test`: 68 of 70 pass. Two AI tests fail because rivals lost the pump: "rivals launch on the thrusters and spend them in planned bursts" (AAL 1.7 bursts per lap, floor 2) and "the field is close and the order changes" (seed 2: 7 swaps, floor 8). Task 2's earned gas is meant to restore them; recheck there. The tests were not loosened.

@@ -35,7 +35,6 @@ export function createAudio(settings) {
   let now = 0, lastT = 0, canyon = 0, impactHold = 0, boostAmt = 0, wasBoost = false, boostSince = 0;
   let contactAmt = 0, scrapeAmt = 0, scrapeKick = 0, fanAmt = 0, passTimer = 0.6, passIdx = 0, streak = 0, lastCheck = -99;
   const bufs = {}, V = {}, pass = [], zw = [0, 0, 0];
-  let pumpAmt = 0, lastGas = 1;
 
   function sp(p, v, k = 0.08) {
     const d = v - p._v, e = 0.0015 + 0.004 * v;
@@ -202,7 +201,6 @@ export function createAudio(settings) {
       pass.push({ g, p });
     }
     V.fan = layer('motor_hum', { filter: 'bandpass', freq: 700, q: 1.1 });
-    V.pump = layer('motor_hum', { filter: 'bandpass', freq: 2400, q: 4 });
     buildStands();
     master.gain.setTargetAtTime(muted ? 0 : settings.volume, ctx.currentTime, 0.15);
     ready = true;
@@ -512,14 +510,6 @@ export function createAudio(settings) {
     sp(V.fan.g, on * 0.4 * fanAmt, 0.02);
     sp(V.fan.r[0], 1 + 0.8 * fanAmt, 0.04);
     sp(V.fan.f, 500 + 900 * fanAmt, 0.04);
-
-    const pumping = active && c.pumping ? 1 : 0;
-    pumpAmt += (pumping - pumpAmt) * (1 - Math.exp(-dt * (pumping ? 6 : 3)));
-    sp(V.pump.g, on * 0.22 * pumpAmt, 0.05);
-    sp(V.pump.r[0], 1.4 + 1.1 * c.gas, 0.08);
-    sp(V.pump.f, 1800 + 2200 * c.gas, 0.08);
-    if (active && c.gas >= 1 && lastGas < 1 && pumpAmt > 0.3) play('slot', 0.22, 1.7);
-    lastGas = c.gas;
 
     crowdKick *= Math.exp(-dt * 0.7);
     crowdAmt += (crowdTarget - crowdAmt) * (1 - Math.exp(-dt * 1.2));

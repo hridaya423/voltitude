@@ -118,13 +118,11 @@ button { font: inherit; }
 .gas.burn .gas-bar i { background: linear-gradient(90deg, var(--cyan), #fff); box-shadow: 0 0 14px rgba(127, 227, 255, 0.8); }
 .gas-res { position: absolute; left: 0; top: 0; bottom: 0; width: 15%; background: rgba(255, 176, 64, 0.35); z-index: 1; }
 .gas-bar s { position: absolute; top: -3px; bottom: -3px; left: 0; width: 3px; margin-left: -2px; border-radius: 2px; background: #fff; box-shadow: 0 0 10px var(--cyan); opacity: 0; z-index: 2; transition: opacity 200ms var(--ease); }
-.gas.pump .gas-bar s { opacity: 1; animation: gas-pump 0.5s ease-in-out infinite alternate; }
-@keyframes gas-pump { from { box-shadow: 0 0 4px var(--cyan); } to { box-shadow: 0 0 14px var(--cyan), 0 0 3px #fff; } }
 .gas.full .gas-bar i { animation: gas-full 420ms var(--ease); }
 @keyframes gas-full { 0% { filter: brightness(2.2); } 100% { filter: none; } }
 .gas.low .gas-label, .gas.low .gas-pct { color: #ffb040; }
 .gas.low .gas-bar i { background: #ffb040; }
-@media (prefers-reduced-motion: reduce) { .gas.pump .gas-bar s, .gas.full .gas-bar i { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .gas.full .gas-bar i { animation: none; } }
 
 .medal { display: inline-block; flex: none; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink-4); }
 .medal.author { background: var(--author); border-color: var(--author); box-shadow: 0 0 10px rgba(111, 240, 196, 0.55); }

@@ -38,6 +38,27 @@ test('thrusters burn about 4 s of gas per tank', () => {
   assert.ok(t / 120 > 3.6 && t / 120 < 4.4, `${t / 120} s`);
 });
 
+test('boost without throttle stops when the tank is empty', () => {
+  const run = (throttle) => {
+    const c = createCar();
+    placeCar(c, lab.track, 600, 40, 0);
+    const inp = createInput();
+    inp.boost = 1; inp.throttle = throttle;
+    let empty = -1;
+    for (let t = 0; t < 120 * 18; t++) {
+      const before = c.gas;
+      stepCar(c, inp, lab, t, false);
+      assert.ok(c.gas <= before, `gas rose at ${t / 120} s`);
+      if (empty < 0 && c.gas <= 1e-4) empty = t;
+      if (empty >= 0 && t >= empty + 120) assert.ok(c.thr < 0.05, `thr ${c.thr.toFixed(2)} at ${t / 120} s`);
+    }
+    assert.ok(empty >= 0, 'tank never emptied');
+    return c.speed;
+  };
+  const coast = run(0), drive = run(1);
+  assert.ok(coast < drive, `boost only ${coast.toFixed(1)} m/s vs boost and throttle ${drive.toFixed(1)} m/s`);
+});
+
 test('the loop is drivable from a crawl to full speed', () => {
   const world = loadWorld('proving');
   const ev = eventsFor(world.track).find((e) => e.id === 'pr');

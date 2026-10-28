@@ -25,12 +25,9 @@ export const TUNING = {
   tcSlip: 0.12,
   tcFloor: 0.4,
   tcAngle: 0.2,
-  regenPower: 90e3,
-  regenTorque: 1100,
   coast: 140,
   thrustG: 1,
   burn: 4,
-  pump: 0.02,
   valve: 0.01,
   fanG: 14,
   pitchRate: 3.8,
@@ -110,7 +107,7 @@ export function createCar() {
     ox: 0, oy: 0, oz: 0,
     wp: 0, wy: 0, wr: 0,
     mode: 1, hint: 0, lat: 0,
-    gas: 1, boosting: false, pumping: false, thr: 0, delta: 0, brk: 0,
+    gas: 1, boosting: false, thr: 0, delta: 0, brk: 0,
     air: 0, flip: 0, spin: 0, barrel: 0,
     speed: 0, vf: 0, slip: 0, throttle: 0, brake: 0, steer: 0, yawRate: 0,
     wrecked: false, load: 0, fan: 0,
@@ -133,7 +130,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
   c.mode = 1; c.hint = i; c.lat = lat;
   c.air = 0; c.flip = c.spin = c.barrel = 0;
   c.speed = speed; c.vf = speed; c.slip = 0; c.delta = 0; c.brk = 0; c.thr = 0;
-  c.wrecked = false; c.boosting = false; c.pumping = false;
+  c.wrecked = false; c.boosting = false;
   for (let k2 = 0; k2 < 4; k2++) {
     const w = c.wl[k2];
     w.om = speed / w.w.R; w.hint = i; w.a = 0; w.x = w.xp = 0; w.hit = false; w.fz = 0; w.kap = 0;
@@ -338,7 +335,6 @@ export function stepCar(c, inp, world, tick, assist) {
   const yawWant = (vf0 * c.delta) / (2.94 * (1 + (vf0 / 32) ** 2));
   const bias = Math.max(-0.5, Math.min(0.5, 0.9 * (yawWant - yawNow) * Math.min(1, Math.max(Math.abs(vf0), 1) / 8)));
 
-  let regen = 0;
   for (let k = 0; k < 4; k++) {
     const w = wl[k], P = w.w, s = sw[k];
     const om = w.om;
@@ -384,7 +380,6 @@ export function stepCar(c, inp, world, tick, assist) {
     if (Math.abs(fyT) > vyMax) fyT = Math.sign(fyT) * vyMax;
     w.om = omNew;
     w.kap = kapNew;
-    regen += Math.min(tb, T.regenTorque, T.regenPower / Math.max(Math.abs(om), 5)) * Math.abs(om);
     const rr = T.rolling * w.fz * Math.tanh(vx / 0.6);
     fxT -= rr;
     pushForce(tx * fxT + sx * fyT + nx * w.fz, ty * fxT + sy * fyT + ny * w.fz, tz * fxT + sz * fyT + nz * w.fz, w.px - COM[0], w.py - COM[1], w.pz - COM[2]);
@@ -405,7 +400,7 @@ export function stepCar(c, inp, world, tick, assist) {
     pushAt(c, -c.ux * dn * (1 - T.downFront), -c.uy * dn * (1 - T.downFront), -c.uz * dn * (1 - T.downFront), 0, -0.24, -1.54);
   }
 
-  c.boosting = !!inp.boost && c.gas > 0;
+  c.boosting = !!inp.boost && c.gas > 1e-4;
   c.thr += ((c.boosting ? 1 : 0) - c.thr) * Math.min(1, DT / T.valve);
   if (c.thr > 0.001) {
     const ft = T.thrustG * m * G * c.thr;
@@ -476,10 +471,6 @@ export function stepCar(c, inp, world, tick, assist) {
   c.vf = c.vx * c.fx + c.vy * c.fy + c.vz * c.fz;
   c.slip = c.vx * c.rx + c.vy * c.ry + c.vz * c.rz;
   c.speed = Math.hypot(c.vx, c.vy, c.vz);
-
-  const share = Math.min(1, regen / 300e3);
-  c.pumping = share > 0.02 && c.gas < 1;
-  if (!airborne && share > 0) c.gas = Math.min(1, c.gas + T.pump * share * DT);
 }
 
 function landing(c, nx, ny, nz) {
