@@ -414,7 +414,7 @@ function watchReplay() {
 function endReplay() { replay = null; $('replayBug').hidden = true; mode = 'results'; }
 
 const POINTS = [25, 18, 15, 12, 10, 8, 6, 4];
-let contactCount = 0, lastContact = -999;
+let contactCount = 0, lastContact = -999, lastGainTick = -1;
 const speedUnit = () => (settings.units === 'kmh' ? 3.6 : 2.237);
 const medalLine = (m, before) => (m ? { id: m.id, name: m.name, fresh: !(before && before.id === m.id) } : null);
 function showResults(result, m, before) {
@@ -552,13 +552,14 @@ function handleEvents() {
       }
       case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, 'good'); audio.event('overtake', race.pos === 1 ? 1 : 0); } else audio.event('overtaken'); updateTower(); break;
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
-      case 'near_miss': audio.event('near_miss'); hud.toast('CLOSE', 'white'); break;
+      case 'near_miss': audio.event('near_miss'); break;
+      case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
       case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
       case 'land': {
         const names = e.tricks.length ? [...new Set(e.tricks)].map((t) => { const n = e.tricks.filter((x) => x === t).length; return (n > 1 ? `${n}× ` : '') + t.toUpperCase(); }).join(' + ') : '';
         if (e.quality !== 'hard') cheerNear(e.tricks.length ? 0.9 : e.quality === 'perfect' ? 0.5 : 0.25);
-        if (e.quality === 'perfect') { hud.toast(names || 'PERFECT LANDING', 'good', e.refill > 0.01 ? `GAS +${Math.round(e.refill * 100)}%` : ''); audio.event('slot'); audio.event('perfect'); input.rumble(0.3, 0.5, 140); chase.bump(0.25); }
-        else if (e.quality === 'clean') { hud.toast(names || 'CLEAN', 'white', e.refill > 0.01 ? `GAS +${Math.round(e.refill * 100)}%` : ''); audio.event('check'); input.rumble(0.4, 0.3, 140); chase.bump(0.35); }
+        if (e.quality === 'perfect') { hud.toast(names || 'PERFECT LANDING', 'good'); audio.event('perfect'); input.rumble(0.3, 0.5, 140); chase.bump(0.25); }
+        else if (e.quality === 'clean') { hud.toast(names || 'CLEAN', 'white'); audio.event('check'); input.rumble(0.4, 0.3, 140); chase.bump(0.35); }
         else { hud.toast('HARD LANDING', 'red', '−10% SPEED'); audio.event('impact'); input.rumble(0.9, 0.4, 220); chase.bump(0.9); chase.stall(0.05); }
         if (e.tricks.length) usage.roll++;
         if (e.quality === 'hard') audio.radio('hard');

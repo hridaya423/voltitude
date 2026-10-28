@@ -492,7 +492,7 @@ function landing(c, nx, ny, nz) {
     } else {
       const quality = align > 0.95 && vn < 16 ? 'perfect' : align > 0.8 && vn < 24 ? 'clean' : 'hard';
       if (quality === 'hard') tricks.length = 0;
-      c.ev.push({ type: 'land', quality, air: airS, tricks, refill: 0, v: vn });
+      c.ev.push({ type: 'land', quality, air: airS, tricks, v: vn });
     }
   }
   c.flip = c.spin = c.barrel = 0;

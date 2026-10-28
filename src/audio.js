@@ -556,7 +556,7 @@ export function createAudio(settings) {
       case 'lap': play('lap', 0.9); play('check_a', 0.5, 0.78 * 1.5, 0.12); play('check_a', 0.45, 0.78 * 2, 0.3); duckFor(0.55, 1.6); streak = 0; if (v === 2) commentary('lap2'); break;
       case 'miss': play('miss', 0.95); duckFor(0.7, 0.5); streak = 0; break;
       case 'boost': play('whoosh1', 0.6, 1.25); play('shimmer', 0.45, 1, 0.05); play('check_b', 0.3, 1.15, 0.18); break;
-      case 'slot': play('slot', 0.85); play('shimmer', 0.4, 1.1, 0.08); play('check_a', 0.4, 0.78 * 2, 0.22); duckFor(0.65, 1.1); break;
+      case 'slot': play('slot', 0.85, 1 + v); play('shimmer', 0.4, 1.1, 0.08); play('check_a', 0.4, 0.78 * 2, 0.22); duckFor(0.65, 1.1); break;
       case 'clip': play('clip', 0.9); play('impact_a', 0.6, 0.92); duckFor(0.6, 0.35); streak = 0; break;
       case 'impact': {
         const k = Math.min(1, Math.max(0.15, (impactHold || 8) / 18));

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 const $ = (id) => document.getElementById(id);
 const TOWER_ROW = 21;
+const GAIN_LABEL = { near_miss: '+# NEAR MISS', clean: '+# CLEAN', perfect: '+# PERFECT', trick: '+# TRICK', gate: '+# GATE', air: '+AIR', wall: '+WALL', draft: '+DRAFT' };
 
 export function fmt(ticks) {
   const ms = Math.round(ticks * 1000 / 120);
@@ -36,13 +37,14 @@ export function createHud(world, settings) {
   const els = {
     hud: $('hud'), clock: $('clock'), tower: $('tower'), sectors: $('sectors'), delta: $('delta'), card: $('card'), cps: $('cps'), target: $('target'),
     cpLabel: $('cpLabel'), lights: $('lights'), toasts: $('toasts'), hint: $('hint'), marker: $('marker'), markerDist: $('markerDist'),
-    speed: $('speed'), unit: $('unit'), gas: $('gas'), gasFill: $('gasFill'), gasPct: $('gasPct'), gasEdge: $('gasEdge'), map: $('map'), state: $('state'),
+    speed: $('speed'), unit: $('unit'), gas: $('gas'), gasFill: $('gasFill'), gasPct: $('gasPct'), gasEdge: $('gasEdge'), gasGains: $('gasGains'), map: $('map'), state: $('state'),
   };
   const { track } = world;
   const NS = 'http://www.w3.org/2000/svg';
   let mapFn = null, meDot = null, ghostDot = null, cpDot = null, rivalDots = [];
   const v = new THREE.Vector3();
   let deltaTimer = 0, hintTimer = 0, lastGas = 1;
+  const gainLabels = new Map();
 
   function buildMap(event) {
     els.map.innerHTML = '';
@@ -86,6 +88,21 @@ export function createHud(world, settings) {
       els.toasts.append(t);
       while (els.toasts.children.length > 3) els.toasts.firstChild.remove();
       setTimeout(() => t.remove(), 1600);
+    },
+    gasGain(source, amount) {
+      els.gas.classList.remove('gain'); void els.gas.offsetWidth; els.gas.classList.add('gain');
+      let t = gainLabels.get(source);
+      const live = !!t;
+      if (live) {
+        clearTimeout(t.timer);
+        t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; t.style.animationDelay = '-132ms';
+      } else {
+        t = document.createElement('div');
+        els.gasGains.append(t);
+        gainLabels.set(source, t);
+      }
+      t.textContent = GAIN_LABEL[source].replace('#', Math.round(amount * 100));
+      t.timer = setTimeout(() => { t.remove(); gainLabels.delete(source); }, live ? 970 : 1100);
     },
     hint(html) {
       els.hint.innerHTML = html;

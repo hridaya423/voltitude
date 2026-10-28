@@ -109,7 +109,7 @@ button { font: inherit; }
 .state.on { opacity: 1; }
 .speed { font: 400 56px/1 var(--display); display: flex; align-items: baseline; gap: 10px; }
 .speed small { font: 600 14px/1 var(--ui); letter-spacing: 0.18em; color: var(--ink-2); }
-.gas { display: grid; grid-template-columns: auto 190px 32px; align-items: center; gap: 12px; font: 600 13px/1 var(--ui); letter-spacing: 0.2em; color: var(--ink-2); }
+.gas { position: relative; display: grid; grid-template-columns: auto 190px 32px; align-items: center; gap: 12px; font: 600 13px/1 var(--ui); letter-spacing: 0.2em; color: var(--ink-2); }
 .gas-pct { color: var(--ink-2); text-align: right; letter-spacing: 0.04em; }
 .gas-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); position: relative; }
 .gas-bar i { border-radius: 3px; }
@@ -122,6 +122,13 @@ button { font: inherit; }
 @keyframes gas-full { 0% { filter: brightness(2.2); } 100% { filter: none; } }
 .gas.low .gas-label, .gas.low .gas-pct { color: #ffb040; }
 .gas.low .gas-bar i { background: #ffb040; }
+.gas.gain .gas-bar i { animation: gas-gain 300ms var(--ease); }
+.gas.gain .gas-bar s { opacity: 1; animation: gas-gain-edge 300ms var(--ease) both; }
+@keyframes gas-gain { 0% { filter: brightness(1.9); box-shadow: 0 0 16px var(--cyan); } 100% { filter: none; box-shadow: none; } }
+@keyframes gas-gain-edge { 0% { opacity: 1; } 100% { opacity: 0; } }
+.gas-gains { position: absolute; right: calc(100% + 18px); bottom: -4px; display: grid; justify-items: end; gap: 6px; }
+.gas-gains div { font: 600 14px/1 var(--ui); letter-spacing: 0.16em; color: var(--cyan); white-space: nowrap; animation: gas-float 1100ms var(--ease) both; }
+@keyframes gas-float { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: 1; transform: none; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
 @media (prefers-reduced-motion: reduce) { .gas.full .gas-bar i { animation: none; } }
 
 .medal { display: inline-block; flex: none; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink-4); }
