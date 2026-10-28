@@ -139,3 +139,17 @@ test('gas: a rival earns from a near miss too', () => {
   assert.ok(near.rival.earned.near_miss > 0);
   assert.ok(Math.abs(near.rival.car.gas - 0.62) < 1e-9);
 });
+
+test('respawn keeps the gas level, with a floor of 0.15', () => {
+  const race = createRace(world, { event: GP, seed: 1 });
+  race.phase = 'racing'; race.raceTick = 400;
+  const inp = createInput();
+  const respawnWith = (gas) => {
+    race.car.gas = gas;
+    inp.reset = 1; stepRace(race, inp);
+    inp.reset = 0; stepRace(race, inp);
+    return race.car.gas;
+  };
+  assert.equal(respawnWith(0), 0.15);
+  assert.equal(respawnWith(0.6), 0.6);
+});

@@ -12,6 +12,7 @@ const GRID_SLOT = 5;
 const NEAR = 1, NEAR_SPEED = 8, NEAR_EVERY = 360;
 const DRAFT_NEAR = 4, DRAFT_FAR = 14, DRAFT_LAT = 1.6, DRAFT_SPEED = 40;
 const HOLD = 600;
+const RESPAWN_GAS = 0.15;
 const IDLE = { throttle: 0, brake: 0.3, steer: 0, pitch: 0, roll: 0, boost: 0, reset: 0 };
 
 export function quantize(v) {
@@ -105,7 +106,7 @@ function respawn(race, e) {
   const { track } = race.world;
   const c = e.car;
   placeCar(c, track, e.lastIdx, e.lastSpeed, e.driver ? lineFor(track).off[e.lastIdx] : 0);
-  c.gas = Math.max(c.gas, 0.3);
+  c.gas = Math.max(c.gas, RESPAWN_GAS);
   e.lost = 0; e.respawnIn = 0; e.respawns++; e.still = 0;
   e.lastHint = c.hint;
   if (track.closed) e.prog = Math.floor(e.next / race.event.perLap) * track.lap + c.hint;
@@ -150,14 +151,12 @@ function stepEntry(race, e, inp) {
 
   if (e === race && c.mode === 1) {
     for (const p of track.pads) {
-      if (p.i <= race.event.from || p.i >= race.event.to || e.used.has(p.i)) continue;
+      if (p.type !== 'boost' || p.i <= race.event.from || p.i >= race.event.to || e.used.has(p.i)) continue;
       if (prevHint < p.i && c.hint >= p.i && Math.abs(c.lat) < 7) {
         e.used.add(p.i);
-        if (p.type === 'boost') {
-          const k = 14 / Math.max(c.speed, 1) + 1;
-          c.vx *= k; c.vy *= k; c.vz *= k;
-        } else c.gas = 1;
-        emit(race, p.type === 'boost' ? 'pad' : 'gas');
+        const k = 14 / Math.max(c.speed, 1) + 1;
+        c.vx *= k; c.vy *= k; c.vz *= k;
+        emit(race, 'pad');
       }
     }
   }
