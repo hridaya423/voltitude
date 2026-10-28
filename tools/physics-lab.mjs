@@ -95,3 +95,14 @@ if (process.argv[1]?.endsWith('physics-lab.mjs')) {
   console.log('top speed', topSpeed(world));
   console.log('skidpad', skidpad(world), TUNING.thrustG);
 }
+
+export function wallScrape(deg, v = 70, secs = 1.5) {
+  const world = flatWorld(3000, 10), { T, R } = world.track, k = START * 3, a = (deg * Math.PI) / 180;
+  const c = createCar(), inp = createInput();
+  placeCar(c, world.track, START, v, 6.5);
+  c.fx = T[k] * Math.cos(a) + R[k] * Math.sin(a); c.fy = 0; c.fz = T[k + 2] * Math.cos(a) + R[k + 2] * Math.sin(a);
+  c.rx = R[k] * Math.cos(a) - T[k] * Math.sin(a); c.ry = 0; c.rz = R[k + 2] * Math.cos(a) - T[k + 2] * Math.sin(a);
+  c.vx = c.fx * v; c.vz = c.fz * v;
+  for (let t = 0; t < 120 * secs; t++) stepCar(c, inp, world, t, false);
+  return c.speed;
+}

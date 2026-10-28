@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
-import { flatWorld, zeroToSixty, topSpeed, braking, skidpad } from '../tools/physics-lab.mjs';
+import { flatWorld, zeroToSixty, topSpeed, braking, skidpad, wallScrape } from '../tools/physics-lab.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput } from '../src/sim/race.js';
-import { placeCar, createCar, stepCar, TUNING } from '../src/sim/drive.js';
+import { placeCar, createCar, stepCar, steerTo, TUNING } from '../src/sim/drive.js';
 
 const lab = flatWorld();
 const near = (value, target, label) => assert.ok(Math.abs(value / target - 1) <= 0.05, `${label}: ${value.toFixed(3)} vs ${target}`);
@@ -94,4 +94,24 @@ test('the loop is drivable from a crawl to full speed', () => {
     }
     assert.ok(cleared, `entry ${entry} m/s did not clear the loop`);
   }
+});
+
+test('a scrape along the wall costs little and a hard hit stops the car', () => {
+  const free = wallScrape(0), kept = (deg) => wallScrape(deg) / free;
+  assert.ok(kept(1) > 0.94, `1 deg keeps ${(100 * kept(1)).toFixed(0)}%`);
+  assert.ok(kept(2) > 0.85, `2 deg keeps ${(100 * kept(2)).toFixed(0)}%`);
+  assert.ok(kept(10) < 0.3, `10 deg keeps ${(100 * kept(10)).toFixed(0)}%`);
+});
+
+test('a car facing the wrong way beside the wall steers away from it and turns around', () => {
+  const world = flatWorld(3000, 10), { T, R } = world.track, k = 600 * 3;
+  const c = createCar(), inp = createInput();
+  placeCar(c, world.track, 600, 0, -6.5);
+  c.fx = -T[k]; c.fz = -T[k + 2]; c.rx = -R[k]; c.rz = -R[k + 2];
+  for (let t = 0; t < 120 * 6; t++) {
+    inp.steer = steerTo(c, world.track, 0, 0, 0); inp.throttle = 0.6;
+    stepCar(c, inp, world, t, false);
+  }
+  const h = c.hint * 3;
+  assert.ok(c.fx * T[h] + c.fz * T[h + 2] > 0.7, `facing ${(c.fx * T[h] + c.fz * T[h + 2]).toFixed(2)} along the track`);
 });

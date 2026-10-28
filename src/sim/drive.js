@@ -79,8 +79,12 @@ export function steerTo(c, track, target, slope, kff) {
     const psi = Math.atan2(c.fx * track.R[k] + c.fy * track.R[k + 1] + c.fz * track.R[k + 2], c.fx * track.T[k] + c.fy * track.T[k + 1] + c.fz * track.T[k + 2]);
     return cl((-psi * 3) / TUNING.yawRate);
   }
-  if (sp <= 2) return cl(-eLat * 0.2);
   const vf = c.vx * track.T[k] + c.vy * track.T[k + 1] + c.vz * track.T[k + 2], vr = c.vx * track.R[k] + c.vy * track.R[k + 1] + c.vz * track.R[k + 2];
+  if (c.fx * track.T[k] + c.fy * track.T[k + 1] + c.fz * track.T[k + 2] < 0 && vf < 3) {
+    const wx = track.T[k] - 0.5 * eLat * track.R[k], wy = track.T[k + 1] - 0.5 * eLat * track.R[k + 1], wz = track.T[k + 2] - 0.5 * eLat * track.R[k + 2];
+    return wx * c.rx + wy * c.ry + wz * c.rz >= 0 ? 1 : -1;
+  }
+  if (sp <= 2) return cl(-eLat * 0.2);
   const eHead = Math.atan2(vr, Math.max(vf, 1)) - Math.atan(slope);
   const kmax = (0.95 * latCap(sp)) / Math.max(sp * sp, 25);
   const yaw = -(c.ox * c.ux + c.oy * c.uy + c.oz * c.uz);
@@ -110,7 +114,7 @@ export function createCar() {
     gas: 1, boosting: false, thr: 0, delta: 0, brk: 0,
     air: 0, flip: 0, spin: 0, barrel: 0,
     speed: 0, vf: 0, slip: 0, throttle: 0, brake: 0, steer: 0, yawRate: 0,
-    wrecked: false, load: 0, fan: 0,
+    wrecked: false, load: 0, fan: 0, wallT: 0,
     wl: createWheels(),
     ev: [],
   };
@@ -130,7 +134,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
   c.mode = 1; c.hint = i; c.lat = lat;
   c.air = 0; c.flip = c.spin = c.barrel = 0;
   c.speed = speed; c.vf = speed; c.slip = 0; c.delta = 0; c.brk = 0; c.thr = 0;
-  c.wrecked = false; c.boosting = false;
+  c.wrecked = false; c.boosting = false; c.wallT = 0;
   for (let k2 = 0; k2 < 4; k2++) {
     const w = c.wl[k2];
     w.om = speed / w.w.R; w.hint = i; w.a = 0; w.x = w.xp = 0; w.hit = false; w.fz = 0; w.kap = 0;
@@ -138,7 +142,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
 }
 
 const AIR_PAD = 40;
-const WALL_SCRUB = 6, WALL_DRAG = 4 * G;
+const WALL_HIT = 1, WALL_HARD = 5, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36;
 const WALL_TOP = 1.16;
 
 function nearestRoad(track, x, y, z, hint) {
@@ -536,7 +540,9 @@ function collide(c, q, air) {
     const roll = c.ox * c.fx + c.oy * c.fy + c.oz * c.fz;
     c.ox -= c.fx * roll * 0.5; c.oy -= c.fy * roll * 0.5; c.oz -= c.fz * roll * 0.5;
   }
+  c.wallT = press ? c.wallT + 1 : 0;
   if (!press) return;
-  const sp = Math.hypot(c.vx, c.vy, c.vz), k = Math.max(0, sp - (WALL_SCRUB * press + WALL_DRAG * DT) * Math.min(1, sp / 40)) / Math.max(sp, 1e-6);
+  const drag = WALL_DRAG * DT * Math.min(1, Math.max(0, c.wallT - WALL_GRACE) / WALL_RAMP);
+  const sp = Math.hypot(c.vx, c.vy, c.vz), k = Math.max(0, sp - (WALL_HIT * press * (1 + (press / WALL_HARD) ** 2) + drag) * Math.min(1, sp / 40)) / Math.max(sp, 1e-6);
   c.vx *= k; c.vy *= k; c.vz *= k;
 }
