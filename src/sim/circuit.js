@@ -236,7 +236,7 @@ export function buildCircuit(def) {
     curv[i] = (dx * R[k] + dy * R[k + 1] + dz * R[k + 2]) / 12;
     speedCap[i] = Math.abs(curv[i]) > 1e-5 ? Math.sqrt(42 / Math.abs(curv[i])) : 999;
   }
-  const sectors = [], loops = [];
+  const sectors = [], loops = [], airs = [];
   const toSample = (di) => {
     let lo = 0, hi = N - 1;
     while (lo < hi) { const mid = (lo + hi) >> 1; if (at[mid] < di) lo = mid + 1; else hi = mid; }
@@ -246,7 +246,10 @@ export function buildCircuit(def) {
     if (mk.node.flags?.sector) sectors.push({ name: mk.node.flags.sector, i: toSample(mk.at) });
     if (mk.node.loop === 'in') loops.push({ from: toSample(mk.at), to: 0 });
     if (mk.node.loop === 'out') loops[loops.length - 1].to = toSample(mk.at);
+    if (mk.node.flags?.air) { const from = toSample(mk.at); airs.push({ from, to: (from + Math.round(mk.node.flags.air.len / step)) % N }); }
   }
+  const air = new Uint8Array(n);
+  airs.forEach((a, k) => { for (let i = a.from; i !== a.to; i = (i + 1) % N) air[i] = k + 1; });
   const jumps = [];
   for (let i = 0; i < N; i++) {
     if (bot[i] && !bot[(i + N - 1) % N]) jumps.push({ from: i, lip: i, to: i });
@@ -256,10 +259,11 @@ export function buildCircuit(def) {
   sectors.sort((x, y) => x.i - y.i);
   if (!sectors.length || sectors[0].i !== 0) sectors.unshift({ name: 'Start', i: 0 });
   const cps = sectors.slice(1).map((s) => s.i);
+  for (const i of [0, ...cps]) if (air[i]) throw new Error(`checkpoint at sample ${i} is inside an air span`);
   const zeros = (T2) => new T2(n);
   return {
     n, step, len: N, closed: true, lap: N, H, P, T, U, R, halfW, gap: zeros(Uint8Array), chasm: zeros(Float32Array), wall: zeros(Float32Array), roof,
-    bot, speedCap, curv, cps, pads: [], sectors, finish: N, loops, loopMask, jumps, length,
+    bot, speedCap, curv, cps, pads: [], sectors, finish: N, loops, loopMask, jumps, airs, air, length,
   };
 }
 

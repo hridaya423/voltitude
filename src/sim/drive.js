@@ -137,10 +137,23 @@ export function placeCar(c, track, i, speed, lat = 0) {
   }
 }
 
+const AIR_PAD = 40;
+const WALL_TOP = 1.16;
+
+function nearestRoad(track, x, y, z, hint) {
+  const i = nearestIndex(track, x, y, z, hint, 10);
+  const span = track.air?.[i];
+  if (!span) return i;
+  const { H, R } = track, k = i * 3;
+  if (Math.abs((x - H[k]) * R[k] + (y - H[k + 1]) * R[k + 1] + (z - H[k + 2]) * R[k + 2]) <= track.halfW[i] + 0.4) return i;
+  const { from, to } = track.airs[span - 1], len = (to - from + track.lap) % track.lap;
+  return nearestIndex(track, x, y, z, (from + (len >> 1)) % track.lap, (len >> 1) + AIR_PAD);
+}
+
 const sf = { hit: false, i: 0, hs: 0, lat: 0, w: 0, nx: 0, ny: 1, nz: 0, rx: 0, ry: 0, rz: 1, road: true };
 
 function roadAt(track, x, y, z, hint, s) {
-  const i = nearestIndex(track, x, y, z, hint, 10);
+  const i = nearestRoad(track, x, y, z, hint);
   const { H, T, U, R, n, gap, halfW } = track;
   let k = i * 3;
   let d = (x - H[k]) * T[k] + (y - H[k + 1]) * T[k + 1] + (z - H[k + 2]) * T[k + 2];
@@ -450,7 +463,7 @@ export function stepCar(c, inp, world, tick, assist) {
 
   const q = roadAt(track, COM[0], COM[1], COM[2], c.hint, sf);
   c.hint = sf.i;
-  if (q.hit) collide(c, q);
+  if (q.hit) collide(c, q, track.air?.[q.i]);
 
   spinFrame(c, c.ox, c.oy, c.oz);
   body(c, CGO[0], CGO[1], CGO[2], cg);
@@ -498,15 +511,17 @@ function landing(c, nx, ny, nz) {
   c.flip = c.spin = c.barrel = 0;
 }
 
-function collide(c, q) {
+function collide(c, q, air) {
   const side0 = q.w - 0.9;
   const qlat = q.lat;
+  if (air && Math.abs(qlat) > side0) return;
   for (let k = 0; k < HULL.length; k++) {
     body(c, HULL[k][0], HULL[k][1], HULL[k][2], at);
     const rx = at[0] - cg[0], ry = at[1] - cg[1], rz = at[2] - cg[2];
     const lat = qlat + rx * q.rx + ry * q.ry + rz * q.rz;
     const over = Math.abs(lat) - side0;
     if (over <= 0) continue;
+    if (air && q.hs + rx * q.nx + ry * q.ny + rz * q.nz > WALL_TOP) continue;
     const side = Math.sign(lat);
     COM[0] -= q.rx * over * side; COM[1] -= q.ry * over * side; COM[2] -= q.rz * over * side;
     const vr = (c.vx * q.rx + c.vy * q.ry + c.vz * q.rz) * side;

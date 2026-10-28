@@ -104,7 +104,7 @@ function emit(race, type, extra) {
 }
 
 function safeAt(track, i) {
-  if (track.U[i * 3 + 1] <= 0.95 || track.gap[i] || track.loopMask[i]) return false;
+  if (track.U[i * 3 + 1] <= 0.95 || track.gap[i] || track.loopMask[i] || track.air?.[i]) return false;
   return !track.jumps.some((j) => i >= j.from && i <= j.to);
 }
 
@@ -173,7 +173,8 @@ function stepEntry(race, e, inp) {
   const k = c.hint * 3;
   const off = Math.hypot(c.x - track.H[k], c.y - track.H[k + 1], c.z - track.H[k + 2]);
   const sunk = c.mode === 2 && c.y < track.H[k + 1] - SINK;
-  e.lost = off > CP_RADIUS || sunk || (c.mode === 0 && c.air > 120 * 7) ? e.lost + 1 : 0;
+  const flying = c.mode === 0 && track.air?.[c.hint];
+  e.lost = (off > CP_RADIUS && !flying) || sunk || (c.mode === 0 && c.air > 120 * 7) ? e.lost + 1 : 0;
   e.still = race.raceTick > 360 && c.speed < 2 ? e.still + 1 : 0;
   if (c.mode === 1 && !e.lost && !c.wrecked && safeAt(track, c.hint)) { e.lastIdx = c.hint; e.lastSpeed = c.speed; }
   if (c.wrecked && !e.respawnIn) e.respawnIn = 70;

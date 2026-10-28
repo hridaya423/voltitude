@@ -774,3 +774,13 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - What would move it: Phase 2 adds income on the slice layout (gates at 0.25 each, the wall-ride bank, air lines). Raising `GAIN` now would be a tuning call; not done.
 
 **Next:** Phase 2, Task 8 (legal air over the infield). After it, `tools/exploits.mjs` flight cases start to test something real.
+
+## Thruster festival, Phase 2 (2026-10-28, executing session)
+
+**Task 8: legal air (done).** A circuit node flag `air: { len }` marks a span of `len` metres. `buildCircuit` returns `track.airs = [{ from, to }]` and `track.air` (span index + 1 per sample), and throws if a checkpoint or the start line is inside a span.
+- Walls (`drive.js` `collide`): inside a span the barrier has a top at 1.16 m above the road, the rendered rail cap. A hull point above it passes over. A car whose centre is already outside the wall line is not pulled back in. Outside spans the wall still holds at any height.
+- Road lookup (`nearestRoad`): inside a span, a car outside the road corridor searches the whole span (plus 40 m) for the nearest sample, so a car crossing the infield finds the far leg. On the road it keeps the ±10 sample local search.
+- `race.js`: `e.lost` ignores distance from the course while the car is airborne in a span. A landing off the road (terrain, more than 45 m away) still respawns after 0.5 s, and 7 s of air still respawns. `safeAt` excludes spans, so respawns land before the span.
+- Tests (`tests/racing.test.js`, on a synthetic oval built with the new `tools/turtle.mjs`): a car launched at 70 m/s over an S-bulge goes 15.8 m from the centreline (wall line 9.1), lands on the far leg, does not respawn, and counts the checkpoint then the lap. The same launch with no span stays within 8.5 m. A checkpoint inside a span throws. Before the change the first and third tests failed; the wall test passed (it guards today's behaviour).
+- `line.js` is unchanged in this task; the lip speed for the ground line comes with the layout (Task 9).
+- `npm test` 83 of 83.

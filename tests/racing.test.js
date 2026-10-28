@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput, nearMisses } from '../src/sim/race.js';
 import { createCar, placeCar } from '../src/sim/drive.js';
+import { buildCircuit } from '../src/sim/circuit.js';
+import { turtle, arc } from '../tools/turtle.mjs';
 
 const world = loadWorld('proving');
 const GP = eventsFor(world.track).find((e) => e.id === 'gp');
@@ -219,4 +221,57 @@ test('three respawns in a row from mid-bank do not wreck', () => {
   }
   assert.equal(events.filter((e) => e.type === 'wreck').length, 0);
   assert.equal(events.filter((e) => e.type === 'respawn').length, 0);
+});
+
+function airOval({ air = true, sector = 'Back' } = {}) {
+  const r = 100 / (4 * Math.sin((35 * Math.PI) / 180));
+  const nodes = [[0, 0, 0, 0, 10, null], ...turtle(0, 0, 0, 0, 10, [
+    [200], [50, 0, -1, { jump: { kick: 6, ramp: 25, flare: 10 }, ...(air && { air: { len: 260 } }) }],
+    [arc(r, 35), 35, -2, sector === 'S' && { sector }], [arc(r, 70), -70, -9], [arc(r, 35), 35, -8],
+    [120, 0, -8], [200, 0, 0], [100], [arc(80, 180), 180], [200, 0, 0, sector === 'Back' && { sector }], [570], [arc(80, 180), 180],
+  ])].slice(0, -1);
+  return { track: buildCircuit({ w: 10, nodes }), terrain: { height: () => -50 } };
+}
+
+function launch(w, v) {
+  const { track } = w;
+  const race = createRace(w, { event: eventsFor(track).find((e) => e.id === 'tt') });
+  const inp = createInput();
+  while (race.phase !== 'racing') stepRace(race, inp);
+  placeCar(race.car, track, track.jumps[0].lip - 30, v, 0);
+  const c = race.car, out = { race, wide: 0, respawns: 0, landed: -1, splits: [] };
+  for (let t = 0; t < 120 * 90 && race.splits.length < 2; t++) {
+    if (out.landed < 0 || t < out.landed + 120) Object.assign(inp, createInput(), { throttle: 0.3 });
+    else botInput(race, inp, 0.9);
+    stepRace(race, inp);
+    for (const e of race.events) {
+      if (e.type === 'respawn') out.respawns++;
+      if (e.type === 'land' && out.landed < 0) { out.landed = t; out.land = c.hint; }
+      if (e.type === 'check' || e.type === 'lap') out.splits.push(e.type);
+    }
+    race.events.length = 0;
+    const k = c.hint * 3;
+    out.wide = Math.max(out.wide, Math.abs((c.x - track.H[k]) * track.R[k] + (c.y - track.H[k + 1]) * track.R[k + 1] + (c.z - track.H[k + 2]) * track.R[k + 2]));
+  }
+  return out;
+}
+
+test('air span: a car launched at 70 m/s flies over the infield and lands on the far leg', () => {
+  const w = airOval();
+  const [span] = w.track.airs;
+  const out = launch(w, 70);
+  assert.ok(out.wide > w.track.halfW[span.from] + 2, `widest ${out.wide.toFixed(1)} m from the centreline`);
+  assert.ok(out.land > span.from + 150 && out.land < span.to, `landed at ${out.land}, span ${span.from} to ${span.to}`);
+  assert.equal(out.respawns, 0);
+  assert.deepEqual(out.splits, ['check', 'lap', 'check']);
+});
+
+test('outside an air span the walls hold a flying car on the road', () => {
+  const w = airOval({ air: false });
+  const out = launch(w, 70);
+  assert.ok(out.wide < w.track.halfW[w.track.jumps[0].lip] - 1.5, `widest ${out.wide.toFixed(1)} m from the centreline`);
+});
+
+test('a checkpoint inside an air span is a build error', () => {
+  assert.throws(() => airOval({ sector: 'S' }), /inside an air span/);
 });
