@@ -759,3 +759,18 @@ Baseline commit `291e516` (whole tree; `.gitignore` drops `tools/node_modules/`)
 - Case checks: Shift only must fit its thrust time into `(start gas + earned + respawns × 0.15) × burn`. Reverse must drive backwards at least 30 s and count no checkpoint or lap while moving backwards. Grid boost must not move the car or spend gas before the lights go out. Flight must not stay more than 60 m off the course for over 1 s. Stuck must respawn.
 - Result: PASS, all ten. Shift only: 19.5 s of thrust over 150 s, all from the start tank and 26 respawn floors, 152 mph max, no lap. Reverse: 150 s backwards, nothing counted.
 - Findings: (1) The respawn floor is a slow gas source: stopping for 2 s gives 0.15 gas (0.6 s of thrust). It never beats driving. (2) Reverse driving earns gas (0.93 in 150 s: landings and the loop backwards). (3) Flight off the map cannot happen on Proving today: the road walls clamp the car within 8.2 m of the centreline at any height the jump reaches (3.3 m max). The flight cases become meaningful once Task 8 adds legal air spans.
+
+### Phase 1 gate (2026-10-28)
+
+| Check | Result |
+|---|---|
+| `npm test` green | PASS: 80 of 80 (baseline 69) |
+| `tools/exploits.mjs` passes Shift-only and stuck | PASS: all ten cases pass |
+| Keyboard GP under 15% gas for less than 25% of race time | FAIL: 63.9% (was 76%) |
+
+Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (copied to `/private/tmp/claude-501/-Users-hridyaagrawal--t3-projects-teslaroadster/51f69f6e-3566-4674-9811-fcbe1fcf26ef/scratchpad/cap-review.mjs`, run with `PORT=8821`). Output in `.../scratchpad/gate/proving-gp-keys/`: `telemetry.json`, `run.mp4`, `frames/`, `stills/`. No console errors. The driver is the bot quantized to keys with 110 ms latency. It laps in about 110 s, weaving ±7 m, and runs 8th from start to finish. It hit the 330 s deadline after 2 laps.
+- Earned in 319 s: 3 perfect landings, 2 near misses, 3 wall labels (the loop), 1 respawn floor; about 1.5 tanks, or 6 s of thrust. Never close enough to the pack to draft.
+- The metric depends on spending as much as income: this driver boosts whenever it has gas, so it sits near zero after each burst. The bot player in headless GPs shows the same pattern (54% and 69%).
+- What would move it: Phase 2 adds income on the slice layout (gates at 0.25 each, the wall-ride bank, air lines). Raising `GAIN` now would be a tuning call; not done.
+
+**Next:** Phase 2, Task 8 (legal air over the infield). After it, `tools/exploits.mjs` flight cases start to test something real.
