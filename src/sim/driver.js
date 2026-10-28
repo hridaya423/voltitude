@@ -6,6 +6,7 @@ import { rng } from './drivers.js';
 const lines = new WeakMap();
 const clamp = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
 const SPACE = 3.2;
+const AIR_DECIDE = 200, AIR_GAS = 0.55, AIR_TOP = 85;
 
 export function lineFor(track) {
   let l = lines.get(track);
@@ -36,6 +37,23 @@ export function createDriver(profile, seed) {
     reserve: 0.42 - 0.3 * (profile.boost ?? 0.7), windows: Math.round(2 + 5 * (profile.boost ?? 0.7)),
     use: null, hold: 0, clear: 0,
   };
+}
+
+function airLine(track, e, d) {
+  const N = track.lap, hint = e.car.hint;
+  for (let k = 0; k < track.airs.length; k++) {
+    const sp = track.airs[k], at = (hint - sp.lip + N) % N;
+    if (at > (sp.to - sp.lip + N) % N && at < N - AIR_DECIDE) continue;
+    if (d.air?.k !== k) {
+      const go = !e.done && e.car.gas >= AIR_GAS && d.rand() < (d.p.nerve ?? 0);
+      d.air = { k, go, miss: go && d.rand() < d.p.error * (1 - (d.p.craft ?? 0.5)) };
+      if (go) e.airLines = (e.airLines || 0) + 1;
+    }
+    d.air.before = at > N / 2;
+    return d.air;
+  }
+  d.air = null;
+  return null;
 }
 
 function others(race, e) {
@@ -129,8 +147,11 @@ export function drive(race, e, inp) {
     if (Math.abs(target - ol) < SPACE) target = clamp(ol + (c.lat > ol ? SPACE : -SPACE), -room, room);
     if (Math.abs(c.lat - ol) < 2.6 && beside.prog > e.prog) follow = Math.min(follow, beside.car.speed - 1.5);
   }
+  const air = track.airs?.length ? airLine(track, e, d) : null;
+  const aim = air?.go && air.before;
+  if (aim) target = 0;
   d.target = target;
-  const slope = (L.off[(hint + 2) % N] - L.off[(hint - 2 + N) % N]) / 4;
+  const slope = aim ? 0 : (L.off[(hint + 2) % N] - L.off[(hint - 2 + N) % N]) / 4;
   d.noise += d.gauss() * 0.02 * d.p.error - d.noise * 0.6 * DT;
   const kc = track.curv[(hint + Math.round(2 + sp * 0.12)) % N];
   inp.steer = clamp(steerTo(c, track, target, slope, kc / Math.max(0.3, 1 - kc * target)) + d.noise);
@@ -161,5 +182,18 @@ export function drive(race, e, inp) {
   d.clear = follow > sp + 3 ? d.clear + 1 : 0;
   if (!d.clear) d.hold = 0;
   inp.boost = !done && inp.brake === 0 && (d.clear > 120 || (d.clear > 0 && race.raceTick < d.react + 170)) && wantBoost(race, e, L, vt) ? 1 : 0;
+  if (air?.before) {
+    inp.boost = 0;
+    if (air.go && c.mode === 1 && Math.abs(track.curv[hint]) < 0.012) {
+      inp.throttle = 1; inp.brake = 0;
+      inp.boost = sp < AIR_TOP ? 1 : 0;
+    }
+  } else if (air && c.mode === 0) {
+    const vx = c.vx - c.ux * (c.vx * c.ux + c.vy * c.uy + c.vz * c.uz), vz = c.vz - c.uz * (c.vx * c.ux + c.vy * c.uy + c.vz * c.uz);
+    const psi = Math.atan2(vx * c.rx + vz * c.rz, vx * c.fx + vz * c.fz);
+    inp.steer = clamp((psi * 3) / 2.4);
+    inp.pitch = air.miss ? 1 : 0;
+    inp.throttle = 1; inp.brake = 0; inp.boost = 0;
+  }
   return inp;
 }

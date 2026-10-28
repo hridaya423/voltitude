@@ -9,6 +9,7 @@ const MARGIN = 1.15;
 const LOOP_SPEED = 45;
 const GRIP = 0.9;
 const BRAKE_GRIP = 0.86;
+export const LIP_SPEED = 42;
 
 function solve(A, b, m) {
   const L = new Float64Array(m * m);
@@ -128,6 +129,7 @@ export function speedProfile(track, off, grip, brakeGrip, vTop, boost = null) {
     }
     vlim[i] = v;
   }
+  for (const { lip } of track.airs ?? []) for (let d = 0; d < 8; d++) { const i = (lip - d + N) % N; vlim[i] = Math.min(vlim[i], LIP_SPEED); }
   const v = Float64Array.from(vlim);
   const cap = Float64Array.from(vlim);
   const accel = (s, i) => Math.max(0.5, accelAt(s) * 0.97) + (boost && boost[i] ? TUNING.thrustG * G : 0);

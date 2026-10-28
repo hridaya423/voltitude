@@ -1,6 +1,7 @@
 import { fbm, ridged, smoothstep } from './noise.js';
 
 export const RUNWAY_Y = 1.2;
+const BASIN = 7, BASIN_REACH = 36;
 
 function playa(x, z, T) {
   const r = Math.hypot(x - T.cx, z - T.cz);
@@ -224,6 +225,20 @@ export function buildTerrain(track, shaped, T) {
       if (f > floor[k]) floor[k] = f;
     }
   });
+  for (const { from, to } of track.airs ?? []) {
+    const a = from * 3, b = to * 3, dx = P[b] - P[a], dz = P[b + 2] - P[a + 2], len2 = dx * dx + dz * dz;
+    const i0 = Math.max(0, Math.floor((Math.min(P[a], P[b]) - BASIN_REACH - x0) / cell)), i1 = Math.min(res - 1, Math.ceil((Math.max(P[a], P[b]) + BASIN_REACH - x0) / cell));
+    const j0 = Math.max(0, Math.floor((Math.min(P[a + 2], P[b + 2]) - BASIN_REACH - z0) / cell)), j1 = Math.min(res - 1, Math.ceil((Math.max(P[a + 2], P[b + 2]) + BASIN_REACH - z0) / cell));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const px = x0 + i * cell - P[a], pz = z0 + j * cell - P[a + 2];
+      const u = Math.max(0, Math.min(1, (px * dx + pz * dz) / len2));
+      const d = Math.hypot(px - dx * u, pz - dz * u);
+      if (d > BASIN_REACH) continue;
+      const k = j * res + i;
+      const c = Math.max(P[a + 1] + (P[b + 1] - P[a + 1]) * u - BASIN + 0.5 * Math.max(0, d - BASIN_REACH / 2), floor[k]);
+      if (c < ceil[k]) ceil[k] = c;
+    }
+  }
   for (let k = 0; k < N; k++) {
     if (floor[k] > H[k] && floor[k] - H[k] < 14) H[k] = floor[k];
     if (ceil[k] < H[k]) H[k] = ceil[k];

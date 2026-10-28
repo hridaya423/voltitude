@@ -256,6 +256,7 @@ export function buildCircuit(def) {
     if (bot[i]) jumps[jumps.length - 1].to = i;
     if (bot[i] && S.jump[at[i]] === 2 && S.jump[at[(i + N - 1) % N]] === 1) jumps[jumps.length - 1].lip = i;
   }
+  for (const a of airs) a.lip = jumps.find((j) => j.from === a.from)?.lip ?? a.from;
   sectors.sort((x, y) => x.i - y.i);
   if (!sectors.length || sectors[0].i !== 0) sectors.unshift({ name: 'Start', i: 0 });
   const cps = sectors.slice(1).map((s) => s.i);

@@ -173,8 +173,8 @@ function stepEntry(race, e, inp) {
   const k = c.hint * 3;
   const off = Math.hypot(c.x - track.H[k], c.y - track.H[k + 1], c.z - track.H[k + 2]);
   const sunk = c.mode === 2 && c.y < track.H[k + 1] - SINK;
-  const flying = c.mode === 0 && track.air?.[c.hint];
-  e.lost = (off > CP_RADIUS && !flying) || sunk || (c.mode === 0 && c.air > 120 * 7) ? e.lost + 1 : 0;
+  const span = track.air?.[c.hint];
+  e.lost = (off > CP_RADIUS && !(span && c.mode === 0)) || sunk || (span && c.mode === 2) || (c.mode === 0 && c.air > 120 * 7) ? e.lost + 1 : 0;
   e.still = race.raceTick > 360 && c.speed < 2 ? e.still + 1 : 0;
   if (c.mode === 1 && !e.lost && !c.wrecked && safeAt(track, c.hint)) { e.lastIdx = c.hint; e.lastSpeed = c.speed; }
   if (c.wrecked && !e.respawnIn) e.respawnIn = 70;
@@ -310,7 +310,7 @@ export function stepRace(race, inp) {
 }
 
 export function botInput(race, inp, skill = 0.97) {
-  if (!race.driver) race.driver = createDriver({ skill, aggr: 0.6, error: 0.05, boost: 0.8 }, race.seed * 31 + 7);
+  if (!race.driver) race.driver = createDriver({ skill, aggr: 0.6, error: 0.05, boost: 0.8, nerve: 0.7, craft: 0.9 }, race.seed * 31 + 7);
   return drive(race, race, inp);
 }
 

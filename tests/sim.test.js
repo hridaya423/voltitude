@@ -177,14 +177,14 @@ const TT = eventsFor(circuit.track).find((e) => e.id === 'tt');
 function runField(event, seed, limit = 120 * 600) {
   const race = createRace(circuit, { event, seed });
   const inp = createInput();
-  const deepest = { pen: 0 }, hit = {}, flights = [], air = race.entries.map(() => 0);
+  const deepest = { pen: 0 }, hit = {}, flights = [], air = race.entries.map(() => 0), takeoff = race.entries.map(() => 0);
   while (!race.entries.every((e) => e.done) && race.tick < limit) {
     botInput(race, inp, 0.97);
     stepRace(race, inp);
     race.events.length = 0;
     race.entries.forEach((e, k) => {
-      if (e.car.mode === 0) air[k]++;
-      else { if (air[k] > 30) flights.push({ land: e.car.hint }); air[k] = 0; }
+      if (e.car.mode === 0) { if (!air[k]) takeoff[k] = e.car.hint; air[k]++; }
+      else { if (air[k] > 30) flights.push({ from: takeoff[k], land: e.car.hint, mode: e.car.mode }); air[k] = 0; }
     });
     for (let i = 0; i < race.entries.length; i++) for (let j = i + 1; j < race.entries.length; j++) {
       if (contactPair(race.entries[i].car, race.entries[j].car, hit) && hit.pen > deepest.pen) deepest.pen = hit.pen;
@@ -225,15 +225,22 @@ test('the teardrop loop clears itself by more than the road width', () => {
   assert.ok(near > 2 * Math.max(...Array.from({ length: to - from }, (_, k) => halfW[from + k])) * 0.5 + 2, `closest approach ${near.toFixed(1)} m`);
 });
 
-test('every car that leaves the jump lands on its down-slope', () => {
-  const [jump] = circuit.track.jumps;
-  assert.ok(jump, 'the circuit has a jump');
+test('every car that leaves a jump lands on its down-slope, or on the road inside its air span', () => {
+  const { jumps, airs, T } = circuit.track;
+  assert.ok(jumps.length >= 3 && airs.length >= 2, `${jumps.length} jumps, ${airs.length} air spans`);
   const { flights } = runField(GP, 2);
-  assert.ok(flights.length >= 16, `${flights.length} flights`);
+  const used = new Set();
   for (const f of flights) {
-    assert.ok(f.land > jump.lip && f.land < jump.to, `landed at ${f.land}, slope runs ${jump.lip} to ${jump.to}`);
-    assert.ok(circuit.track.T[f.land * 3 + 1] < -0.01, `landing slope ${circuit.track.T[f.land * 3 + 1].toFixed(3)} at ${f.land}`);
+    const jump = jumps.find((j) => f.from >= j.from - 5 && f.from <= j.to);
+    assert.ok(jump, `flight from ${f.from} starts at no jump`);
+    used.add(jump);
+    const span = airs.find((a) => a.from === jump.from);
+    const end = span && f.land > jump.to ? span.to : jump.to;
+    assert.equal(f.mode, 1, `flight from ${f.from} landed off the road at ${f.land}`);
+    assert.ok(f.land > jump.lip && f.land < end, `landed at ${f.land}, landing runs ${jump.lip} to ${end}`);
+    if (end === jump.to) assert.ok(T[f.land * 3 + 1] < -0.01, `landing slope ${T[f.land * 3 + 1].toFixed(3)} at ${f.land}`);
   }
+  assert.equal(used.size, jumps.length, 'every jump was flown');
 });
 
 test('a solo bot laps the circuit three times with no reset', () => {

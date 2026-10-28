@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput, nearMisses } from '../src/sim/race.js';
-import { createCar, placeCar } from '../src/sim/drive.js';
+import { createCar, placeCar, TUNING } from '../src/sim/drive.js';
 import { buildCircuit } from '../src/sim/circuit.js';
 import { turtle, arc } from '../tools/turtle.mjs';
 
@@ -38,7 +38,8 @@ test('rivals launch on the thrusters and spend them in planned bursts on the str
   assert.ok(launch >= 6, `${launch} of 7 rivals boosting at the launch`);
   for (const [k, s] of stats.entries()) {
     const perLap = s.ticks / 120 / 3, bursts = s.bursts / 3;
-    assert.ok(perLap > 1 && perLap < 5, `${race.entries[k + 1].identity.code} boosts ${perLap.toFixed(1)} s per lap`);
+    const e = race.entries[k + 1], budget = (1 + Object.values(e.earned).reduce((a, b) => a + b, 0)) * TUNING.burn;
+    assert.ok(perLap > 1 && s.ticks / 120 <= budget, `${e.identity.code} boosts ${perLap.toFixed(1)} s per lap, ${(s.ticks / 120).toFixed(1)} s against a ${budget.toFixed(1)} s budget`);
     assert.ok(bursts >= 2 && bursts <= 12, `${race.entries[k + 1].identity.code} fires ${bursts.toFixed(1)} bursts per lap`);
     assert.ok(s.straight / s.ticks > 0.8, `${race.entries[k + 1].identity.code} boosts ${((100 * s.straight) / s.ticks).toFixed(0)}% on straights`);
   }
