@@ -1,0 +1,60 @@
+<!doctype html><html><body style="margin:0;background:#000">
+<script type="importmap">{"imports":{"three":"../rl/vendor/three-r169/build/three.module.js","@rl/":"../rl/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { skyUniforms, SUN_DIR } from '../src/render/sky.js';
+import { createGrandstands } from '../src/render/crowd.js';
+const q = new URLSearchParams(location.search);
+const night = q.has('night');
+const W = 1440, H = 900;
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setSize(W, H); document.body.append(r.domElement);
+r.outputColorSpace = THREE.SRGBColorSpace;
+r.toneMapping = THREE.ACESFilmicToneMapping;
+r.shadowMap.enabled = true;
+const scene = new THREE.Scene();
+const horizon = new THREE.Color(night ? 0x0a0d18 : 0xbfd0e8);
+scene.background = horizon;
+const fogTex = new THREE.DataTexture(new Uint8Array([horizon.r * 255, horizon.g * 255, horizon.b * 255, 255]), 1, 1);
+fogTex.needsUpdate = true;
+skyUniforms.tSkyFog.value = fogTex;
+skyUniforms.uNight.value = night ? 1 : 0;
+const el = (night ? 38 : 24) * Math.PI / 180;
+SUN_DIR.set(Math.cos(el) * 0.4, Math.sin(el), Math.cos(el) * 0.9);
+const es = new THREE.Scene();
+es.add(new THREE.Mesh(new THREE.SphereGeometry(50, 24, 12), new THREE.MeshBasicMaterial({ color: night ? 0x1a2036 : 0x9db4d4, side: THREE.BackSide })));
+scene.environment = new THREE.PMREMGenerator(r).fromScene(es, 0.02).texture;
+const sun = new THREE.DirectionalLight(night ? '#9fb3e8' : '#ffe0bc', night ? 1.5 : 3.4);
+sun.position.copy(SUN_DIR).multiplyScalar(100);
+sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -200, right: 200, top: 200, bottom: -200, near: 1, far: 400 }); sun.shadow.camera.updateProjectionMatrix();
+scene.add(sun);
+const n = 400, P = new Float32Array(n * 3), T = new Float32Array(n * 3), R = new Float32Array(n * 3), U = new Float32Array(n * 3), halfW = new Float32Array(n).fill(10);
+for (let i = 0; i < n; i++) { P.set([0, 0, i], i * 3); T.set([0, 0, 1], i * 3); R.set([-1, 0, 0], i * 3); U.set([0, 1, 0], i * 3); }
+const world = { track: { n, P, T, R, U, halfW, gap: new Uint8Array(n), sectors: [{ i: 0 }], finish: n - 1, stands: q.has('many') ? [[40, 1, 110], [110, -1, 110], [180, 1, 110], [250, -1, 110], [320, 1, 110], [380, -1, 70]] : [[100, 1, 110], [250, -1, 70]] }, terrain: { height: () => 0 } };
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshStandardMaterial({ color: night ? 0x151515 : 0x8a7d66, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true; scene.add(ground);
+const road = new THREE.Mesh(new THREE.PlaneGeometry(20, n), new THREE.MeshStandardMaterial({ color: 0x2a2a2d, roughness: 0.9 }));
+road.rotation.x = -Math.PI / 2; road.position.set(0, 0, n / 2); road.receiveShadow = true; scene.add(road);
+const stands = await createGrandstands(world, { value: SUN_DIR }, { value: 0.00034 }, r);
+scene.add(stands.group);
+const cam = new THREE.PerspectiveCamera(60, W / H, 0.3, 3000);
+const c0 = stands.centres[0];
+window.STANDS = stands;
+window.SHOT = (d, h = 1.7, lat = 0, look = 6, fov = 60, t = 3) => {
+  cam.fov = fov; cam.updateProjectionMatrix();
+  cam.position.set(c0.x + 14 - d * 0 + 0, h, c0.z + lat);
+  cam.position.x = c0.x + (d);
+  cam.lookAt(c0.x - 4, look, c0.z + lat * 0.2);
+  stands.update(t, 0.016, night ? 1 : 0, cam);
+  r.render(scene, cam);
+};
+window.STATE = (c, g, p) => { for (let i = 0; i < 40; i++) { stands.cheer(c); stands.gasp(g); if (p) stands.party(); stands.update(i * 0.1, 0.1, night ? 1 : 0, cam); } };
+window.BENCH = (n = 120) => {
+  const gl = r.getContext(), ts = [], px = new Uint8Array(4);
+  for (let i = 0; i < n; i++) { const t0 = performance.now(); SHOT(25, 3, 0, 5, 60, i * 0.05); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); ts.push(performance.now() - t0); }
+  ts.sort((a, b) => a - b);
+  return { avg: ts.reduce((a, b) => a + b, 0) / n, p99: ts[Math.floor(n * 0.99)], max: ts[n - 1], calls: r.info.render.calls, tris: r.info.render.triangles, people: stands.people.count };
+};
+console.log('READY', JSON.stringify({ centres: stands.centres, count: stands.people?.count }));
+</script></body></html>

@@ -1,0 +1,28 @@
+<!doctype html><html><body style="margin:0;background:#000">
+<script type="importmap">{"imports":{"three":"../rl/vendor/three-r169/build/three.module.js","three/addons/":"../rl/vendor/three-r169/examples/jsm/","@rl/":"../rl/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const q = new URLSearchParams(location.search);
+const W = 1440, H = 900;
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setSize(W, H); document.body.append(r.domElement);
+r.toneMapping = THREE.ACESFilmicToneMapping;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x30333a);
+const es = new THREE.Scene();
+es.add(new THREE.Mesh(new THREE.SphereGeometry(50, 24, 12), new THREE.MeshBasicMaterial({ color: 0x3a3d44, side: THREE.BackSide })));
+for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; const m = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 4, 4), side: THREE.DoubleSide })); m.position.set(Math.sin(a) * 30, 14, Math.cos(a) * 30); m.lookAt(0, 0, 0); es.add(m); }
+scene.environment = new THREE.PMREMGenerator(r).fromScene(es, 0.02).texture;
+const key = new THREE.DirectionalLight(0xffffff, 2); key.position.set(-3, 5, 4); scene.add(key);
+const gnd = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x22252b, roughness: 0.7 })); gnd.rotation.x = -Math.PI / 2; gnd.position.y = q.get('src') ? -0.6 : 0; scene.add(gnd);
+const gltf = await new GLTFLoader().loadAsync(q.get('src') || '../assets/models/car/source.glb');
+scene.add(gltf.scene); window.CAR = gltf.scene;
+const box = new THREE.Box3().setFromObject(gltf.scene), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+const views = (q.get('views') || 'front34,side,rear34,top').split(',');
+const d = Math.max(s.x, s.y, s.z) * 1.15;
+const P = { front34: [-1, 0.45, 1.1], side: [1.6, 0.15, 0], rear34: [1, 0.5, -1.1], top: [0.001, 1.8, 0], front: [0, 0.3, 1.6], rear: [0, 0.3, -1.6], low: [-0.9, 0.05, 1] };
+const cam = new THREE.PerspectiveCamera(35, W / H, 0.01, 100);
+window.SHOT = (v) => { const p = P[v]; cam.position.set(c.x + p[0] * d, c.y + p[1] * d, c.z + p[2] * d); cam.lookAt(c); r.render(scene, cam); };
+SHOT(views[0]);
+console.log('BOX', JSON.stringify({ min: box.min, max: box.max }));
+</script></body></html>

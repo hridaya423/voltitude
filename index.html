@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Voltitude</title>
+<meta name="description" content="A time-trial stunt racer for the car that sticks to anything and jumps over everything.">
+<meta name="theme-color" content="#08090d">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Saira:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="src/style.css">
+<link rel="modulepreload" href="rl/vendor/three-r169/build/three.module.js">
+<script type="importmap">{"imports":{"three":"./rl/vendor/three-r169/build/three.module.js","@rl/":"./rl/"}}</script>
+</head>
+<body>
+<canvas id="view" aria-label="Race view"></canvas>
+
+<div id="hud" class="hud" hidden>
+  <div class="hud-tl">
+    <div class="card-label" id="card"></div>
+    <div class="cp-label" id="cpLabel">CHECKPOINT <span id="cps">0/0</span></div>
+    <ol class="tower" id="tower" aria-label="Timing tower"></ol>
+  </div>
+  <div class="hud-clock">
+    <div class="clock" id="clock">0:00.000</div>
+    <div class="sectors" id="sectors" aria-hidden="true"></div>
+    <div class="delta" id="delta"></div>
+    <div class="target" id="target"></div>
+  </div>
+  <svg class="map" id="map" viewBox="0 0 100 100" aria-hidden="true"></svg>
+
+  <div class="hud-center">
+    <div class="lights" id="lights" aria-hidden="true"><i><b></b><b></b></i><i><b></b><b></b></i><i><b></b><b></b></i><i><b></b><b></b></i><i><b></b><b></b></i></div>
+  </div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <div class="hint" id="hint" aria-live="polite"></div>
+  <div class="marker" id="marker"><span class="marker-dist" id="markerDist"></span></div>
+
+  <div class="dash">
+    <div class="state" id="state"></div>
+    <div class="speed"><span id="speed">0</span><small id="unit">MPH</small></div>
+    <div class="gas" id="gas" aria-label="Gas tank">
+      <span class="gas-label">GAS</span>
+      <div class="gas-bar"><i id="gasFill"></i><b class="gas-res"></b><s id="gasEdge"></s></div>
+      <span class="gas-pct" id="gasPct">50</span>
+    </div>
+  </div>
+</div>
+
+<div id="replayBug" class="replay-bug" aria-hidden="true" hidden><i></i>REPLAY</div>
+<div id="menuLive" class="sr" role="status" aria-live="polite"></div>
+<section id="fallback" class="fallback" hidden aria-label="Menu"></section>
+
+<div id="loading" class="loading" role="status"><div class="loading-mark">VOLTITUDE</div><div class="loading-bar"><i id="loadFill"></i></div><span id="loadText">Building the course…</span></div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

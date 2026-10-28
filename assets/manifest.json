@@ -1,0 +1,370 @@
+{
+  "version": 1,
+  "license": "All assets CC0 (Poly Haven). See CREDITS.md.",
+  "conventions": {
+    "normal_maps": "OpenGL / +Y up (Poly Haven nor_gl). Use as-is in three.js MeshStandardMaterial.normalMap; no flip.",
+    "arm_maps": "glTF ORM layout: R = ambient occlusion, G = roughness, B = metalness (all ~0 here). Assign the same texture to aoMap (uses R), roughnessMap (uses G), metalnessMap (uses B); set metalness to 0.",
+    "color_space": "albedo and sky_4k.jpg are sRGB; normal and arm maps are linear (NoColorSpace). env_1k.hdr is linear HDR.",
+    "tiling": "All terrain sets are seamless; set wrapS/wrapT = RepeatWrapping. Real-world scale of each set is in world_size_m.",
+    "format": "Terrain textures are WebP (lossy). Models use EXT_texture_webp (GLTFLoader supports it in r169)."
+  },
+  "sky": {
+    "env_hdr": {
+      "path": "sky/env_1k.hdr",
+      "bytes": 1121338,
+      "format": "Radiance RGBE equirectangular",
+      "resolution": [
+        1024,
+        512
+      ],
+      "colorSpace": "linear (HDR)",
+      "purpose": "PMREM image-based lighting. Load with RGBELoader (HalfFloat), mapping EquirectangularReflectionMapping, then PMREMGenerator.fromEquirectangular.",
+      "source": "Poly Haven syferfontein_1d_clear_puresky 1k"
+    },
+    "backdrop_ldr": {
+      "path": "sky/sky_4k.jpg",
+      "bytes": 252253,
+      "format": "JPEG q88 equirectangular",
+      "resolution": [
+        4096,
+        2048
+      ],
+      "colorSpace": "sRGB",
+      "purpose": "Visible backdrop. Same 4k HDR tone-mapped with three.js ACESFilmic at exposure 1.0 (including the /0.6 factor and the RRT/ODT fit) then sRGB-encoded, triangular-dithered to avoid banding. Use scene.background with colorSpace=SRGBColorSpace and a material/background that is NOT tone-mapped again (e.g. a sky sphere MeshBasicMaterial with toneMapped:false), or it will double tone-map.",
+      "note": "The lower hemisphere is a mirror reflection of the sky (puresky convention), a bright blue-grey haze. Hide it under terrain/fog or clamp the sky sphere at the horizon."
+    },
+    "sun": {
+      "measured_on": "4096x2048 HDR; brightest pixel (62851 cd/m2-ish linear luminance) and centroid of pixels above 50% of peak agree within 0.1 px",
+      "azimuth_deg": 35.99,
+      "elevation_deg": 0.94,
+      "equirect_uv": [
+        0.59997,
+        0.5052
+      ],
+      "pixel_4k": [
+        2457,
+        1012
+      ],
+      "direction_to_sun_threejs": [
+        0.80902,
+        0.01634,
+        0.58756
+      ],
+      "convention": "three.js equirect mapping with no backgroundRotation / environmentRotation: u = atan2(z,x)/(2*pi)+0.5, v = asin(y)/pi+0.5. azimuth_deg = (u-0.5)*360 measured from +X toward +Z; elevation_deg = (v-0.5)*180. direction_to_sun_threejs is the unit vector from the origin toward the sun in that convention: place the DirectionalLight at +direction*distance targeting the origin. To rotate the sky, apply the same Y rotation to the light direction.",
+      "note": "The sun is almost on the horizon (0.94 deg), so it gives long warm raking light and a strong horizon glow. For a higher sun, rotate/raise the light but accept that the backdrop disc stays at the horizon."
+    }
+  },
+  "sky_other_files": {
+    "note": "Added by the code agent, not produced by this sourcing pass. sky/golden_env_1k.hdr is byte-identical to Poly Haven kloppenheim_06_puresky 1k (CC0, Greg Zaal / Jarod Guest); golden_sky_4k.jpg and golden_sky_fog.jpg are derived from it. src/main.js loads these, not env_1k.hdr / sky_4k.jpg. Its brightest 1k pixel is at about 5 deg elevation; the sun is hazy so measure it before aligning a light.",
+    "files": [
+      "sky/golden_env_1k.hdr",
+      "sky/golden_sky_4k.jpg",
+      "sky/golden_sky_fog.jpg"
+    ]
+  },
+  "terrain": [
+    {
+      "name": "sandstone_cliff",
+      "source_asset": "Cliff Side",
+      "description": "red/orange-brown sandstone cliff with horizontal strata",
+      "use": "mesa wall, canyon walls (albedo is orange-brown, tint it redder in the shader if needed)",
+      "world_size_m": 1.83,
+      "tileable": true,
+      "files": {
+        "albedo_2k": {
+          "path": "terrain/sandstone_cliff/albedo_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "sRGB",
+          "bytes": 584478
+        },
+        "albedo_1k": {
+          "path": "terrain/sandstone_cliff/albedo_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "sRGB",
+          "bytes": 153332
+        },
+        "normal_2k": {
+          "path": "terrain/sandstone_cliff/normal_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "linear, OpenGL",
+          "bytes": 542254
+        },
+        "normal_1k": {
+          "path": "terrain/sandstone_cliff/normal_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "linear, OpenGL",
+          "bytes": 192158
+        },
+        "arm_2k": {
+          "path": "terrain/sandstone_cliff/arm_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "linear, R=AO G=roughness B=metalness",
+          "bytes": 100200
+        },
+        "arm_1k": {
+          "path": "terrain/sandstone_cliff/arm_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "linear, R=AO G=roughness B=metalness",
+          "bytes": 34248
+        }
+      }
+    },
+    {
+      "name": "desert_sand",
+      "source_asset": "Gravelly Sand",
+      "description": "warm tan-orange gravelly desert ground",
+      "use": "desert floor, mesa top",
+      "world_size_m": 2.48,
+      "tileable": true,
+      "files": {
+        "albedo_2k": {
+          "path": "terrain/desert_sand/albedo_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "sRGB",
+          "bytes": 1180918
+        },
+        "albedo_1k": {
+          "path": "terrain/desert_sand/albedo_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "sRGB",
+          "bytes": 285388
+        },
+        "normal_2k": {
+          "path": "terrain/desert_sand/normal_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "linear, OpenGL",
+          "bytes": 1716568
+        },
+        "normal_1k": {
+          "path": "terrain/desert_sand/normal_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "linear, OpenGL",
+          "bytes": 397102
+        },
+        "arm_2k": {
+          "path": "terrain/desert_sand/arm_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "linear, R=AO G=roughness B=metalness",
+          "bytes": 295778
+        },
+        "arm_1k": {
+          "path": "terrain/desert_sand/arm_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "linear, R=AO G=roughness B=metalness",
+          "bytes": 67202
+        }
+      }
+    },
+    {
+      "name": "lakebed",
+      "source_asset": "Mud Cracked Dry 03",
+      "description": "pale cream cracked mud playa",
+      "use": "dry lake bed",
+      "world_size_m": 1.5,
+      "tileable": true,
+      "files": {
+        "albedo_2k": {
+          "path": "terrain/lakebed/albedo_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "sRGB",
+          "bytes": 902076
+        },
+        "albedo_1k": {
+          "path": "terrain/lakebed/albedo_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "sRGB",
+          "bytes": 224766
+        },
+        "normal_2k": {
+          "path": "terrain/lakebed/normal_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "linear, OpenGL",
+          "bytes": 1142130
+        },
+        "normal_1k": {
+          "path": "terrain/lakebed/normal_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "linear, OpenGL",
+          "bytes": 318696
+        },
+        "arm_2k": {
+          "path": "terrain/lakebed/arm_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "linear, R=AO G=roughness B=metalness",
+          "bytes": 315880
+        },
+        "arm_1k": {
+          "path": "terrain/lakebed/arm_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "linear, R=AO G=roughness B=metalness",
+          "bytes": 112126
+        }
+      }
+    },
+    {
+      "name": "runway_asphalt",
+      "source_asset": "Asphalt 01",
+      "description": "dark grey worn asphalt",
+      "use": "runway",
+      "world_size_m": 2.08,
+      "tileable": true,
+      "files": {
+        "albedo_2k": {
+          "path": "terrain/runway_asphalt/albedo_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "sRGB",
+          "bytes": 529872
+        },
+        "albedo_1k": {
+          "path": "terrain/runway_asphalt/albedo_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "sRGB",
+          "bytes": 114176
+        },
+        "normal_2k": {
+          "path": "terrain/runway_asphalt/normal_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "linear, OpenGL",
+          "bytes": 1060474
+        },
+        "normal_1k": {
+          "path": "terrain/runway_asphalt/normal_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "linear, OpenGL",
+          "bytes": 321326
+        },
+        "arm_2k": {
+          "path": "terrain/runway_asphalt/arm_2k.webp",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "colorSpace": "linear, R=AO G=roughness B=metalness",
+          "bytes": 655784
+        },
+        "arm_1k": {
+          "path": "terrain/runway_asphalt/arm_1k.webp",
+          "resolution": [
+            1024,
+            1024
+          ],
+          "colorSpace": "linear, R=AO G=roughness B=metalness",
+          "bytes": 199312
+        }
+      }
+    }
+  ],
+  "models": [
+    {
+      "name": "desert_boulder_blocky",
+      "path": "models/desert_boulder_blocky.glb",
+      "bytes": 590192,
+      "source_asset": "Namaqualand Boulder 03",
+      "description": "angular blocky tan-orange boulder",
+      "triangles_approx": 7776,
+      "bbox_size_m_xyz": "2.40 x 1.46 x 3.06",
+      "textures": "1k WebP baseColor (sRGB), normal (OpenGL), metallicRoughness (ARM)",
+      "origin": "base roughly at y=0, real-world metres, doubleSided material"
+    },
+    {
+      "name": "desert_boulder_orange",
+      "path": "models/desert_boulder_orange.glb",
+      "bytes": 620092,
+      "source_asset": "Namaqualand Boulder 04",
+      "description": "big boulder with orange lichen",
+      "triangles_approx": 7086,
+      "bbox_size_m_xyz": "2.52 x 1.90 x 2.49",
+      "textures": "1k WebP baseColor (sRGB), normal (OpenGL), metallicRoughness (ARM)",
+      "origin": "base roughly at y=0, real-world metres, doubleSided material"
+    },
+    {
+      "name": "desert_boulder_round",
+      "path": "models/desert_boulder_round.glb",
+      "bytes": 776416,
+      "source_asset": "Namaqualand Boulder 05",
+      "description": "rounded pale tan boulder, low profile",
+      "triangles_approx": 8958,
+      "bbox_size_m_xyz": "1.36 x 0.53 x 0.75",
+      "textures": "1k WebP baseColor (sRGB), normal (OpenGL), metallicRoughness (ARM)",
+      "origin": "base roughly at y=0, real-world metres, doubleSided material"
+    },
+    {
+      "name": "desert_boulder_brown",
+      "path": "models/desert_boulder_brown.glb",
+      "bytes": 796328,
+      "source_asset": "Namaqualand Boulder 06",
+      "description": "small brown boulder",
+      "triangles_approx": 8728,
+      "bbox_size_m_xyz": "0.67 x 0.65 x 1.21",
+      "textures": "1k WebP baseColor (sRGB), normal (OpenGL), metallicRoughness (ARM)",
+      "origin": "base roughly at y=0, real-world metres, doubleSided material"
+    }
+  ],
+  "references": "Not shipped. Reference frames are in the session scratchpad refs/ directory."
+}

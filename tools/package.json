@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@gltf-transform/core": "^4.1.1",
+    "@gltf-transform/extensions": "^4.1.1",
+    "@gltf-transform/functions": "^4.1.1",
+    "meshoptimizer": "^0.22.0",
+    "playwright-core": "^1.48.2",
+    "sharp": "^0.33.5"
+  }
+}
