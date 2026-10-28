@@ -82,6 +82,22 @@ for (const id of Object.keys(VENUES)) {
     for (const t of race.laps) assert.ok(t / 120 > 60 && t / 120 < 90, `lap ${(t / 120).toFixed(1)} s`);
   });
 
+  if (circuit) test(`${name}: full throttle into the walls is slower than braking for the corners`, () => {
+    const lap2 = (flat) => {
+      const race = createRace(world, { event: eventsFor(world.track).find((e) => e.id === 'tt'), seed: 1 });
+      const inp = createInput();
+      while (race.laps.length < 2 && race.tick < 120 * 300) {
+        botInput(race, inp, 1);
+        if (flat) Object.assign(inp, { throttle: 1, brake: 0, boost: 0 });
+        stepRace(race, inp);
+        race.events.length = 0;
+      }
+      return race.laps[1] ?? Infinity;
+    };
+    const bot = lap2(false), flat = lap2(true);
+    assert.ok(flat > bot, `full throttle ${(flat / 120).toFixed(1)} s, braking ${(bot / 120).toFixed(1)} s`);
+  });
+
   for (const ev of circuit ? [] : eventsFor(world.track)) {
     test(`${name}: autopilot clears ${ev.name} without a reset`, () => {
       const { race, events } = botRace(ev, world);

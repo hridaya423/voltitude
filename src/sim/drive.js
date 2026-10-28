@@ -138,6 +138,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
 }
 
 const AIR_PAD = 40;
+const WALL_SCRUB = 6, WALL_DRAG = 4 * G;
 const WALL_TOP = 1.16;
 
 function nearestRoad(track, x, y, z, hint) {
@@ -515,6 +516,7 @@ function collide(c, q, air) {
   const side0 = q.w - 0.9;
   const qlat = q.lat;
   if (air && Math.abs(qlat) > side0) return;
+  let press = 0;
   for (let k = 0; k < HULL.length; k++) {
     body(c, HULL[k][0], HULL[k][1], HULL[k][2], at);
     const rx = at[0] - cg[0], ry = at[1] - cg[1], rz = at[2] - cg[2];
@@ -526,6 +528,7 @@ function collide(c, q, air) {
     COM[0] -= q.rx * over * side; COM[1] -= q.ry * over * side; COM[2] -= q.rz * over * side;
     const vr = (c.vx * q.rx + c.vy * q.ry + c.vz * q.rz) * side;
     if (vr <= 0) continue;
+    press += vr;
     const vt = Math.hypot(c.vx - q.rx * vr * side, c.vy - q.ry * vr * side, c.vz - q.rz * vr * side);
     const ang = Math.atan2(vr, vt);
     const hit = impulse(c, rx, ry, rz, -q.rx * side, -q.ry * side, -q.rz * side, 0.2 * Math.max(0, Math.min(1, (ang - 0.2) / 1.2)), 0.18);
@@ -533,4 +536,7 @@ function collide(c, q, air) {
     const roll = c.ox * c.fx + c.oy * c.fy + c.oz * c.fz;
     c.ox -= c.fx * roll * 0.5; c.oy -= c.fy * roll * 0.5; c.oz -= c.fz * roll * 0.5;
   }
+  if (!press) return;
+  const sp = Math.hypot(c.vx, c.vy, c.vz), k = Math.max(0, sp - (WALL_SCRUB * press + WALL_DRAG * DT) * Math.min(1, sp / 40)) / Math.max(sp, 1e-6);
+  c.vx *= k; c.vy *= k; c.vz *= k;
 }
