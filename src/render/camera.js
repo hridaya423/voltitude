@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 const UP = new THREE.Vector3(0, 1, 0);
+const WRECK_BACK = 11, WRECK_UP = 4, WRECK_ORBIT = 0.35, CLEAR = 1.5;
 
 export function createChaseCamera(camera, height) {
   const pos = new THREE.Vector3(), look = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), upS = new THREE.Vector3(0, 1, 0);
@@ -19,7 +20,7 @@ export function createChaseCamera(camera, height) {
       if (blend >= 1 && camera.filmOffset !== 0) { camera.filmOffset *= Math.exp(-dt * 3); if (Math.abs(camera.filmOffset) < 0.01) camera.filmOffset = 0; camera.updateProjectionMatrix(); }
       const speed = c.speed;
       const grounded = c.mode !== 0;
-      if (grounded) tmp.set(c.ux, c.uy, c.uz); else tmp.copy(UP);
+      if (grounded && !c.wrecked) tmp.set(c.ux, c.uy, c.uz); else tmp.copy(UP);
       if (!init) upS.copy(tmp);
       upS.lerp(tmp, 1 - Math.exp(-dt * (grounded ? (tmp.y < upS.y - 0.02 ? 4.6 : 6.9) : 1.6))).normalize();
       vel.set(c.vx, c.vy, c.vz);
@@ -29,7 +30,8 @@ export function createChaseCamera(camera, height) {
       } else tmp.copy(vel).multiplyScalar(1 / speed);
       tmp.addScaledVector(upS, -tmp.dot(upS)).normalize();
       if (!init) dir.copy(tmp);
-      dir.lerp(tmp, 1 - Math.exp(-dt * (grounded ? 7 : 3))).normalize();
+      if (c.wrecked) dir.addScaledVector(UP, -dir.dot(UP)).normalize().applyAxisAngle(UP, dt * WRECK_ORBIT);
+      else dir.lerp(tmp, 1 - Math.exp(-dt * (grounded ? 7 : 3))).normalize();
       const wantBack = 7.5 + Math.min(speed, 140) * 0.004 + (c.boosting ? 0.4 : 0);
       back += (wantBack - back) * (1 - Math.exp(-dt * 3));
       const ahead = Math.max(9, Math.min(speed, 120) * 0.18);
@@ -38,6 +40,7 @@ export function createChaseCamera(camera, height) {
       wantLook.copy(p).addScaledVector(dir, ahead).addScaledVector(upS, 0.25);
       if (bias) wantLook.x += c.rx * bias, wantLook.y += c.ry * bias, wantLook.z += c.rz * bias;
       want.sub(p); wantLook.sub(p);
+      if (c.wrecked) { want.copy(dir).multiplyScalar(-WRECK_BACK).addScaledVector(UP, WRECK_UP); wantLook.set(0, 0, 0); }
       if (!init) { offS.copy(want); lookS.copy(wantLook); up.copy(upS); init = true; }
       if (stall > 0) stall -= dt;
       else {
@@ -46,10 +49,13 @@ export function createChaseCamera(camera, height) {
       }
       pos.copy(p).add(offS);
       look.copy(p).add(lookS);
-      if (upS.y > 0.6) {
-        const ground = height(pos.x, pos.z) + 1.0;
-        if (pos.y < ground) pos.y = ground;
+      for (let s = 1; s <= 4; s++) {
+        const f = s / 4;
+        const x = p.x + (pos.x - p.x) * f, z = p.z + (pos.z - p.z) * f, g = height(x, z);
+        if (g > p.y + (pos.y - p.y) * f) { pos.set(x, g + CLEAR, z); break; }
       }
+      const ground = height(pos.x, pos.z) + 1.0;
+      if (pos.y < ground) pos.y = ground;
       up.lerp(upS, 1 - Math.exp(-dt * 10)).normalize();
       camera.position.copy(pos);
       camera.up.copy(up);
