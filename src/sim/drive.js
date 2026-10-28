@@ -487,8 +487,8 @@ function landing(c, nx, ny, nz) {
   count(c.spin, 'spin');
   if (airS > 0.25 || vn > 6) {
     if (align < 0.45) {
+      if (!c.wrecked) c.ev.push({ type: 'wreck', v: vn });
       c.wrecked = true;
-      c.ev.push({ type: 'wreck', v: vn });
     } else {
       const quality = align > 0.95 && vn < 16 ? 'perfect' : align > 0.8 && vn < 24 ? 'clean' : 'hard';
       if (quality === 'hard') tricks.length = 0;

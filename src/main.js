@@ -414,7 +414,7 @@ function watchReplay() {
 function endReplay() { replay = null; $('replayBug').hidden = true; mode = 'results'; }
 
 const POINTS = [25, 18, 15, 12, 10, 8, 6, 4];
-let contactCount = 0, lastContact = -999, lastGainTick = -1;
+let contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null;
 const speedUnit = () => (settings.units === 'kmh' ? 3.6 : 2.237);
 const medalLine = (m, before) => (m ? { id: m.id, name: m.name, fresh: !(before && before.id === m.id) } : null);
 function showResults(result, m, before) {
@@ -568,10 +568,10 @@ function handleEvents() {
         else if (e.quality === 'perfect' && Math.random() < 0.35) audio.radio('perfect');
         break;
       }
-      case 'wreck': cheerNear(0.2, 'gasp'); if (standGap(race.car.hint) < 260) audio.cheer('gasp'); audio.radio('wreck'); hud.toast('WRECKED', 'red'); audio.event('clip'); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
+      case 'wreck': cheerNear(0.2, 'gasp'); if (standGap(race.car.hint) < 260) audio.cheer('gasp'); audio.radio('wreck'); wreckToast = hud.toast('WRECKED', 'red'); audio.event('clip'); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
       case 'scrape': audio.event(e.angle > 0.35 ? 'impact' : 'scrape', e.v); input.rumble(Math.min(1, e.v / 15) * (e.angle > 0.35 ? 1 : 0.4), 0.3, 120); if (e.angle > 0.35) chase.bump(0.25); break;
       case 'impact': audio.event('impact'); input.rumble(Math.min(1, e.v / 20), 0.4, 160); chase.bump(Math.min(1, e.v / 15)); break;
-      case 'respawn': audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
+      case 'respawn': wreckToast?.remove(); audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
       case 'finish': {
         if (current.circuit) { audio.event('finish'); hud.toast('FINISH', 'white'); finishAt = performance.now(); stands.cheer(1); input.rumble(0.6, 0.6, 400); break; }
         const pb = book[current.id]?.best;

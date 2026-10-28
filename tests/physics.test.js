@@ -59,6 +59,24 @@ test('boost without throttle stops when the tank is empty', () => {
   assert.ok(coast < drive, `boost only ${coast.toFixed(1)} m/s vs boost and throttle ${drive.toFixed(1)} m/s`);
 });
 
+test('one crash gives one wreck', () => {
+  const c = createCar();
+  placeCar(c, lab.track, 600, 0, 0);
+  c.y += 3;
+  const cr = Math.cos(2.2), sr = Math.sin(2.2);
+  const u = [c.ux * cr + c.rx * sr, c.uy * cr + c.ry * sr, c.uz * cr + c.rz * sr];
+  const r = [c.rx * cr - c.ux * sr, c.ry * cr - c.uy * sr, c.rz * cr - c.uz * sr];
+  [c.ux, c.uy, c.uz] = u; [c.rx, c.ry, c.rz] = r;
+  const inp = createInput();
+  let wrecks = 0;
+  for (let t = 0; t < 240; t++) {
+    stepCar(c, inp, lab, t, false);
+    wrecks += c.ev.filter((e) => e.type === 'wreck').length;
+    c.ev.length = 0;
+  }
+  assert.equal(wrecks, 1);
+});
+
 test('the loop is drivable from a crawl to full speed', () => {
   const world = loadWorld('proving');
   const ev = eventsFor(world.track).find((e) => e.id === 'pr');

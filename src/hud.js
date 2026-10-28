@@ -88,6 +88,7 @@ export function createHud(world, settings) {
       els.toasts.append(t);
       while (els.toasts.children.length > 3) els.toasts.firstChild.remove();
       setTimeout(() => t.remove(), 1600);
+      return t;
     },
     gasGain(source, amount) {
       els.gas.classList.remove('gain'); void els.gas.offsetWidth; els.gas.classList.add('gain');
