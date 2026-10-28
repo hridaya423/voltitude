@@ -2,6 +2,7 @@ import { createCar, placeCar, stepCar, DT } from './drive.js';
 import { ROSTER, PLAYER } from './drivers.js';
 import { createDriver, drive, lineFor } from './driver.js';
 import { resolveContacts, clearance } from './contact.js';
+import { GAIN, earn, flushGains, landingGain } from './gas.js';
 
 export const SIM_VERSION = 10;
 export const COUNTDOWN = 240;
@@ -9,6 +10,7 @@ export const lightTick = (n) => -220 + 40 * (n - 1);
 const CP_RADIUS = 45;
 const GRID_SLOT = 5;
 const NEAR = 1, NEAR_SPEED = 8, NEAR_EVERY = 360;
+const DRAFT_NEAR = 4, DRAFT_FAR = 14, DRAFT_LAT = 1.6, DRAFT_SPEED = 40;
 const HOLD = 600;
 const IDLE = { throttle: 0, brake: 0.3, steer: 0, pitch: 0, roll: 0, boost: 0, reset: 0 };
 
@@ -66,7 +68,7 @@ function initEntry(e, world, event, slot) {
   const hint = car.hint;
   return Object.assign(e, {
     car, next: 0, splits: [], lastIdx: g.i, lastSpeed: 0, used: new Set(), respawnIn: 0, lost: 0, resetHeld: false,
-    wrecks: 0, respawns: 0, tricks: 0, maxSpeed: 0, airTime: 0, still: 0,
+    wrecks: 0, respawns: 0, tricks: 0, maxSpeed: 0, airTime: 0, still: 0, earned: {},
     done: false, total: 0, laps: [], lapStart: 0, prog: track.closed && hint > track.lap / 2 ? hint - track.lap : hint, lastHint: hint,
     pos: slot + 1, grid: slot + 1,
   });
@@ -76,7 +78,7 @@ export function createRace(world, { event, assist = true, seed = 1 }) {
   const { track } = world;
   const race = initEntry({
     world, event, assist, seed, tick: 0, raceTick: -COUNTDOWN, phase: 'countdown',
-    events: [], index: 0, swaps: 0, passes: 0, contacts: 0, finished: 0, identity: PLAYER,
+    events: [], gasPending: {}, index: 0, swaps: 0, passes: 0, contacts: 0, finished: 0, identity: PLAYER,
   }, world, event, event.kind === 'gp' ? GRID_SLOT : 0);
   race.entries = [race];
   race.order = [race];
@@ -138,6 +140,7 @@ function stepEntry(race, e, inp) {
       emit(race, ev.type, ev);
       if (ev.type === 'land' && ev.tricks.length) e.tricks += ev.tricks.length;
     }
+    if (ev.type === 'land') landingGain(race, e, ev);
     if (ev.type === 'wreck') e.wrecks++;
   }
   c.ev.length = 0;
@@ -189,23 +192,51 @@ function stepEntry(race, e, inp) {
 }
 
 export function nearMisses(race) {
-  const a = race.car;
-  race.near ||= race.entries.map(() => ({ close: false, touched: false, rel: 0, last: -NEAR_EVERY }));
-  for (let k = 1; k < race.entries.length; k++) {
-    const b = race.entries[k].car, s = race.near[k];
-    const gap = clearance(a, b);
-    if (gap < NEAR || (s.close && gap < NEAR + 0.5)) {
-      s.close = true;
-      if (gap <= 0) s.touched = true;
-      s.rel = Math.max(s.rel, Math.hypot(a.vx - b.vx, a.vy - b.vy, a.vz - b.vz));
-      continue;
+  const { entries } = race;
+  race.near ||= entries.map(() => entries.map(() => ({ close: false, touched: false, rel: 0, last: -NEAR_EVERY })));
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const a = entries[i].car, b = entries[j].car, s = race.near[i][j];
+      const gap = clearance(a, b);
+      if (gap < NEAR || (s.close && gap < NEAR + 0.5)) {
+        s.close = true;
+        if (gap <= 0) s.touched = true;
+        s.rel = Math.max(s.rel, Math.hypot(a.vx - b.vx, a.vy - b.vy, a.vz - b.vz));
+        continue;
+      }
+      if (s.close && !s.touched && s.rel > NEAR_SPEED && race.tick - s.last >= NEAR_EVERY) {
+        s.last = race.tick;
+        if (i === 0) emit(race, 'near_miss', { v: s.rel, other: j });
+        earn(race, entries[i], 'near_miss', GAIN.near_miss);
+        earn(race, entries[j], 'near_miss', GAIN.near_miss);
+      }
+      s.close = false; s.touched = false; s.rel = 0;
     }
-    if (s.close && !s.touched && s.rel > NEAR_SPEED && race.tick - s.last >= NEAR_EVERY) {
-      s.last = race.tick;
-      emit(race, 'near_miss', { v: s.rel, other: k });
-    }
-    s.close = false; s.touched = false; s.rel = 0;
   }
+}
+
+function drafting(race, e) {
+  const { track } = race.world;
+  const a = e.car, k = a.hint * 3;
+  if (a.speed <= DRAFT_SPEED) return false;
+  for (const o of race.entries) {
+    if (o === e) continue;
+    const dx = o.car.x - a.x, dy = o.car.y - a.y, dz = o.car.z - a.z;
+    const ahead = dx * track.T[k] + dy * track.T[k + 1] + dz * track.T[k + 2];
+    const side = dx * track.R[k] + dy * track.R[k + 1] + dz * track.R[k + 2];
+    if (ahead > DRAFT_NEAR && ahead < DRAFT_FAR && Math.abs(side) < DRAFT_LAT) return true;
+  }
+  return false;
+}
+
+function streaks(race) {
+  for (const e of race.entries) {
+    if (e.done) continue;
+    const c = e.car;
+    if (c.fan > 0.2 && c.speed > 30) earn(race, e, 'wall', GAIN.wall * DT);
+    if (drafting(race, e)) earn(race, e, 'draft', GAIN.draft * DT);
+  }
+  flushGains(race);
 }
 
 function rank(race) {
@@ -264,6 +295,7 @@ export function stepRace(race, inp) {
     nearMisses(race);
     rank(race);
   }
+  streaks(race);
 }
 
 export function botInput(race, inp, skill = 0.97) {
