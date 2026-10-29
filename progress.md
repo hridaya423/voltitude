@@ -1161,3 +1161,11 @@ Order: 1 auto exposure, 2 kerb launch, 3 countdown pause clock, 4 car rear by da
 - Also seen, not changed: a 12° wall scrape at 131 mph removes all speed in one step (`collide`, `press` 12.5 → 90 m/s of loss) without a wreck.
 
 **3. Countdown pause clock: done.** `pauseView` in `menu.js` reads `raceClock`, as the HUD clock now does too. The test (`menu.test.js`) was red with `-1:-2.-500`. `fmt` and `fmtDelta` moved to `src/time.js` so node tests can load them. Checked in the game: pausing during the lights shows `0:00.000` (scratchpad `pause-countdown.png`).
+
+**4. Car rear by day: done.**
+- Light bar: 36 mm tall (was 20 mm). The end lenses sat inside the bar and z-fought into red and black speckle; they now stand 1 mm proud.
+- Nozzle shelf: satin black. Diffuser: the flat closing plate is gone and the strake rear edges rake forward 140 mm, so the low rear reads as carbon fins, not four boxes.
+- Plumes: each nozzle is three nested cones that fade fast along their length, so boost shows four jets with bright mouths, not pale glass cones. A view-angle fade was tried first; it blanks the plume from the chase camera, which looks straight down the axis.
+- Day sky in the environment bake is 40% desaturated (`sky.js`). Shade on the asphalt was rendering at saturation 0.3 from a warm (89, 80, 70) albedo, and day straight fell under the hue gate (1.47) after the kerb fix changed the race. Now 2.02.
+- Turntable, 8 angles: scratchpad `tt-after4/`. Before and after: `rear-tt-final.jpg` (low rear and rear three-quarter: before, matte fins, carbon fins), `plume-cmp4.jpg` (boost, day and night), `rear-cmp-final.jpg` (chase view).
+- Shot-match HUD off, day pack edge: 0.063–0.064 against 0.065 over four runs. HEAD before this task: 0.0652. The old box grid supplied the missing edges. Stronger turf stripes and asphalt normals were tried and did not move it.
