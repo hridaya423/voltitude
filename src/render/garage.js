@@ -14,8 +14,8 @@ const BAY_X = (k) => (1 - k) * 4.4;
 const SHOT = {
   board: { pos: [0.5, 1.15, -8.4], at: [0, 2.9, 11], h: 50 },
   venue: { pos: [0, 5.2, -3.6], at: [0, 0, 5.9], h: 64 },
-  settings: { pos: [-1.5, 1.55, 3.9], at: [-4.62, 1.45, 2.2], h: 34 },
-  keys: { pos: [-1.5, 1.55, 3.9], at: [-4.62, 1.45, 2.2], h: 34 },
+  settings: { pos: [-1.5, 1.55, 3.9], at: [-4.62, 1.45, 2.2], h: 40 },
+  keys: { pos: [-1.5, 1.55, 3.9], at: [-4.62, 1.45, 2.2], h: 40 },
   pause: { pos: [0.4, 3.3, -3.0], at: [0, 4.95, 11.2], h: 51 },
   results: { pos: [1.4, 2.8, -1.5], at: [0, 4.85, 11.2], h: 54 },
 };
@@ -65,7 +65,7 @@ function bakeRoom(renderer, night) {
   if (!night) { const roof = new THREE.Mesh(new THREE.BoxGeometry(14, 0.1, 14), sky); roof.position.y = 4.4; scene.add(roof); }
   for (const x of [-3, 3]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 18), tube); m.position.set(x, 4.3, 0); scene.add(m); }
   for (const x of [-12.9, 12.9]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 20), sky); m.position.set(x, 2.8, 0); scene.add(m); }
-  const door = new THREE.Mesh(new THREE.BoxGeometry(21, 6.6, 0.1), new THREE.MeshBasicMaterial({ color: night ? new THREE.Color(1.4, 0.9, 0.7) : new THREE.Color(9, 5.6, 3.2) }));
+  const door = new THREE.Mesh(new THREE.BoxGeometry(21, 6.6, 0.1), new THREE.MeshBasicMaterial({ color: night ? new THREE.Color(1.4, 0.9, 0.7) : new THREE.Color(5, 3.2, 1.9) }));
   door.position.set(0, -1.2, 12.9);
   scene.add(door);
   const pm = new THREE.PMREMGenerator(renderer);
@@ -93,7 +93,7 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
     tube: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 5.6, 5), toneMapped: false }),
     heat: new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 0.9, 0.2), toneMapped: false }),
     sky: new THREE.MeshBasicMaterial({ color: night ? new THREE.Color(0.03, 0.05, 0.12) : new THREE.Color(3, 3.6, 4.4), toneMapped: false }),
-    soft: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.2, 2.3), toneMapped: false }),
+    soft: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.6, 1.7), toneMapped: false }),
     lamp: new THREE.MeshBasicMaterial({ color: night ? new THREE.Color(14, 12, 9) : new THREE.Color(2, 1.8, 1.5), toneMapped: false }),
     beacon: new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 0.4, 0.3), toneMapped: false }),
     dark: std({ color: night ? '#0b0c10' : '#3a3634', roughness: 0.8, metalness: 0.3 }),
@@ -219,7 +219,7 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
   desk.position.set(PIT[0], 2.45, PIT[1] + 0.12);
   desk.rotation.y = -2.81;
   const wallTele = new THREE.Mesh(new THREE.PlaneGeometry(6, 2), teleMat);
-  wallTele.position.set(-W + 0.03, 3.4, -1.5);
+  wallTele.position.set(-W + 0.03, 2.6, -6.5);
   wallTele.rotation.y = Math.PI / 2;
   group.add(desk, wallTele);
 
@@ -271,7 +271,7 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
   const CREW = [
     { x: 5.0, z: 7.9, yaw: 1.05, char: 0, seed: [0.01, 0.05, 0.72, 0.64] },
     { x: -7.6, z: 11.2, yaw: 0.3, char: 1, seed: [0.13, 0.6, 0.72, 0.42] },
-    { x: -6.6, z: -0.9, yaw: 0.82, char: 2, seed: [0.19, 0.27, 0.72, 0.21] },
+    { x: -9.4, z: -3.6, yaw: 0.82, char: 2, seed: [0.19, 0.27, 0.72, 0.21] },
     { x: 4.1, z: -0.8, yaw: -1.3, char: 3, seed: [0.17, 0.62, 0.72, 0.22] },
   ];
   createPeople(renderer, sunUniform, fogDensity).then((p) => {
@@ -291,10 +291,10 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
     [spot('#ffe4c4', 520, 0.42, [-5.4, 5.6, -4.8], [0, 0.6, 0]), 520],
     [spot('#b9d2ff', 700, 0.4, [4.6, 3.4, 5.8], [0, 0.7, 0]), 700],
     [spot('#f4f6ff', 150, 1.0, [0, 5.3, 0], [0, 0, 0]), 150],
-    [spot('#ffb070', night ? 260 : 650, 0.5, [0, 3.6, Z1 + 14], [0, 0, -2], 1.2), night ? 260 : 650],
+    [spot('#ffb070', 260, 0.5, [0, 3.6, Z1 + 14], [0, 0, -2], 1.2), 260],
   ];
-  const lights = [spot('#ffd9d4', 260, 1.0, [0, 5.2, 8.6], [0, 0.4, -0.5]), spot('#fff6e6', 700, 0.8, [0, 7.8, 3.2], [0, 0, 5.9]), spot('#ffe8d0', 460, 0.55, [-1.6, 6.8, 2.7], [-4.7, 1.2, 2.2])];
-  const base = [260, 700, 460];
+  const lights = [spot('#ffd9d4', 260, 1.0, [0, 5.2, 8.6], [0, 0.4, -0.5]), spot('#fff6e6', 700, 0.8, [0, 7.8, -2], [0, 0, 5.9]), spot('#ffe8d0', 460, 0.55, [-1.6, 6.8, 2.7], [-4.7, 1.2, 2.2])];
+  const base = [260, night ? 700 : 420, 460];
   const level = [1, 0.2, 0.2], want = [1, 0.2, 0.2];
   const spots = [...studio.map(([l]) => l), ...lights];
 
