@@ -840,6 +840,7 @@ function loop(now) {
   followSun(interp);
   const pu = post.uniforms;
   pu.uExposure.value = inGarage ? (NIGHT ? 1.3 : 1.2) : exposureFor(NIGHT);
+  post.auto.uOn.value = inGarage ? 0 : 1;
   skyMesh.material.uniforms.uGain.value = inGarage && !NIGHT ? 2.3 : 1;
   if (NIGHT) facility.floodLight(sun.lights[0], inGarage ? null : interp);
   else for (const l of sun.lights) l.intensity = inGarage ? 6.2 : sunIrradiance;

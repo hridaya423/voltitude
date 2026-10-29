@@ -3,6 +3,7 @@ import { UNIT_LUX } from './sky.js';
 
 export const EV100 = { day: 13.9, night: 7.8 };
 export const exposureFor = (night, s = night ? 'night' : 'day') => 0.18 * 2 ** 4.026 * UNIT_LUX[s] / (1.2 * 2 ** EV100[s]);
+export const AUTO_EV = { day: { key: 0.19, min: -0.5, max: 1.5 }, night: { key: 0.17, min: -0.25, max: 0.4 } };
 
 const VERT = /* glsl */ `
 varying vec2 vUv;
@@ -180,16 +181,20 @@ void main() {
   gl_FragColor = vec4(itm(ycc2rgb(mix(hc, rgb2ycc(c0), a))), 1.0);
 }`;
 
+const METER_W = 32, METER_H = 16;
+
 const DOWN = /* glsl */ `
-uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uThreshold; uniform float uKnee; uniform bool uPrefilter; uniform float uExposure;
+uniform sampler2D tSrc; uniform sampler2D tEV; uniform vec2 uTexel; uniform float uThreshold; uniform float uKnee; uniform bool uPrefilter; uniform float uExposure;
 varying vec2 vUv;
-vec3 tap(vec2 o) { return texture2D(tSrc, vUv + o * uTexel).rgb * (uPrefilter ? uExposure : 1.0); }
+float gain;
+vec3 tap(vec2 o) { return texture2D(tSrc, vUv + o * uTexel).rgb * gain; }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 vec3 karis(vec3 a, vec3 b, vec3 c, vec3 d) {
   float wa = 1.0 / (1.0 + luma(a)), wb = 1.0 / (1.0 + luma(b)), wc = 1.0 / (1.0 + luma(c)), wd = 1.0 / (1.0 + luma(d));
   return (a * wa + b * wb + c * wc + d * wd) / (wa + wb + wc + wd);
 }
 void main() {
+  gain = uPrefilter ? uExposure * exp2(texture2D(tEV, vec2(0.5)).r) : 1.0;
   vec3 a = tap(vec2(-2, 2)), b = tap(vec2(0, 2)), c = tap(vec2(2, 2));
   vec3 d = tap(vec2(-2, 0)), e = tap(vec2(0, 0)), f = tap(vec2(2, 0));
   vec3 g = tap(vec2(-2, -2)), h = tap(vec2(0, -2)), i = tap(vec2(2, -2));
@@ -208,6 +213,32 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
+const METER = /* glsl */ `
+uniform sampler2D tSrc; uniform vec2 uTexel;
+varying vec2 vUv;
+void main() {
+  float s = 0.0;
+  for (int y = 0; y < 4; y++) for (int x = 0; x < 4; x++) {
+    vec3 c = texture2D(tSrc, vUv + (vec2(x, y) - 1.5) * uTexel).rgb;
+    s += clamp(log2(dot(c, vec3(0.2126, 0.7152, 0.0722)) + 1e-4), -12.0, 12.0);
+  }
+  vec2 d = (vUv - vec2(0.5, 0.42)) * vec2(1.0, 1.4);
+  float w = exp(-dot(d, d) * 3.0);
+  gl_FragColor = vec4(s / 16.0 * w, w, 0.0, 1.0);
+}`;
+
+const ADAPT = /* glsl */ `
+uniform sampler2D tMeter, tPrev; uniform float uKey, uMin, uMax, uOn, uDt, uReset, uExposure;
+varying vec2 vUv;
+void main() {
+  vec2 s = vec2(0.0);
+  for (int y = 0; y < ${METER_H}; y++) for (int x = 0; x < ${METER_W}; x++) s += texture2D(tMeter, (vec2(x, y) + 0.5) / vec2(${METER_W}.0, ${METER_H}.0)).rg;
+  float ev = clamp(log2(uKey / uExposure) - s.x / s.y, uMin, uMax) * uOn;
+  float prev = texture2D(tPrev, vec2(0.5)).r;
+  float k = uReset > 0.5 ? 1.0 : 1.0 - exp(-uDt * (ev > prev ? 1.4 : 2.8));
+  gl_FragColor = vec4(prev + (ev - prev) * k, 0.0, 0.0, 1.0);
+}`;
+
 const UP = /* glsl */ `
 uniform sampler2D tSrc; uniform sampler2D tPrev; uniform vec2 uTexel; uniform float uRadius;
 varying vec2 vUv;
@@ -221,9 +252,9 @@ void main() {
 
 const COMPOSITE = /* glsl */ `
 ${DEPTH}
-uniform sampler2D tScene; uniform sampler2D tBloom; uniform sampler2D tVel; uniform highp sampler3D tLut;
+uniform sampler2D tScene; uniform sampler2D tBloom; uniform sampler2D tVel; uniform sampler2D tEV; uniform highp sampler3D tLut;
 uniform float uBloom; uniform float uExposure; uniform vec2 uTexel;
-uniform float uBlur; uniform float uSharpen; uniform float uAberration; uniform float uVignette; uniform float uTime; uniform float uGrain;
+uniform float uBlur; uniform float uShutter; uniform float uSharpen; uniform float uAberration; uniform float uVignette; uniform float uTime; uniform float uGrain;
 uniform vec3 uLift; uniform vec3 uGain; uniform float uSaturation; uniform float uFlash; uniform float uHeat; uniform mat4 uCamWorld;
 varying vec2 vUv;
 vec3 agx(vec3 color) {
@@ -277,7 +308,7 @@ void main() {
   }
   if (uBlur > 0.0005) {
     vec3 vel = texture2D(tVel, uv).rgb;
-    vec2 b = vel.xy * uBlur;
+    vec2 b = vel.xy * uBlur * uShutter;
     float bl = length(b);
     b *= min(1.0, 0.03 / max(bl, 1e-5));
     float vm = length(vel.xy);
@@ -292,7 +323,7 @@ void main() {
     }
     col = acc / wsum;
   }
-  col = agx(col * uExposure + texture2D(tBloom, vUv).rgb * uBloom);
+  col = agx(col * uExposure * exp2(texture2D(tEV, vec2(0.5)).r) + texture2D(tBloom, vUv).rgb * uBloom);
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(vec3(l), col, uSaturation);
   col = col * uGain + uLift * (1.0 - col);
@@ -307,7 +338,7 @@ void main() {
 
 function makeLut(night) {
   const n = 32, data = new Uint8Array(n * n * n * 4);
-  const curve = (c) => c + (night ? 0.75 : 0.6) * (c * c * (3 - 2 * c) - c);
+  const curve = (c) => c + (night ? 0.75 : 1) * (c * c * (3 - 2 * c) - c);
   for (let b = 0; b < n; b++) for (let g = 0; g < n; g++) for (let r = 0; r < n; r++) {
     let c = [r, g, b].map((v) => curve(v / (n - 1)));
     const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
@@ -358,7 +389,11 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
   };
   const fs = (fragmentShader, uniforms) => new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader, uniforms, depthTest: false, depthWrite: false });
   const exposure = { value: exposureFor(night) };
-  const down = fs(DOWN, { tSrc: { value: null }, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 2.0 }, uKnee: { value: 1.0 }, uPrefilter: { value: true }, uExposure: exposure });
+  const tEV = { value: null };
+  const auto = AUTO_EV[night ? 'night' : 'day'];
+  const meter = fs(METER, { tSrc: { value: null }, uTexel: { value: new THREE.Vector2(0.25 / METER_W, 0.25 / METER_H) } });
+  const adapt = fs(ADAPT, { tMeter: { value: null }, tPrev: { value: null }, uKey: { value: auto.key }, uMin: { value: auto.min }, uMax: { value: auto.max }, uOn: { value: 1 }, uDt: { value: 0 }, uReset: { value: 1 }, uExposure: exposure });
+  const down = fs(DOWN, { tSrc: { value: null }, tEV, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 2.0 }, uKnee: { value: 1.0 }, uPrefilter: { value: true }, uExposure: exposure });
   const up = fs(UP, { tSrc: { value: null }, tPrev: { value: null }, uTexel: { value: new THREE.Vector2() }, uRadius: { value: 1 } });
   const velocity = fs(VELOCITY, { tDepth: shared.tDepth, tCar: { value: null }, uInvProj: shared.uInvProj, uCamWorld: shared.uCamWorld, uPrevVP: shared.uPrevVP });
   const gtao = fs(GTAO, { tDepth: shared.tDepth, uInvProj: shared.uInvProj, uFullTexel: { value: new THREE.Vector2() }, uRadius: { value: 1.5 }, uFocal: { value: new THREE.Vector2() }, uFrame: { value: 0 }, uPower: { value: 1.4 } });
@@ -367,8 +402,8 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
   const lut = makeLut(night);
   const comp = fs(COMPOSITE, {
     tDepth: shared.tDepth, uInvProj: shared.uInvProj, uCamWorld: shared.uCamWorld,
-    tScene: { value: null }, tBloom: { value: null }, tVel: { value: null }, tLut: { value: lut }, uBloom: { value: 0.08 }, uExposure: exposure, uTexel: { value: new THREE.Vector2() },
-    uBlur: { value: 0 }, uSharpen: { value: 0.5 }, uAberration: { value: 0 }, uVignette: { value: 0.38 },
+    tScene: { value: null }, tBloom: { value: null }, tVel: { value: null }, tEV, tLut: { value: lut }, uBloom: { value: 0.08 }, uExposure: exposure, uTexel: { value: new THREE.Vector2() },
+    uBlur: { value: 0 }, uShutter: { value: 1 }, uSharpen: { value: 0.5 }, uAberration: { value: 0 }, uVignette: { value: 0.38 },
     uTime: { value: 0 }, uGrain: { value: 0.016 }, uLift: { value: new THREE.Vector3(0.006, 0.005, 0.01) }, uGain: { value: new THREE.Vector3(1.0, 1.0, 1.0) }, uSaturation: { value: 1.08 }, uFlash: { value: 0 }, uHeat: { value: 0 },
   });
   const carMat = new THREE.ShaderMaterial({
@@ -376,13 +411,15 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
     uniforms: { uPrevModel: { value: new THREE.Matrix4() }, uVP: shared.uVP, uPrevVP: shared.uPrevVP },
   });
   let scene = null, carRT = null, velRT = null, aoRT = null, aoBlurRT = null, hist = [null, null], downs = [], ups = [];
+  const meterRT = target(METER_W, METER_H, { format: THREE.RGFormat }), evRT = [target(1, 1, { format: THREE.RedFormat }), target(1, 1, { format: THREE.RedFormat })];
+  let lastRender = 0;
   const size = new THREE.Vector2();
   let w = 0, h = 0, frame = 0, reset = true, writing = false;
   const movers = [], roots = [];
   const carScene = new THREE.Scene();
   carScene.overrideMaterial = carMat;
   carScene.matrixWorldAutoUpdate = false;
-  const vp = new THREE.Matrix4(), prevVP = new THREE.Matrix4(), tmpM = new THREE.Matrix4();
+  const vp = new THREE.Matrix4(), prevVP = new THREE.Matrix4(), prevView = new THREE.Matrix4(), tmpM = new THREE.Matrix4();
   let havePrev = false;
 
   function resize(width, height) {
@@ -430,6 +467,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
   }
   return {
     uniforms: comp.uniforms,
+    auto: adapt.uniforms,
     ao: gtao.uniforms,
     taa: taa.uniforms,
     resize,
@@ -449,7 +487,8 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
       const proj = camera.projectionMatrix;
       const jx = (halton(frame % 8 + 1, 2) - 0.5) * 2 / w, jy = (halton(frame % 8 + 1, 3) - 0.5) * 2 / h;
       vp.multiplyMatrices(proj, camera.matrixWorldInverse);
-      if (!havePrev) prevVP.copy(vp);
+      if (!havePrev) prevView.copy(camera.matrixWorldInverse);
+      prevVP.multiplyMatrices(proj, prevView);
       shared.uInvProj.value.copy(camera.projectionMatrixInverse);
       shared.uCamWorld.value.copy(camera.matrixWorld);
       shared.uVP.value.copy(vp);
@@ -496,6 +535,17 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
       taa.uniforms.uTexel.value.set(1 / w, 1 / h);
       taa.uniforms.uReset.value = reset ? 1 : 0;
       pass(taa, cur);
+      meter.uniforms.tSrc.value = cur.texture;
+      pass(meter, meterRT);
+      const now = performance.now(), dt = Math.min(0.1, (now - lastRender) / 1000);
+      adapt.uniforms.tMeter.value = meterRT.texture;
+      adapt.uniforms.tPrev.value = evRT[(frame + 1) & 1].texture;
+      adapt.uniforms.uDt.value = dt;
+      comp.uniforms.uShutter.value = Math.min(1, 1 / (60 * dt));
+      adapt.uniforms.uReset.value = reset ? 1 : 0;
+      pass(adapt, evRT[frame & 1]);
+      tEV.value = evRT[frame & 1].texture;
+      lastRender = now;
       reset = false;
 
       let src = cur.texture, sw = w, sh = h;
@@ -519,7 +569,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
       comp.uniforms.tVel.value = velRT.texture;
       comp.uniforms.uTexel.value.set(1 / w, 1 / h);
       pass(comp, null);
-      prevVP.copy(vp);
+      prevView.copy(camera.matrixWorldInverse);
       havePrev = true;
       frame++;
     },
