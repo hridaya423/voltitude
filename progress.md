@@ -1178,3 +1178,54 @@ Order: 1 auto exposure, 2 kerb launch, 3 countdown pause clock, 4 car rear by da
 - Night door: navy gradient over a warm horizon glow, plus stars from `night_sky.webp`, instead of the dimmed sunset JPEG.
 - Every menu page by day and night: before `garage-before/`, after `garage-final/`; sheets `garage-cmp-day.jpg` and `garage-cmp-night.jpg` (top before, bottom after).
 - Cost: garage p50 4.1 → 5.4 ms by day, 3.8 → 5.4 ms at night; draw calls 261 → 528 by day (four shadow passes). The race is untouched: the garage spots are hidden outside the garage.
+
+## Session 2026-10-29 (late): four fixes and Phase 5
+
+The user asked for less CPU and less testing mid-session ("dont use that much cpu. just fix up the track, and the bugs dont needa do that much testing"). Gates ran once each, one process at a time, `nice`, `--test-concurrency=1`.
+
+**1. No track limits while airborne: done (`3fefe86`).**
+- Cause: the rule judged a whole corner window. A breach was only ever flagged on the ground, but one brief ground breach (four wheels on the kerb at entry, or a hop from the kerb) made the window's whole gain the penalty, including a later legal flight. The toast fires at window exit, often while the car is still in the air.
+- Fix (`src/sim/limits.js`): a window is judged in ground segments. A take-off closes the segment and charges only the time gained on the ground up to that point. A landing inside the window opens a new segment from the landed state, so landing off the track and cutting back on still counts. Terrain contact (`mode 2`) inside a window counts as outside the track.
+- Tests (`tests/limits.test.js`): "time gained in the air is never charged" fails on the old rule (1.63 s charged for a flight that landed inside the lines) and passes now. "Landing past the white line and cutting on the ground still counts" catches 3 of 4 Proving windows.
+- Hop-and-hover over corners (scripts in `/tmp/vt/hophover.mjs`, `/tmp/vt/chord.mjs`, not kept): a bot that hops and hovers through every corner is 15–40 s a lap slower than the bot, even with unlimited gas; hover kills speed. A sweep of single straight hops per corner (take-off point, hover time, steer) finds the best gain per corner window: Proving +0.53, +0.32, −0.23, +1.28 s (gas +0.0 to +0.49); Airfield up to +0.67 s; Launch up to +0.56 s. Most corners lose time. Penalties stayed at 0 for these. Summed best case on Proving is about 2.1 s a lap for about 0.9 gas. The gas cost limits it, as designed. Not an exploit by the 0.9 × author rule. Proposal if it plays as cheap: scale hop gas with speed, or count hover gas per corner. No rule added.
+
+**2. Wall scrape: done (`e90025a`).** The scrub was `press · (1 + (press/5)²)` and summed `press` over every hull point in contact. A 12° scrape at 131 mph had `press` 12.2 m/s, so a 90 m/s scrub. Now linear in the largest normal speed. 0.4 s after contact at 131 mph: 4° keeps 88%, 8° 75%, 12° 60%, 20° 41%, 45° 2%. Head-on 20 m/s stops (0.7 m/s), head-on 30 m/s wrecks. Test rewritten red-first (12° kept 5% before).
+
+**3. Garage glare: done (`af568b4`).** The night cone was the narrow amber door beam (`#ffb070`, 0.14 rad) drawing an ellipse on the floor behind the bays. Removed. By day the low sun's glint through the door also washed the bay titles (proved by hiding the sun); floor and bay prints are rougher by day (0.8 and 0.85). New `tools/menu-shots.mjs` captures board, venue, settings and controls by day and night. Sheets: `docs/sheets/garage-glare-day.jpg`, `docs/sheets/garage-glare-night.jpg` (top before, bottom after). Pause and results need a race and were not captured.
+
+**4. Phase 5 (plan Tasks 32–35).**
+- Design doc: Airfield and Launch unfrozen (2026-10-29). Plan: Phase 5 written.
+- Launch wall-ride kerb launch: not reproduced when driven. The old report came from placing a car mid-twist at sample 1062, where its front wheels start 0.2 m above the surface. Driven in from the straight, both kerbs hold at 89–109 mph. Guard test added (`31a0e42`); the bank is unchanged.
+- Air lines (`f582926`, then `dc780fe`, `e433f20`, `9a5ec75`): the Proving template (kicker 11°, gate at 105 m, 15 m pylon chicane) on the straight after each venue's last corner. The jump sits about 150–230 m after the corner so a driver can boost to the 62 m/s an air line needs. The jump node is raised 3 m and the landing descends through the chicane (Proving drops 6 m; on flat ground with no drop the flight landed before the gate).
+  - What failed first: mid-runway, the bot braked from 180 to 80 mph for the lip (−6 s a lap). 50 m after the corner, no driver reached lip speed, so nobody flew.
+  - Airfield: jump at z −420, span 300 m, chicane 18 m wide (15 m left the flight 1.7 m inside the corridor). Lap start moved to z −61 (was −250).
+  - Launch: jump at z −350, span 340 m. Lap start moved to z 80 (was −300); Launch sample indices in tests shift by −380.
+  - The bot passes the gate at 9.5 m (r 4.5 around 10.8) and is airborne from 40 to 180 m, as at Proving.
+- AI (`9a5ec75`): with one air line a lap, `planFor` never re-rolled after its first decision, so a driver flew every lap or never (seen as 3/0 counts per race). The plan now resets after each air line. Daring is spent only on a commit, so a driver blocked by traffic or low speed keeps the wish. Proving is unaffected by the reset (its two air lines alternate). The tier-pace test now gives its single rival zero nerve so air-line luck does not decide the best lap.
+- Author TT laps: Proving 75.21 s, Airfield 74.72 s, Launch 64.82 s. `SIM_VERSION` 14, terrain baked, ghosts regenerated.
+- Airfield control tower: `towerSite` picks the sharpest corner in the Tower sector, which became the new chicane. Air spans are excluded (`fix(airfield)`).
+- Everything else in the slice standard was already data-driven and now applies: lip chevrons (`road.js`), gate rings (`gates.js`), festival bleachers and tents at the air line (`festival.js`), floodlights, run-off, track limits.
+
+### Phase 5 gates (2026-10-29, light per the user)
+
+| Gate | Result |
+|---|---|
+| `npm test` | PASS, 122 of 122. |
+| Exploits | PASS on Proving, Airfield and Launch. The two air-line cases now run 100 s, since the new air lines sit at the end of the lap. |
+| ai-bench, 6 races per tier (not 20) | Proving PASS on Easy, Pro and Elite. Airfield: Elite PASS; Easy and Pro FAIL on player contacts (3.2 against ≤ 3). Launch: Easy and Pro PASS; Elite FAIL on player contacts (3.5). Air lines: every driver takes at least one per race on every tier at both venues. Six-race contact means are noisy (1.3–3.5 across runs this session). |
+| Shot-match HUD on | Airfield 2/6 (old build 2/6), Launch 4/6 (old build 2/6). |
+| Shot-match HUD off | Airfield 2/6, Launch 3/6. |
+| Perf | Skipped at the user's request. |
+
+Shot-match notes: the moments (0.35, 11, 24 s) were tuned on Proving. On Launch the 24 s moment now lands on the 50° wall-ride because the start moved, so "straight" fails on hue, edge and cropping. Airfield misses are the same kind as before: night L98 89.8–89.9 against 90, and a rival alongside in the pack shot ("car", "edge").
+
+Contact sheets (looked at):
+- `docs/sheets/airfield-airline.jpg`, `docs/sheets/launch-airline.jpg`: before and after, day and night, approach, lip and aerial. Rows: before day, after day, before night, after night.
+- `docs/sheets/airfield-grid.jpg`, `docs/sheets/launch-grid.jpg`: the grid at the moved start lines, day and night.
+- `docs/sheets/garage-glare-day.jpg`, `docs/sheets/garage-glare-night.jpg`.
+
+Still open:
+- Player-contact episodes on Airfield (Easy, Pro) and Launch (Elite) sit at 3.2–3.5 on six races. Rerun at 20 races on a quiet machine before tuning.
+- Shot-match moments need per-venue times for Airfield and Launch.
+- Chase-camera fly frames were captured before the final run-up change (`/tmp/vt/fly-*`); the final geometry was checked from fixed cameras and the sim.
+- Hop-and-hover cut: about 2 s a lap on Proving for about 0.9 gas. Watch it in playtests.
