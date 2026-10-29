@@ -97,11 +97,18 @@ test('the loop is drivable from a crawl to full speed', () => {
   }
 });
 
-test('a scrape along the wall costs little and a hard hit stops the car', () => {
-  const free = wallScrape(0), kept = (deg) => wallScrape(deg) / free;
+test('a scrape along the wall costs speed in proportion to its angle, and a hard hit stops the car', () => {
+  const v = 131 / 2.237, free = wallScrape(0, v, 0.4).speed, kept = (deg) => wallScrape(deg, v, 0.4).speed / free;
   assert.ok(kept(1) > 0.94, `1 deg keeps ${(100 * kept(1)).toFixed(0)}%`);
   assert.ok(kept(2) > 0.85, `2 deg keeps ${(100 * kept(2)).toFixed(0)}%`);
-  assert.ok(kept(10) < 0.3, `10 deg keeps ${(100 * kept(10)).toFixed(0)}%`);
+  const at12 = wallScrape(12, v, 0.4);
+  assert.ok(!at12.wrecked, 'a 12 deg scrape at 131 mph does not wreck');
+  assert.ok(at12.speed / free > 0.55 && at12.speed / free < 0.9, `12 deg at 131 mph keeps ${(100 * at12.speed / free).toFixed(0)}%`);
+  const curve = [4, 8, 12, 20].map(kept);
+  for (let i = 1; i < curve.length; i++) assert.ok(curve[i] < curve[i - 1] - 0.03, `steeper scrapes cost more: ${curve.map((x) => x.toFixed(2)).join(' ')}`);
+  const slow = wallScrape(90, 20, 1.5);
+  assert.ok(slow.speed < 3, `a head-on hit at 20 m/s leaves ${slow.speed.toFixed(1)} m/s`);
+  assert.ok(wallScrape(90, 30, 1.5).wrecked, 'a head-on hit at 30 m/s wrecks');
 });
 
 test('a car facing the wrong way beside the wall steers away from it and turns around', () => {

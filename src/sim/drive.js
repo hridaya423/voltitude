@@ -149,7 +149,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
 }
 
 const AIR_PAD = 40;
-const WALL_HIT = 1, WALL_HARD = 5, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
+const WALL_HIT = 1, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
 const WALL_TOP = 1.16;
 const TYRE_MU = 1, TYRE_WRECK = 45, TYRE_SPIN = 0.5;
 
@@ -578,7 +578,7 @@ function collide(c, q, air) {
     COM[0] -= q.rx * over * side; COM[1] -= q.ry * over * side; COM[2] -= q.rz * over * side;
     const vr = (c.vx * q.rx + c.vy * q.ry + c.vz * q.rz) * side;
     if (vr <= 0) continue;
-    press += vr;
+    press = Math.max(press, vr);
     const vt = Math.hypot(c.vx - q.rx * vr * side, c.vy - q.ry * vr * side, c.vz - q.rz * vr * side);
     const ang = Math.atan2(vr, vt);
     if (q.tyre) { tyreSide = side; continue; }
@@ -591,7 +591,7 @@ function collide(c, q, air) {
   if (!press) return;
   if (tyreSide) return tyreHit(c, q, tyreSide);
   const drag = WALL_DRAG * DT * Math.min(1, Math.max(0, c.wallT - WALL_GRACE) / WALL_RAMP);
-  const sp = Math.hypot(c.vx, c.vy, c.vz), k = Math.max(0, sp - (WALL_HIT * press * (1 + (press / WALL_HARD) ** 2) + drag) * Math.min(1, sp / 40)) / Math.max(sp, 1e-6);
+  const sp = Math.hypot(c.vx, c.vy, c.vz), k = Math.max(0, sp - (WALL_HIT * press + drag) * Math.min(1, sp / 40)) / Math.max(sp, 1e-6);
   c.vx *= k; c.vy *= k; c.vz *= k;
   if (press > WALL_WRECK && !c.wrecked) { c.ev.push({ type: 'wreck', v: press }); c.wrecked = true; }
 }

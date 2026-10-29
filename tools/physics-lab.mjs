@@ -103,6 +103,7 @@ export function wallScrape(deg, v = 70, secs = 1.5) {
   c.fx = T[k] * Math.cos(a) + R[k] * Math.sin(a); c.fy = 0; c.fz = T[k + 2] * Math.cos(a) + R[k + 2] * Math.sin(a);
   c.rx = R[k] * Math.cos(a) - T[k] * Math.sin(a); c.ry = 0; c.rz = R[k + 2] * Math.cos(a) - T[k + 2] * Math.sin(a);
   c.vx = c.fx * v; c.vz = c.fz * v;
-  for (let t = 0; t < 120 * secs; t++) stepCar(c, inp, world, t, false);
-  return c.speed;
+  let wrecked = false;
+  for (let t = 0; t < 120 * secs; t++) { stepCar(c, inp, world, t, false); wrecked ||= c.ev.some((e) => e.type === 'wreck'); c.ev.length = 0; }
+  return { speed: c.speed, wrecked };
 }
