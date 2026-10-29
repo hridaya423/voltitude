@@ -12,6 +12,7 @@ const CP_RADIUS = 45;
 const GRID_SLOT = 5;
 const NEAR = 1, NEAR_SPEED = 8, NEAR_EVERY = 360;
 const DRAFT_NEAR = 4, DRAFT_FAR = 14, DRAFT_LAT = 1.6, DRAFT_SPEED = 40;
+const TOW = 0.2, TOW_FULL = 8, TOW_FAR = 25, TOW_LAT = 2.5, TOW_SPEED = 30;
 const HOLD = 600;
 const RESPAWN_GAS = 0.15;
 const STILL = 240, SINK = 6, AIR_RUNUP = 100;
@@ -250,6 +251,22 @@ export function nearMisses(race) {
   }
 }
 
+function towFor(race, e) {
+  const { track } = race.world;
+  const a = e.car, k = a.hint * 3;
+  if (a.speed <= TOW_SPEED || a.mode !== 1) return 0;
+  let tow = 0;
+  for (const o of race.entries) {
+    if (o === e) continue;
+    const dx = o.car.x - a.x, dy = o.car.y - a.y, dz = o.car.z - a.z;
+    const ahead = dx * track.T[k] + dy * track.T[k + 1] + dz * track.T[k + 2];
+    const side = Math.abs(dx * track.R[k] + dy * track.R[k + 1] + dz * track.R[k + 2]);
+    if (ahead < DRAFT_NEAR || ahead > TOW_FAR || side > TOW_LAT) continue;
+    tow = Math.max(tow, TOW * Math.min(1, (TOW_FAR - ahead) / (TOW_FAR - TOW_FULL)) * (1 - side / TOW_LAT));
+  }
+  return tow;
+}
+
 function drafting(race, e) {
   const { track } = race.world;
   const a = e.car, k = a.hint * 3;
@@ -315,8 +332,9 @@ export function stepRace(race, inp) {
     if (inp.reset && !race.resetHeld) respawn(race, race, race.cpIdx, race.cpSpeed);
     race.resetHeld = !!inp.reset;
   }
-  stepEntry(race, race, race.phase === 'racing' ? inp : IDLE);
   const rivals = race.entries;
+  if (rivals.length > 1) for (const e of rivals) e.car.tow = towFor(race, e);
+  stepEntry(race, race, race.phase === 'racing' ? inp : IDLE);
   for (let k = 1; k < rivals.length; k++) {
     const e = rivals[k];
     stepEntry(race, e, drive(race, e, e.input || (e.input = createInput())));

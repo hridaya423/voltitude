@@ -5,7 +5,7 @@ import { rng } from './drivers.js';
 
 const lines = new WeakMap();
 const clamp = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
-const SPACE = 3.2, WIDTH = 3, NEAR = 20, FOLLOW = 7, FOLLOW_DECEL = 7, TUCK = 16;
+const SPACE = 3.2, WIDTH = 3, NEAR = 20, FOLLOW = 7, FOLLOW_DECEL = 7, TUCK = 10;
 const PASS_NEAR = 10, PASS_FAR = 25, PASS_OFF = 3.6, ATTACK_GAP = 12, PLAYER_LATE = 6;
 const CLOSE_T = 0.5, SETTLE = 60, SHIFT_V = 2.5, SHIFT_ACC = 4, BIAS_EDGE = 1.2, PREVIEW = 0.3, OFF_LINE = 2, OFF_GRIP = 0.81;
 const DEFEND_GAP = 0.6, DEFEND_T = 120, DEFEND_REST = 480;

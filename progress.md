@@ -886,21 +886,28 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - `node tools/medals.mjs all`, author runs with 0 respawns: Proving TT 238.767 s (82.90 / 80.59 / 75.28), Airfield 227.883 s (77.92 / 74.98 / 74.98), Launch 199.633 s (68.09 / 65.72 / 65.82).
 - `npm test` 91 of 91. `race-gate 20`: Proving PASS, Launch PASS, Airfield FAIL on passes (3.6); same orders and winners as the Task 13 run; 0 resets, wrecks or DNFs on all three.
 
-**Phase 2 gate report (2026-10-29, after Task 14).**
+**Slipstream tow (product call, done).** The user chose a modest tow for Airfield passing.
+- `race.js` `towFor`: a car above 30 m/s on the ground, 4–25 m behind another and within 2.5 m of its line, gets `c.tow` up to 0.2, full from 8 m in, fading to 0 at 25 m and at 2.5 m to the side. `drive.js` scales air drag by `1 - c.tow`. Solo runs never set it, so TT and the author ghosts are unchanged (re-run byte-identical).
+- Test "a car in the wake of another on a straight gains on one in clean air" (rival held 6 m ahead for 2 s): 70.05 against 69.67 m/s; with the tow at 0 both are 69.67, so it fails.
+- Surprise: the tow alone did not create passes (Airfield held passes 3.55 → 3.9). Rivals in a wake were at full throttle only 12% of the time: the follow law turns the drag cut into lifting. The passes came from pulling out later: `TUCK` 16 → 10 m (Airfield held 5.6 with the tow at 0 or 0.2). The tow mostly rewards a player who stays flat out in a wake.
+- The tier test compared mean best laps in a full field, and traffic noise flipped Pro and Elite on Launch (70.31 against 70.65 s). It now races one rival with the player: Easy 72.2, Pro 68.67, Elite 67.91 s; with all tiers at 1 it fails.
+
+**Phase 2 gate report (2026-10-29, after Task 14 and the tow).**
 
 | Check | Result |
 |---|---|
-| `npm test` | PASS, 91 of 91 |
-| `ai-bench 20 proving` | PASS on Easy, Pro and Elite (table under Task 13) |
-| `ai-bench 20 launch` | PASS on every tier |
-| `ai-bench 20 airfield` | Easy PASS; Pro and Elite FAIL on held passes (3.0, 2.9 against 4) |
-| `race-gate 20` Proving | PASS: 0 resets, wrecks or DNFs; 20 orders; FER 10, REY 5, AAL 4, YOU 1; 32.0 passes |
-| `race-gate 20` Launch | PASS: 0 incidents; REY 6, NAI 4, AAL 4, HAN 3, VOG 2, FER 1; 6.8 passes |
-| `race-gate 20` Airfield | FAIL on passes only: 3.6 against 5; 0 incidents; REY 6, NAI 4, AAL 3, HAN 3, OKY 2, VOG 2 |
+| `npm test` | PASS, 92 of 92 |
+| `ai-bench 20 proving` | PASS on Easy, Pro and Elite: lap check 1.039 / 1.013 / 0.962, held 30.8 / 28.2 / 29.8, contacts 1.4 / 1.9 / 1.8 |
+| `ai-bench 20 launch` | PASS on every tier: held 11.8 / 9.1 / 8.3, contacts 2.2 / 1.5 / 1.6 |
+| `ai-bench 20 airfield` | PASS on every tier: held 7.2 / 5.3 / 5.5, contacts 2.4 / 2.0 / 1.6 |
+| `race-gate 20` Proving | PASS: 0 resets, wrecks or DNFs; 20 orders; FER 7, REY 7, AAL 5, NAI 1; 27.6 passes |
+| `race-gate 20` Launch | PASS: 0 incidents; REY 8, NAI 4, AAL 3, VOG 3, HAN 2; 8.2 passes |
+| `race-gate 20` Airfield | PASS: 0 incidents; REY 6, NAI 4, AAL 3, HAN 3, OKY 2, VOG 2; 5.8 passes |
 | Exploits | PASS on all three venues |
 | Keyboard GP under 15% gas | PASS: 0.5% of race time (Phase 1: 63.9%) |
 | Captures | Looked at: both air lines (chase and side), the ground route through span 0, the wall-ride, the gates (Task 11) |
 
 - Gas re-measure: `PORT=8790 node cap-review.mjs proving gp keys <out> human` (scratchpad `gate2/proving-gp-keys/`, 0 console errors, 2 laps in 330 s, 1 respawn from the scripted Backspace). Earn rates unchanged. Caveat: this driver is the bot quantized to keys, and the bot now spends far less (it boosts 4.4% of race time and averages 0.65 gas). A headless driver that boosts on every straight whenever it has gas sits under 15% gas for 86.3% of race time (6 GPs, earning 2.75 gas per race); the bot sits there 0.8% (earning 3.69). The metric measures the spending habit more than the economy.
 - Captures (`cap-air.mjs`, scratchpad `air/`): span 0 lap 1, committed: run-up on the striped ramp at 133 mph, lip at 157, through the ring, over the S, a clean perfect landing on the straight at 148. Span 0 lap 2, ground route: a 78 mph hop with a perfect landing, the S at 54–63 mph. Span 1, committed: ramp, ring, flight over the ground road, clean landing at 147. Wall-ride: the car holds the 55° bank at 110–127 mph earning wall gas. The 90 m side views show the ring, the S and the field, but the cars are too small to read height from; the chase views carry the check.
-- Open: Airfield passing (product call: slipstream tow). Win spread on Proving leans to FER (10 of 20), the highest-nerve driver.
+- Wall stops (6 GPs): Proving 4, Launch 1, Airfield 2. TT bot laps unchanged, no wall stops or respawns.
+- Airfield and Launch winners repeat across tiers (tiers scale every rival equally, so the order holds). Proving wins spread FER 7, REY 7, AAL 5, NAI 1.

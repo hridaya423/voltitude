@@ -114,7 +114,7 @@ export function createCar() {
     gas: 1, boosting: false, thr: 0, delta: 0, brk: 0,
     air: 0, flip: 0, spin: 0, barrel: 0,
     speed: 0, vf: 0, slip: 0, throttle: 0, brake: 0, steer: 0, yawRate: 0,
-    wrecked: false, load: 0, fan: 0, wallT: 0,
+    wrecked: false, load: 0, fan: 0, wallT: 0, tow: 0,
     wl: createWheels(),
     ev: [],
   };
@@ -413,7 +413,7 @@ export function stepCar(c, inp, world, tick, assist) {
   F[1] -= m * G;
   const sp = speed0;
   if (sp > 0.01) {
-    const dr = 0.5 * T.rho * sp * T.cdA;
+    const dr = 0.5 * T.rho * sp * T.cdA * (1 - c.tow);
     F[0] -= c.vx * dr; F[1] -= c.vy * dr; F[2] -= c.vz * dr;
     const fwd = Math.max(0, vf0);
     const dn = 0.5 * T.rho * fwd * fwd * T.clA;

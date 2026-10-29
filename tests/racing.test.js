@@ -61,9 +61,9 @@ test('rivals lap slower on Easy than on Pro, and slower on Pro than on Elite', (
   const launch = loadWorld('launch'), event = eventsFor(launch.track).find((e) => e.id === 'gp');
   const lap = Object.fromEntries(Object.keys(TIERS).map((tier) => {
     const race = createRace(launch, { event, seed: 1, tier }), inp = createInput();
+    race.entries = race.entries.slice(0, 2);
     while (!race.entries.every((e) => e.done) && race.tick < 120 * 400) { botInput(race, inp, 0.97); stepRace(race, inp); race.events.length = 0; }
-    const best = race.entries.slice(1).map((e) => Math.min(...e.laps.slice(1)));
-    return [tier, best.reduce((a, b) => a + b, 0) / best.length / 120];
+    return [tier, Math.min(...race.entries[1].laps.slice(1)) / 120];
   }));
   assert.ok(lap.easy > lap.pro * 1.01, `easy ${lap.easy.toFixed(2)} s against pro ${lap.pro.toFixed(2)} s`);
   assert.ok(lap.pro > lap.elite * 1.005, `pro ${lap.pro.toFixed(2)} s against elite ${lap.elite.toFixed(2)} s`);
@@ -101,6 +101,25 @@ test('a rival passing within a metre at speed is one near miss, a touch is none'
   assert.equal(pass(1.6).length, 0);
   assert.equal(pass(4).length, 0);
   assert.equal(pass(2.8, 34).length, 0);
+});
+
+test('a car in the wake of another on a straight gains on one in clean air', () => {
+  const run = (lat) => {
+    const race = createRace(world, { event: GP, seed: 1 });
+    race.phase = 'racing'; race.raceTick = 400;
+    const rival = race.entries[1];
+    race.entries = [race, rival];
+    placeCar(race.car, world.track, 3300, 60, 0);
+    const inp = createInput();
+    inp.throttle = 1;
+    for (let t = 0; t < 240; t++) {
+      placeCar(rival.car, world.track, (race.car.hint + 6) % world.track.lap, race.car.speed, lat);
+      stepRace(race, inp);
+    }
+    return race.car.speed;
+  };
+  const wake = run(0), clear = run(5);
+  assert.ok(wake > clear + 0.3, `in the wake ${wake.toFixed(2)} m/s, in clean air ${clear.toFixed(2)} m/s`);
 });
 
 function drop(height, upright) {
