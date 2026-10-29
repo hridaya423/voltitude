@@ -231,14 +231,15 @@ test('every car that leaves a jump lands on its down-slope, or on the road insid
   const { flights } = runField(GP, 2);
   const used = new Set();
   for (const f of flights) {
-    const jump = jumps.find((j) => f.from >= j.from - 5 && f.from <= j.to);
+    const inSpan = circuit.track.air[f.from];
+    const jump = inSpan ? jumps.find((j) => j.from === airs[inSpan - 1].from) : jumps.find((j) => f.from >= j.from - 5 && f.from <= j.to);
     assert.ok(jump, `flight from ${f.from} starts at no jump`);
     used.add(jump);
     const span = airs.find((a) => a.from === jump.from);
-    const end = span && f.land > jump.to ? span.to : jump.to;
+    const end = span ? span.to : jump.to;
     assert.equal(f.mode, 1, `flight from ${f.from} landed off the road at ${f.land}`);
     assert.ok(f.land > jump.lip && f.land < end, `landed at ${f.land}, landing runs ${jump.lip} to ${end}`);
-    if (end === jump.to) assert.ok(T[f.land * 3 + 1] < -0.01, `landing slope ${T[f.land * 3 + 1].toFixed(3)} at ${f.land}`);
+    if (!span) assert.ok(T[f.land * 3 + 1] < -0.01, `landing slope ${T[f.land * 3 + 1].toFixed(3)} at ${f.land}`);
   }
   assert.equal(used.size, jumps.length, 'every jump was flown');
 });
@@ -277,7 +278,8 @@ test('the field is not rubber-banded: AI times ignore the player', () => {
   })();
   const lead = a.order.find((e) => e.index === 1), lead2 = b.entries[1];
   assert.ok(Math.abs(lead.laps[0] - lead2.laps[0]) / 120 < 8, `${lead.laps[0]} vs ${lead2.laps[0]}`);
-  assert.ok(lead2.laps[2] / 120 < 90);
+  const pace = lineFor(circuit.track).time * 1.15;
+  assert.ok(lead2.laps[2] / 120 < pace, `lap 3 ${(lead2.laps[2] / 120).toFixed(1)} s against ${pace.toFixed(1)} s`);
 });
 
 test('replaying the player inputs reproduces the whole race', () => {

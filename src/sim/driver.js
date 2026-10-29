@@ -1,12 +1,12 @@
-import { DT, latCap, steerTo } from './drive.js';
-import { racingLine } from './line.js';
+import { DT, TUNING, accelAt, brakeAt, latCap, steerTo } from './drive.js';
+import { racingLine, groundLane, LIP_SPEED } from './line.js';
 import { LIM_BAND } from './circuit.js';
 import { rng } from './drivers.js';
 
 const lines = new WeakMap();
 const clamp = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
 const SPACE = 3.2;
-const AIR_DECIDE = 200, AIR_GAS = 0.55, AIR_TOP = 85;
+const AIR_DECIDE = 200, AIR_TOP = 85, AIR_RESERVE = 0.08, AIR_MIN = 62, AIR_SURE = 66, AIR_STRAIGHT = 0.012, AIR_ACCEL = 0.8, LAUNCH = 40;
 
 export function lineFor(track) {
   let l = lines.get(track);
@@ -39,17 +39,29 @@ export function createDriver(profile, seed) {
   };
 }
 
+function lipSpeed(track, c, toLip) {
+  let v = Math.max(c.speed, 5), gas = c.gas;
+  for (let x = 0; x < toLip; x += 2) {
+    const boost = gas > AIR_RESERVE && v < AIR_TOP && Math.abs(track.curv[(c.hint + x) % track.lap]) < AIR_STRAIGHT;
+    if (boost) gas -= 2 / v / TUNING.burn;
+    v = Math.sqrt(v * v + 4 * AIR_ACCEL * Math.max(0, accelAt(v) + (boost ? TUNING.thrustG * 9.81 : 0)));
+  }
+  return v;
+}
+
 function airLine(track, e, d) {
   const N = track.lap, hint = e.car.hint;
   for (let k = 0; k < track.airs.length; k++) {
     const sp = track.airs[k], at = (hint - sp.lip + N) % N;
     if (at > (sp.to - sp.lip + N) % N && at < N - AIR_DECIDE) continue;
     if (d.air?.k !== k) {
-      const go = !e.done && e.car.gas >= AIR_GAS && d.rand() < (d.p.nerve ?? 0);
+      const go = !e.done && d.rand() < (d.p.nerve ?? 0) && lipSpeed(track, e.car, (sp.lip - hint + N) % N) >= AIR_SURE;
       d.air = { k, go, miss: go && d.rand() < d.p.error * (1 - (d.p.craft ?? 0.5)) };
       if (go) e.airLines = (e.airLines || 0) + 1;
     }
     d.air.before = at > N / 2;
+    const c = e.car, toLip = N - at;
+    if (d.air.go && d.air.before && c.speed * c.speed - LIP_SPEED * LIP_SPEED < 1.6 * brakeAt(c.speed) * toLip && lipSpeed(track, c, toLip) < AIR_MIN) d.air.go = false;
     return d.air;
   }
   d.air = null;
@@ -102,8 +114,10 @@ export function drive(race, e, inp) {
   const done = e.done;
   const pace = done ? 0.45 : d.pace;
 
+  const air = track.airs?.length ? airLine(track, e, d) : null;
+  const aim = air?.go && air.before;
   let goal = 0, follow = 999, beside = null;
-  if (!done) {
+  if (!done && !aim) {
     for (const o of others(race, e)) {
       const gap = o.prog - e.prog;
       if (gap < -9 || gap > 38) continue;
@@ -141,17 +155,15 @@ export function drive(race, e, inp) {
   d.bias += clamp(goal - d.bias, -1, 1) * 2.5 * DT;
   d.bias = clamp(d.bias, -6, 6);
 
-  let target = clamp(L.off[hint] + d.bias, -lim(hint), lim(hint));
-  if (beside) {
+  const launch = air && (track.airs[air.k].lip - hint + N) % N < LAUNCH;
+  let target = clamp(launch ? c.lat : (aim ? -0.7 * groundLane(track, track.airs[air.k]) : L.off[hint]) + d.bias, -lim(hint), lim(hint));
+  if (beside && !launch) {
     const ol = beside.car.lat, room = lim(hint) + 1.5;
     if (Math.abs(target - ol) < SPACE) target = clamp(ol + (c.lat > ol ? SPACE : -SPACE), -room, room);
     if (Math.abs(c.lat - ol) < 2.6 && beside.prog > e.prog) follow = Math.min(follow, beside.car.speed - 1.5);
   }
-  const air = track.airs?.length ? airLine(track, e, d) : null;
-  const aim = air?.go && air.before;
-  if (aim) target = 0;
   d.target = target;
-  const slope = aim ? 0 : (L.off[(hint + 2) % N] - L.off[(hint - 2 + N) % N]) / 4;
+  const slope = aim || launch ? 0 : (L.off[(hint + 2) % N] - L.off[(hint - 2 + N) % N]) / 4;
   d.noise += d.gauss() * 0.02 * d.p.error - d.noise * 0.6 * DT;
   const kc = track.curv[(hint + Math.round(2 + sp * 0.12)) % N];
   inp.steer = clamp(steerTo(c, track, target, slope, kc / Math.max(0.3, 1 - kc * target)) + d.noise);
@@ -180,13 +192,13 @@ export function drive(race, e, inp) {
     inp.throttle = 0; inp.brake = 1; inp.steer = 0;
   }
   d.clear = follow > sp + 3 ? d.clear + 1 : 0;
-  if (!d.clear) d.hold = 0;
+  if (!d.clear || inp.brake > 0) d.hold = 0;
   inp.boost = !done && inp.brake === 0 && (d.clear > 120 || (d.clear > 0 && race.raceTick < d.react + 170)) && wantBoost(race, e, L, vt) ? 1 : 0;
   if (air?.before) {
     inp.boost = 0;
-    if (air.go && c.mode === 1 && Math.abs(track.curv[hint]) < 0.012) {
+    if (air.go && c.mode === 1 && Math.abs(track.curv[hint]) < AIR_STRAIGHT) {
       inp.throttle = 1; inp.brake = 0;
-      inp.boost = sp < AIR_TOP ? 1 : 0;
+      inp.boost = sp < AIR_TOP && c.gas > AIR_RESERVE + (c.boosting ? 0 : 0.04) ? 1 : 0;
     }
   } else if (air && c.mode === 0) {
     const vx = c.vx - c.ux * (c.vx * c.ux + c.vy * c.uy + c.vz * c.uz), vz = c.vz - c.uz * (c.vx * c.ux + c.vy * c.uy + c.vz * c.uz);

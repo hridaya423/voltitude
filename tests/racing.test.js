@@ -276,3 +276,20 @@ test('outside an air span the walls hold a flying car on the road', () => {
 test('a checkpoint inside an air span is a build error', () => {
   assert.throws(() => airOval({ sector: 'S' }), /inside an air span/);
 });
+
+test('a bot holds the wall-ride bank at more than 40 m/s for 3 s and earns wall gas', () => {
+  const race = createRace(world, { event: eventsFor(world.track).find((e) => e.id === 'tt'), seed: 1 });
+  const inp = createInput(), c = race.car;
+  let on = 0, best = 0, respawns = 0;
+  while (race.laps.length < 1 && race.tick < 120 * 120) {
+    botInput(race, inp, 1);
+    stepRace(race, inp);
+    respawns += race.events.filter((e) => e.type === 'respawn').length;
+    race.events.length = 0;
+    on = c.fan > 0.2 && c.speed > 40 && c.mode === 1 && !race.world.track.loopMask[c.hint] ? on + 1 : 0;
+    best = Math.max(best, on);
+  }
+  assert.ok(best >= 120 * 3, `longest wall-ride ${(best / 120).toFixed(1)} s`);
+  assert.equal(respawns, 0);
+  assert.ok(race.earned.wall > 0.15, `wall gas ${race.earned.wall?.toFixed(2)}`);
+});

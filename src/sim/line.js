@@ -9,7 +9,16 @@ const MARGIN = 1.15;
 const LOOP_SPEED = 45;
 const GRIP = 0.9;
 const BRAKE_GRIP = 0.86;
-export const LIP_SPEED = 42;
+export const LIP_SPEED = 36;
+const FLIGHT_IN = 60, FLIGHT_OUT = 90, AIR_LANE = 3.5;
+
+export function groundLane(track, { lip }) {
+  for (let d = 0; d < 300; d++) {
+    const k = track.curv[(lip + d) % track.lap];
+    if (Math.abs(k) > 0.005) return -Math.sign(k) * AIR_LANE;
+  }
+  return 0;
+}
 
 function solve(A, b, m) {
   const L = new Float64Array(m * m);
@@ -39,6 +48,8 @@ function offsets(track) {
   const m = Math.round(N / NODE);
   const idx = new Int32Array(m), cx = new Float64Array(m), cz = new Float64Array(m), rx = new Float64Array(m), rz = new Float64Array(m);
   const bound = new Float64Array(m), scale = new Float64Array(m);
+  const lane = new Float64Array(N).fill(NaN);
+  for (const a of track.airs ?? []) for (let d = -FLIGHT_IN; d <= FLIGHT_OUT; d++) lane[(a.lip + d + N) % N] = groundLane(track, a);
   for (let i = 0; i < m; i++) {
     const s = Math.round((i * N) / m) % N, k = s * 3;
     idx[i] = s;
@@ -62,6 +73,7 @@ function offsets(track) {
   for (let i = 0; i < m; i++) A[i * m + i] += 1e-4;
   const a = new Float64Array(m), fixed = new Uint8Array(m);
   for (let i = 0; i < m; i++) if (bound[i] === 0) fixed[i] = 1;
+  for (let i = 0; i < m; i++) if (!Number.isNaN(lane[idx[i]])) { fixed[i] = 1; a[i] = lane[idx[i]] * scale[i]; }
   for (let it = 0; it < 14; it++) {
     const free = [];
     for (let i = 0; i < m; i++) if (!fixed[i]) free.push(i);
@@ -120,10 +132,12 @@ export function speedProfile(track, off, grip, brakeGrip, vTop, boost = null) {
   const pitch = new Float64Array(N);
   for (let i = 0; i < N; i++) pitch[i] = Math.asin(Math.max(-1, Math.min(1, T[i * 3 + 1])));
   for (let i = 0; i < N; i++) {
-    const loop = track.loopMask[i] || track.U[i * 3 + 1] < 0.8;
+    const loop = track.loopMask[i], uy = track.U[i * 3 + 1];
     let v = loop ? LOOP_SPEED : vTop;
     if (!loop) {
-      v = Math.min(v, cornerSpeed(kappa[i], grip * grip));
+      const flat = cornerSpeed(kappa[i], grip * grip), s = Math.sqrt(1 - uy * uy), mu = TUNING.latG * grip * grip, den = uy - mu * s;
+      if (uy >= 0.8) v = Math.min(v, flat);
+      else if (den > 0) v = Math.min(v, Math.max(flat, Math.sqrt((G * (s + mu * uy)) / (Math.abs(kappa[i]) * den))));
       const d = (pitch[(i + 4) % N] - pitch[(i - 4 + N) % N]) / (8 * step);
       if (d < -1e-4 && !track.bot[i]) v = Math.min(v, Math.sqrt((G * 0.8) / -d));
     }

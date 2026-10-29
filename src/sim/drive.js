@@ -142,7 +142,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
 }
 
 const AIR_PAD = 40;
-const WALL_HIT = 1, WALL_HARD = 5, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36;
+const WALL_HIT = 1, WALL_HARD = 5, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
 const WALL_TOP = 1.16;
 
 function nearestRoad(track, x, y, z, hint) {
@@ -545,4 +545,5 @@ function collide(c, q, air) {
   const drag = WALL_DRAG * DT * Math.min(1, Math.max(0, c.wallT - WALL_GRACE) / WALL_RAMP);
   const sp = Math.hypot(c.vx, c.vy, c.vz), k = Math.max(0, sp - (WALL_HIT * press * (1 + (press / WALL_HARD) ** 2) + drag) * Math.min(1, sp / 40)) / Math.max(sp, 1e-6);
   c.vx *= k; c.vy *= k; c.vz *= k;
+  if (press > WALL_WRECK && !c.wrecked) { c.ev.push({ type: 'wreck', v: press }); c.wrecked = true; }
 }

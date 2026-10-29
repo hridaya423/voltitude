@@ -13,7 +13,7 @@ const NEAR = 1, NEAR_SPEED = 8, NEAR_EVERY = 360;
 const DRAFT_NEAR = 4, DRAFT_FAR = 14, DRAFT_LAT = 1.6, DRAFT_SPEED = 40;
 const HOLD = 600;
 const RESPAWN_GAS = 0.15;
-const STILL = 240, SINK = 6;
+const STILL = 240, SINK = 6, AIR_RUNUP = 100;
 const IDLE = { throttle: 0, brake: 0.3, steer: 0, pitch: 0, roll: 0, boost: 0, reset: 0 };
 
 export function quantize(v) {
@@ -104,7 +104,7 @@ function emit(race, type, extra) {
 }
 
 function safeAt(track, i) {
-  if (track.U[i * 3 + 1] <= 0.95 || track.gap[i] || track.loopMask[i] || track.air?.[i]) return false;
+  if (track.U[i * 3 + 1] <= 0.95 || track.gap[i] || track.loopMask[i] || track.air?.[i] || track.air?.[(i + AIR_RUNUP) % track.lap]) return false;
   return !track.jumps.some((j) => i >= j.from && i <= j.to);
 }
 
@@ -176,7 +176,8 @@ function stepEntry(race, e, inp) {
   const span = track.air?.[c.hint];
   e.lost = (off > CP_RADIUS && !(span && c.mode === 0)) || sunk || (span && c.mode === 2) || (c.mode === 0 && c.air > 120 * 7) ? e.lost + 1 : 0;
   e.still = race.raceTick > 360 && c.speed < 2 ? e.still + 1 : 0;
-  if (c.mode === 1 && !e.lost && !c.wrecked && safeAt(track, c.hint)) { e.lastIdx = c.hint; e.lastSpeed = c.speed; }
+  const held = !track.closed || c.speed <= lineFor(track).cap[c.hint] * 1.1 + 3;
+  if (c.mode === 1 && !e.lost && !c.wrecked && held && safeAt(track, c.hint)) { e.lastIdx = c.hint; e.lastSpeed = c.speed; }
   if (c.wrecked && !e.respawnIn) e.respawnIn = 70;
   if (e.respawnIn && --e.respawnIn === 0) respawn(race, e);
   else if (e.lost > 60 || e.still > STILL) respawn(race, e);
