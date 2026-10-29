@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
 import { RAIL, PAVED_OUT } from '../sim/drive.js';
 import { lightTick } from '../sim/race.js';
-import { skyFog } from './sky.js';
+import { skyFog, UNIT_LUX, FLOOD_RGB } from './sky.js';
 
 const STRIDE = 2;
 const SLAB = 1.1;
@@ -70,11 +70,10 @@ export function extrude(track, list, profile, extra) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   if (extra) {
     const n = pos.length / 3, k = ex.length / n;
-    const a = new Float32Array(n * 4), b = new Float32Array(n * 3), c = new Float32Array(n * 2);
-    for (let i = 0; i < n; i++) { a.set(ex.slice(i * k, i * k + 4), i * 4); b.set(ex.slice(i * k + 4, i * k + 7), i * 3); if (k > 7) c.set(ex.slice(i * k + 7, i * k + 9), i * 2); }
+    const a = new Float32Array(n * 4), b = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { a.set(ex.slice(i * k, i * k + 4), i * 4); b.set(ex.slice(i * k + 4, i * k + 7), i * 3); }
     g.setAttribute('aRoad', new THREE.Float32BufferAttribute(a, 4));
     g.setAttribute('aMark', new THREE.Float32BufferAttribute(b, 3));
-    if (k > 7) g.setAttribute('aLamp', new THREE.Float32BufferAttribute(c, 2));
   }
   g.setIndex(idx);
   g.computeBoundingSphere();
@@ -86,15 +85,16 @@ export function mastSites(world) {
   const { track, terrain } = world;
   const out = [];
   let side = 1;
-  for (let i = track.closed ? 0 : 80; i < track.n - (track.closed ? 45 : 40); i += 90) {
-    const o = i * 3;
+  const step = track.closed ? track.n / Math.round(track.n / 60) : 60;
+  for (let s = track.closed ? 0 : 80; s < track.n - (track.closed ? step / 2 : 40); s += step) {
+    const i = Math.round(s), o = i * 3;
     if (track.gap[i] || track.U[o + 1] < 0.97) continue;
     side = -side;
     const off = (side < 0 ? track.wallL[i] : track.wallR[i]) + 7;
     const x = track.P[o] + track.R[o] * off * side, z = track.P[o + 2] + track.R[o + 2] * off * side;
     const g = terrain.height(x, z);
-    if (Math.abs(g - track.P[o + 1]) > 4) continue;
-    out.push({ i, side, off, x, z, g, yaw: Math.atan2(-track.R[o] * side, -track.R[o + 2] * side) });
+    if (Math.abs(g - track.P[o + 1]) > 12) continue;
+    out.push({ i, side, off, x, z, g, y: track.P[o + 1], yaw: Math.atan2(-track.R[o] * side, -track.R[o + 2] * side) });
   }
   return out;
 }
@@ -131,13 +131,12 @@ function surfaceMaterial(renderer, sunUniform, fogDensity) {
   m.normalScale.set(0.7, 0.7);
   skyFog(m, sunUniform, fogDensity, false, (sh) => {
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aRoad;\nattribute vec3 aMark;\nattribute vec2 aLamp;\nvarying vec4 vRoad;\nvarying vec3 vMark;\nvarying vec2 vLamp;')
-      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvRoad = aRoad;\nvMark = aMark;\nvLamp = aLamp;\nvMapUv = vec2(aRoad.x, aRoad.y) / 9.0;\nvNormalMapUv = vMapUv;\nvRoughnessMapUv = vMapUv;');
+      .replace('#include <common>', '#include <common>\nattribute vec4 aRoad;\nattribute vec3 aMark;\nvarying vec4 vRoad;\nvarying vec3 vMark;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvRoad = aRoad;\nvMark = aMark;\nvMapUv = vec2(aRoad.x, aRoad.y) / 9.0;\nvNormalMapUv = vMapUv;\nvRoughnessMapUv = vMapUv;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec4 vRoad;
         varying vec3 vMark;
-        varying vec2 vLamp;
         vec3 paint(vec3 base) {
           float lat = vRoad.x, s = vRoad.y, w = vRoad.z;
           float a = abs(lat);
@@ -178,14 +177,8 @@ function surfaceMaterial(renderer, sunUniform, fogDensity) {
           return c;
         }`)
       .replace('#include <map_fragment>', '#include <map_fragment>\nvec3 macroA = texture2D(map, vMapUv * 0.083 + 0.31).rgb;\ndiffuseColor.rgb = paint(diffuseColor.rgb * mix(0.62, 1.05, smoothstep(0.15, 0.5, dot(macroA, vec3(0.33)))));')
-      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
-        if (uNight > 0.0) {
-          float pd = vRoad.x - vLamp.y;
-          float pool = vLamp.x * exp(-pd * pd / 450.0);
-          vec3 lit = vec3(1.0, 0.9, 0.78) * pool * 9.0;
-          reflectedLight.directDiffuse += diffuseColor.rgb * lit * uNight;
-          reflectedLight.directSpecular += lit * 0.035 * uNight;
-        }`);
+      .replace('#include <aomap_fragment>', `reflectedLight.indirectDiffuse += BRDF_Lambert(material.diffuseColor) * vec3(${FLOOD_RGB.join(', ')}) * ${(1000 / UNIT_LUX.night).toFixed(3)} * uNight * smoothstep(0.97, 0.9, inverseTransformDirection(normal, viewMatrix).y);
+        #include <aomap_fragment>`);
   });
   m.customProgramCacheKey = () => 'road-surface';
   return m;
@@ -270,19 +263,7 @@ export function createRoad(world, sunUniform, fogDensity, renderer) {
   for (const { lip: at } of track.jumps ?? []) for (let j = Math.max(0, at - 16); j < at; j++) lip[j] = 1;
   for (const m of track.closed ? [track.finish, 0] : [track.sectors[0].i + 10, track.finish]) for (let j = m - 2; j <= m + 2; j++) if (j >= 0 && j < track.n) line[j] = 1;
 
-  const lampK = new Float32Array(track.n), lampL = new Float32Array(track.n), near = new Float32Array(track.n).fill(1e9);
-  for (const m of mastSites(world)) for (let k = m.i - 120; k < m.i + 120; k++) {
-    const j = track.closed ? (k + track.n) % track.n : k;
-    if (j < 0 || j >= track.n) continue;
-    const d = Math.abs(k - m.i);
-    if (d < near[j]) { near[j] = d; lampL[j] = m.side * m.off; }
-    lampK[j] = Math.max(lampK[j], Math.exp(-d * d / (2 * 30 * 30)));
-  }
-  for (let j = 0; j < track.n; j++) {
-    if (track.U[j * 3 + 1] < 0.97) { lampK[j] = Math.max(lampK[j], 0.8); lampL[j] = 0; }
-    else lampK[j] = Math.max(lampK[j], 0.22);
-  }
-  const top = extrude(track, list, [(w, i) => [pavedEdge(track, i, 1), 0], (w, i) => [-pavedEdge(track, i, -1), 0]], (i, l) => [l, i * track.step, track.halfW[i], track.runoff.tyreL[i] + 2 * track.runoff.tyreR[i], kerb[i], lip[i], line[i], lampK[i], lampL[i]]);
+  const top = extrude(track, list, [(w, i) => [pavedEdge(track, i, 1), 0], (w, i) => [-pavedEdge(track, i, -1), 0]], (i, l) => [l, i * track.step, track.halfW[i], track.runoff.tyreL[i] + 2 * track.runoff.tyreR[i], kerb[i], lip[i], line[i]]);
   const surface = new THREE.Mesh(top, surfaceMaterial(renderer, sunUniform, fogDensity));
   surface.receiveShadow = true;
 

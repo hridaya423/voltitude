@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
 import { panelMaterial, makeLabel, mastSites } from './road.js';
-import { skyFog } from './sky.js';
+import { skyFog, skyUniforms, UNIT_LUX, FLOOD_RGB } from './sky.js';
 
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _e = new THREE.Euler();
+const MOUNT = 22, LUMENS = 2.2e6, BEAM_N = 5, HAZE = 1.5e-3, CELL = 2, REACH = 170;
+const PEAK_CD = LUMENS * (BEAM_N + 1) / (2 * Math.PI);
+const _m = new THREE.Matrix4(), _l = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _e = new THREE.Euler();
 
 function glassMaterial(sunUniform, fogDensity) {
   const m = new THREE.MeshStandardMaterial({ color: '#0d1016', roughness: 0.08, metalness: 0.9, envMapIntensity: 1.6, emissive: '#ffcf9a', emissiveIntensity: 0.0 });
@@ -11,13 +13,104 @@ function glassMaterial(sunUniform, fogDensity) {
   return m;
 }
 
-function haloTexture() {
+function ledTexture() {
   const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.06, 'rgba(255,255,255,0.7)'); r.addColorStop(0.18, 'rgba(255,255,255,0.12)'); r.addColorStop(0.5, 'rgba(255,255,255,0.03)'); r.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = r; g.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(c);
+  c.width = 96; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, 96, 64);
+  g.fillStyle = '#fff';
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 6; x++) { g.beginPath(); g.arc(8 + x * 16, 8 + y * 16, 5.5, 0, Math.PI * 2); g.fill(); }
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = 8;
+  return t;
+}
+
+function ledMaterial(map) {
+  return new THREE.ShaderMaterial({
+    uniforms: { tDots: { value: map }, uRadiance: { value: new THREE.Vector3(...FLOOD_RGB).multiplyScalar(PEAK_CD / (0.92 * 0.6 * 8 * 0.37) / UNIT_LUX.night) } },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv; varying vec3 vAxis; varying vec3 vView;
+      void main() {
+        mat4 w = modelMatrix * instanceMatrix;
+        vec4 wp = w * vec4(position, 1.0);
+        vUv = uv; vAxis = normalize(mat3(w) * vec3(0.0, 0.0, 1.0)); vView = cameraPosition - wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D tDots; uniform vec3 uRadiance;
+      varying vec2 vUv; varying vec3 vAxis; varying vec3 vView;
+      void main() {
+        float c = max(dot(normalize(vView), vAxis), 0.0);
+        float dots = texture2D(tDots, vUv).r;
+        gl_FragColor = vec4(uRadiance * (pow(c, ${BEAM_N.toFixed(1)}) + 0.004) * (dots + 0.002), 1.0);
+      }`,
+  });
+}
+
+function shaftMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: { uScale: { value: HAZE * PEAK_CD * Math.tan(0.62) / (4 * Math.PI) / UNIT_LUX.night } },
+    vertexShader: /* glsl */ `
+      attribute float aDist;
+      varying float vDist; varying vec3 vNormal; varying vec3 vView;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vDist = aDist; vNormal = normalize(mat3(modelMatrix) * normal); vView = cameraPosition - wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform float uScale;
+      varying float vDist; varying vec3 vNormal; varying vec3 vView;
+      void main() {
+        float cam = length(vView);
+        float edge = abs(dot(vView / cam, vNormal));
+        float fade = smoothstep(0.0, 4.0, cam) * smoothstep(0.0, 1.5, vDist) * exp(-cam * 0.0006);
+        gl_FragColor = vec4(vec3(${FLOOD_RGB.map((c) => c.toFixed(2)).join(', ')}) * uScale * edge * edge * fade / max(vDist, 1.0), 1.0);
+      }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+}
+
+function floodMap(fixtures) {
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const f of fixtures) { x0 = Math.min(x0, f.p.x); z0 = Math.min(z0, f.p.z); x1 = Math.max(x1, f.p.x); z1 = Math.max(z1, f.p.z); }
+  x0 -= REACH; z0 -= REACH;
+  const w = Math.ceil((x1 + REACH - x0) / CELL), h = Math.ceil((z1 + REACH - z0) / CELL);
+  const data = new Float32Array(w * h * 4);
+  for (const { p, axis, ground } of fixtures) {
+    const cx = Math.floor((p.x - x0) / CELL), cz = Math.floor((p.z - z0) / CELL), r = REACH / CELL;
+    for (let iz = Math.max(0, cz - r); iz < Math.min(h, cz + r); iz++) for (let ix = Math.max(0, cx - r); ix < Math.min(w, cx + r); ix++) {
+      const vx = p.x - (x0 + (ix + 0.5) * CELL), vy = p.y - ground, vz = p.z - (z0 + (iz + 0.5) * CELL);
+      const d2 = vx * vx + vy * vy + vz * vz, d = Math.sqrt(d2);
+      const c = -(vx * axis.x + vy * axis.y + vz * axis.z) / d;
+      if (c <= 0) continue;
+      const e = PEAK_CD * c ** BEAM_N / d2 / UNIT_LUX.night, k = (iz * w + ix) * 4;
+      data[k] += e * vx / d; data[k + 1] += e * vy / d; data[k + 2] += e * vz / d; data[k + 3] += e;
+    }
+  }
+  const half = new Uint16Array(data.length);
+  for (let i = 0; i < data.length; i++) half[i] = THREE.DataUtils.toHalfFloat(data[i]);
+  const tex = new THREE.DataTexture(half, w, h, THREE.RGBAFormat, THREE.HalfFloatType);
+  tex.minFilter = tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  skyUniforms.tFlood.value = tex;
+  skyUniforms.uFloodBox.value.set(x0, z0, 1 / (w * CELL), 1 / (h * CELL));
+  const v = new THREE.Vector3();
+  return (light, at) => {
+    light.userData.base ??= { intensity: light.intensity, color: light.color.clone() };
+    if (!at) { light.intensity = light.userData.base.intensity; light.color.copy(light.userData.base.color); return; }
+    const fx = (at.x - x0) / CELL - 0.5, fz = (at.z - z0) / CELL - 0.5;
+    const ix = Math.min(w - 2, Math.max(0, Math.floor(fx))), iz = Math.min(h - 2, Math.max(0, Math.floor(fz))), tx = fx - ix, tz = fz - iz;
+    v.set(0, 0, 0);
+    for (const [dx, dz, wt] of [[0, 0, (1 - tx) * (1 - tz)], [1, 0, tx * (1 - tz)], [0, 1, (1 - tx) * tz], [1, 1, tx * tz]]) {
+      const k = ((iz + dz) * w + ix + dx) * 4;
+      v.x += data[k] * wt; v.y += data[k + 1] * wt; v.z += data[k + 2] * wt;
+    }
+    light.intensity = v.length();
+    light.color.setRGB(...FLOOD_RGB);
+    if (light.intensity > 1e-6) light.position.copy(at).addScaledVector(v.normalize(), 200);
+    light.target.position.copy(at);
+  };
 }
 
 export function createFacility(world, sunUniform, fogDensity, night) {
@@ -30,29 +123,45 @@ export function createFacility(world, sunUniform, fogDensity, night) {
   const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.2, 2.0), toneMapped: false });
   const red = new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 0.25, 0.3), toneMapped: false });
 
-  const poles = [], heads = [], glare = [];
+  const poles = [], heads = [];
   for (const m of mastSites(world)) {
     if (track.roof[m.i]) continue;
-    poles.push([m.x, m.g, m.z, 22]);
-    heads.push([m.x, m.g + 22, m.z, m.yaw]);
-    glare.push(m.x - track.R[m.i * 3] * m.side * 1.5, m.g + 21.7, m.z - track.R[m.i * 3 + 2] * m.side * 1.5);
+    poles.push([m.x, m.g, m.z, m.y + MOUNT - 1.4 - m.g]);
+    heads.push({ x: m.x, y: m.y + MOUNT, z: m.z, yaw: m.yaw, pitch: Math.atan2(MOUNT, m.off), ground: m.y });
   }
   const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.38, 1, 10).translate(0, 0.5, 0), white, poles.length);
   poles.forEach(([x, y, z, h], k) => { _m.compose(_p.set(x, y, z), _q.identity(), _s.set(1, h, 1)); pole.setMatrixAt(k, _m); });
-  const headGeo = mergeGeometries([new THREE.BoxGeometry(4.2, 0.9, 0.7), new THREE.BoxGeometry(0.4, 1.6, 0.4).translate(0, -0.9, -0.2)]);
+  const headGeo = mergeGeometries([new THREE.BoxGeometry(4.3, 1.5, 0.3).translate(0, 0, -0.05), new THREE.BoxGeometry(4.5, 0.12, 0.5).translate(0, 0.78, 0.05), new THREE.BoxGeometry(0.3, 2.4, 0.3).translate(0, -0.6, -0.35)]);
   const head = new THREE.InstancedMesh(headGeo, dark, heads.length);
-  const lamp = new THREE.InstancedMesh(new THREE.PlaneGeometry(3.8, 0.55).translate(0, 0, 0.36), glow, heads.length);
-  heads.forEach(([x, y, z, yaw], k) => {
-    _m.compose(_p.set(x, y, z), _q.setFromEuler(_e.set(0.35, yaw, 0)), _s.set(1, 1, 1));
-    head.setMatrixAt(k, _m); lamp.setMatrixAt(k, _m);
+  const dots = ledTexture();
+  const ledMat = night ? ledMaterial(dots) : new THREE.MeshStandardMaterial({ color: '#9aa0a8', map: dots, roughness: 0.25, metalness: 0.6 });
+  if (!night) skyFog(ledMat, sunUniform, fogDensity);
+  const led = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.92, 0.6), ledMat, heads.length * 8);
+  const fixtures = [], shafts = [];
+  heads.forEach(({ x, y, z, yaw, pitch, ground }, k) => {
+    _m.compose(_p.set(x, y, z), _q.setFromEuler(_e.set(pitch, yaw, 0, 'YXZ')), _s.set(1, 1, 1));
+    head.setMatrixAt(k, _m);
+    for (let j = 0; j < 8; j++) led.setMatrixAt(k * 8 + j, _l.makeTranslation(((j % 4) - 1.5) * 1.02, (j < 4 ? 0.34 : -0.34), 0.11).premultiply(_m));
+    const axis = new THREE.Vector3(0, 0, 1).applyQuaternion(_q);
+    fixtures.push({ p: new THREE.Vector3(x, y, z), axis, ground });
+    const len = (y - ground) / Math.max(0.2, -axis.y);
+    shafts.push(new THREE.CylinderGeometry(1, 1 + len * Math.tan(0.62), len, 20, 1, true).translate(0, -len / 2, 0).rotateX(-Math.PI / 2).scale(1.9, 0.65, 1).applyMatrix4(_l.makeRotationFromQuaternion(_q)).translate(x, y, z));
   });
   for (const m of [pole, head]) { m.castShadow = true; m.frustumCulled = false; }
-  lamp.frustumCulled = false;
-  group.add(pole, head, lamp);
-  if (night) {
-    const halo = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(glare, 3)), new THREE.PointsMaterial({ map: haloTexture(), size: 26, color: new THREE.Color(4, 3.6, 3.1), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-    halo.frustumCulled = false;
-    group.add(halo);
+  led.frustumCulled = false;
+  group.add(pole, head, led);
+  const floodLight = night && fixtures.length ? floodMap(fixtures) : () => {};
+  if (night && shafts.length) {
+    shafts.forEach((g, k) => {
+      const p = g.attributes.position, d = new Float32Array(p.count), f = fixtures[k].p;
+      for (let i = 0; i < p.count; i++) d[i] = Math.hypot(p.getX(i) - f.x, p.getY(i) - f.y, p.getZ(i) - f.z);
+      g.setAttribute('aDist', new THREE.BufferAttribute(d, 1));
+      g.deleteAttribute('uv');
+    });
+    const shaft = new THREE.Mesh(mergeGeometries(shafts), shaftMaterial());
+    shaft.frustumCulled = false;
+    shaft.renderOrder = 50;
+    group.add(shaft);
   }
 
   const sx = 62, sz0 = -640;
@@ -125,6 +234,7 @@ export function createFacility(world, sunUniform, fogDensity, night) {
   }
   return {
     group,
+    floodLight,
     update(time) { red.color.setRGB(Math.sin(time * 3) > 0.6 ? 6 : 0.2, 0.2, 0.25); },
   };
 }

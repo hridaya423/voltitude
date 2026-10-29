@@ -2,6 +2,10 @@ import * as THREE from 'three';
 
 const SUN_AZ = { day: 98.5 * Math.PI / 180, night: -141.5 * Math.PI / 180 };
 export const SUN_DIR = new THREE.Vector3(0, 1, 0);
+export const UNIT_LUX = { day: 7300, night: 206 };
+export const FLOOD_RGB = [1.0, 0.96, 0.9];
+const SUN_SR = 6.8e-5;
+const AP_SIGMA = [0.35 * 5.8 / 13.5 + 0.65, 1, 0.35 * 33.1 / 13.5 + 0.65];
 
 export const skyUniforms = {
   uSunDir: { value: SUN_DIR },
@@ -9,6 +13,8 @@ export const skyUniforms = {
   tSkyFog: { value: null },
   uSkyScale: { value: 1 },
   uNight: { value: 0 },
+  tFlood: { value: null },
+  uFloodBox: { value: new THREE.Vector4() },
 };
 
 export const SKY_GLSL = /* glsl */ `
@@ -48,15 +54,15 @@ export async function loadSky(night, renderer) {
   const az = SUN_AZ[name];
   SUN_DIR.set(Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az));
   skyUniforms.uSkyRot.value = info.sunPhi - az;
-  skyUniforms.uSkyScale.value = night ? 0.05 : 1;
+  skyUniforms.uSkyScale.value = night ? 0.02 : 1;
   skyUniforms.uNight.value = night ? 1 : 0;
   skyUniforms.tSkyFog.value = fog;
-  return { sky, fog, info };
+  return { sky, fog, info, sunIrradiance: info.maxLuminance * SUN_SR * skyUniforms.uSkyScale.value };
 }
 
-export function createSky(skyTex, gain = 1) {
+export function createSky(skyTex, sunRadiance, gain = 1) {
   const mat = new THREE.ShaderMaterial({
-    uniforms: { ...skyUniforms, tSky: { value: skyTex }, uGain: { value: gain } },
+    uniforms: { ...skyUniforms, tSky: { value: skyTex }, uGain: { value: gain }, uSunL: { value: Math.min(sunRadiance, 6e4) } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() {
@@ -68,6 +74,7 @@ export function createSky(skyTex, gain = 1) {
       varying vec3 vDir;
       uniform sampler2D tSky;
       uniform float uGain;
+      uniform float uSunL;
       ${SKY_GLSL}
       void main() {
         vec3 d = normalize(vDir);
@@ -78,7 +85,7 @@ export function createSky(skyTex, gain = 1) {
         vec2 gy = vec2(abs(dFdy(ua)) < abs(dFdy(ub)) ? dFdy(ua) : dFdy(ub), dFdy(uv.y));
         vec3 c = skyDecode(textureGrad(tSky, vec2(ua, uv.y), gx, gy).rgb);
         float sun = max(dot(d, uSunDir), 0.0);
-        c += vec3(1.0, 0.86, 0.7) * smoothstep(0.99996, 0.99999, sun) * 400.0 * (1.0 - uNight);
+        c += vec3(1.0, 0.86, 0.7) * smoothstep(0.999987, 0.999991, sun) * uSunL * (1.0 - uNight);
         gl_FragColor = vec4(c * uGain, 1.0);
       }`,
     side: THREE.BackSide,
@@ -149,17 +156,25 @@ export function skyFog(material, sunUniform, density, detail = false, extend = n
         reflectedLight.directDiffuse *= farShadow;
         reflectedLight.directSpecular *= farShadow;`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vFogWorld;\nuniform float uFogDensity;\n${SKY_GLSL}`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vFogWorld;\nuniform float uFogDensity;\nuniform sampler2D tFlood;\nuniform vec4 uFloodBox;\n${SKY_GLSL}`)
+      .replace('#include <aomap_fragment>', `if (uNight > 0.5) {
+          vec4 fl = texture2D(tFlood, (vFogWorld.xz - uFloodBox.xy) * uFloodBox.zw);
+          float fe = length(fl.rgb);
+          reflectedLight.directDiffuse = vec3(0.0);
+          reflectedLight.directSpecular = vec3(0.0);
+          vec3 floodRgb = vec3(${FLOOD_RGB.map((c) => c.toFixed(2)).join(', ')});
+          if (fe > 1e-7) RE_Direct(IncidentLight(floodRgb * fe, normalize((viewMatrix * vec4(fl.rgb / fe, 0.0)).xyz), true), geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight);
+          reflectedLight.indirectDiffuse += BRDF_Lambert(material.diffuseColor) * floodRgb * fl.a * 0.12;
+        }
+        #include <aomap_fragment>`)
       .replace('#include <fog_fragment>', `
         vec3 fogRay = vFogWorld - cameraPosition;
         float fogDist = length(fogRay);
         vec3 fogDir = fogRay / fogDist;
         float fogK = 0.0042, fogDy = vFogWorld.y - cameraPosition.y;
         float fogH = abs(fogDy * fogK) < 0.002 ? exp(-fogK * cameraPosition.y) : (exp(-fogK * cameraPosition.y) - exp(-fogK * vFogWorld.y)) / (fogK * fogDy);
-        float fogAmt = 1.0 - exp(-pow(fogDist * uFogDensity * 0.75 * max(fogH, 0.0), 1.2));
-        float fogSun = pow(max(dot(fogDir, uSunDir), 0.0), 5.0);
-        vec3 inscatter = skyColor(normalize(vec3(fogDir.x, 0.02, fogDir.z))) + vec3(1.0, 0.7, 0.42) * fogSun * 0.5 * (1.0 - uNight);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, inscatter, fogAmt);`);
+        vec3 fogT = exp(-fogDist * uFogDensity * 0.75 * max(fogH, 0.0) * vec3(${AP_SIGMA.map((c) => c.toFixed(3)).join(', ')}));
+        gl_FragColor.rgb = gl_FragColor.rgb * fogT + skyColor(normalize(vec3(fogDir.x, 0.02, fogDir.z))) * (1.0 - fogT);`);
   };
   material.customProgramCacheKey = () => (extend ? 'skyfog-pbr' : 'skyfog');
 }
