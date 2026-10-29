@@ -6,7 +6,7 @@ const WRECK_BACK = 11, WRECK_UP = 4, WRECK_ORBIT = 0.35, CLEAR = 1.5;
 export function createChaseCamera(camera, height) {
   const pos = new THREE.Vector3(), look = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), upS = new THREE.Vector3(0, 1, 0);
   const want = new THREE.Vector3(), wantLook = new THREE.Vector3(), dir = new THREE.Vector3(0, 0, 1), tmp = new THREE.Vector3(), vel = new THREE.Vector3();
-  let fov = 70, shake = 0, init = false, t = 0, blend = 1, stall = 0, back = 7, breath = 0, wasBoost = false, hover = 0;
+  let fov = 70, shake = 0, init = false, t = 0, blend = 1, stall = 0, back = 7, breath = 0, wasBoost = false, hover = 0, kick = 0;
   const offS = new THREE.Vector3(), lookS = new THREE.Vector3();
   const fromOff = new THREE.Vector3(), toOff = new THREE.Vector3(), aim = new THREE.Vector3();
   let fromFov = 70, fromShift = 0;
@@ -15,6 +15,7 @@ export function createChaseCamera(camera, height) {
     from(cam, p) { fromOff.subVectors(cam.position, p); fromFov = cam.fov; fromShift = cam.filmOffset; blend = 0; },
     bump(v) { shake = Math.min(1, shake + v * 0.6); },
     stall(s) { stall = Math.max(stall, s); },
+    punch(v) { kick = Math.min(1.5, kick + v); },
     update(dt, p, c, opts) {
       t += dt;
       if (blend >= 1 && camera.filmOffset !== 0) { camera.filmOffset *= Math.exp(-dt * 3); if (Math.abs(camera.filmOffset) < 0.01) camera.filmOffset = 0; camera.updateProjectionMatrix(); }
@@ -76,6 +77,8 @@ export function createChaseCamera(camera, height) {
       const wantFov = 40 + 6 * sv + (c.boosting ? 3 : 0) - (breath > 0 ? 1.5 : 0);
       const target = opts.reduced ? 44 : wantFov;
       fov += (target - fov) * (1 - Math.exp(-dt * (target > fov ? 3.3 : 2)));
+      kick *= Math.exp(-dt * 5);
+      const shown = fov + (opts.reduced ? 0 : 4 * kick);
       if (blend < 1) {
         blend = Math.min(1, blend + dt / 1.4);
         const e = blend < 0.5 ? 4 * blend * blend * blend : 1 - Math.pow(-2 * blend + 2, 3) / 2;
@@ -89,10 +92,10 @@ export function createChaseCamera(camera, height) {
         camera.position.set(p.x + Math.sin(a) * r, p.y + y, p.z + Math.cos(a) * r);
         aim.lerpVectors(p, look, e * e);
         camera.lookAt(aim);
-        camera.fov = fromFov + (fov - fromFov) * e;
+        camera.fov = fromFov + (shown - fromFov) * e;
         camera.filmOffset = fromShift * (1 - e);
         camera.updateProjectionMatrix();
-      } else if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+      } else if (Math.abs(camera.fov - shown) > 0.01) { camera.fov = shown; camera.updateProjectionMatrix(); }
     },
   };
 }
