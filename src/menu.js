@@ -4,6 +4,7 @@ export const SETTINGS = [
   { key: 'assist', label: 'Landing assist', note: 'Levels the car in the air. Throttle and brake tilt the nose', type: 'toggle' },
   { key: 'invertPitch', label: 'Invert air pitch', note: 'Pull back to nose down', type: 'toggle' },
   { key: 'ghost', label: 'Ghost', note: 'Race your best run, or the author’s until you have one', type: 'toggle' },
+  { key: 'tier', label: 'Difficulty', note: 'Rival pace in Grand Prix. Rivals never slow down to wait for you', type: 'choice', options: [['easy', 'EASY'], ['pro', 'PRO'], ['elite', 'ELITE']] },
   { key: 'units', label: 'Units', type: 'choice', options: [['mph', 'MPH'], ['kmh', 'KM/H']] },
   { key: 'session', label: 'Session', note: 'Floodlit night or desert golden hour. Reloads the game', type: 'choice', options: [['night', 'NIGHT'], ['day', 'DAY']] },
   { key: 'quality', label: 'Car detail', note: 'Reloads the game', type: 'choice', options: [['low', 'LOW'], ['medium', 'MEDIUM'], ['high', 'HIGH']] },

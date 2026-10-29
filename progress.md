@@ -828,3 +828,56 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - Final checks: `npm test` 89 of 89. `race-gate 20`: Proving PASS (AAL 9, FER 4, HAN 3, YOU 2, NAI 2), Airfield PASS (AAL 14, NAI 3, REY 2, HAN 1), Launch PASS (AAL 12, NAI 4, REY 2, HAN 1, YOU 1); 0 resets, wrecks or DNFs; 20 distinct orders each. Exploits PASS on all three venues. The lip-speed prediction scales acceleration by 0.8 (fit to traced runs: REY predicted 65.1 m/s, reached 60.7). Committed cars skip passing manoeuvres; their lane already clears the ground lane by 6 m. Terrain re-baked, author ghosts regenerated.
 
 **Next:** Task 11 (flight gates: `gate: { h, r }` node flag → `track.gates`, pass detection in `race.js` earning `GAIN.gate` 0.25 once, `src/render/gates.js` ring with 8 chevrons, visible from 300 m). Then Task 12 (racecraft: pass under braking, defend the inside 1 s, `SPACE` 3.2, draft; tiers Easy/Pro/Elite pace 0.94/0.98/1.0; the roster `nerve`/`craft` are already in), Task 13 (`tools/ai-bench.mjs`), Task 14 (bake, medals, ghosts, `SIM_VERSION` 10 → 11), then the Phase 2 gate report: tests, ai-bench per tier, race-gate 20 per venue with win spread, exploits, gas re-measure (keyboard rig, Phase 1 result 63.9% of race time under 15% gas, target < 25%), browser captures of both air lines, the wall-ride and a flight gate. AAL still wins 9–14 of 20; Task 12 is meant to spread that.
+
+**Task 11: flight gates (done).**
+- Data: a node flag `gate: { h, r, at }` → `track.gates = [{ i, h, r }]`; `at` (metres past the node, default 0) places a gate partway along a long segment. The ring centre is `H[i] + U[i] · h`.
+- Placement (measured, `arcs.mjs` in the scratchpad, 6 GPs): 80 m past each air-line lip, committed cars fly 9.6–12.0 m above the runway; ground cars at the 36 m/s lip have landed by 60–70 m. One gate per air line at lip + 80, `h` 10.8, `r` 4.5. The plain jump (kick 2) flies under 2 m, so a gate there would pay everyone; it has none.
+- Pass rule (`race.js` `gatePasses`): the segment from the previous position to the current one crosses the ring plane forward within `r` of the centre. Each gate pays `GAIN.gate` (0.25) once per lap per car and emits `gate` for the player.
+- Result over 6 GPs: 86 of 86 committed flights pass their gate, 0 of 206 ground flights do. `airLines` now counts real flights; `airCommits` counts decisions (about a third abort mid-corner, before any gas is spent).
+- Test "a flight gate pays 0.25 once per lap to a car through its centre, and nothing to a car that misses by r + 1": fails without the `race.js` change, passes with it. It also checks a second pass in the same lap pays nothing.
+- Render (`src/render/gates.js`): a dark metal frame (casts a shadow on the runway), a cyan glow tube (the gas colour) that widens in the vertex shader so it never drops under 3 px, and 8 extruded chevron lights on each face of the frame pointing inward, lit in a chase. On a pass the ring flashes white and swells 12% over 0.9 s; `audio.js` plays a `gate` cue and the pad rumbles.
+- Looked at (`tools/capture-gates.mjs`, day and night): from 300 m in a straight line both gates read as cyan rings (about 25 px); at 120 m the ring sits over the striped ramp lip; the chase camera frames a committed car flying through it with the S below. Two bugs found by looking: the ring stood edge-on (the track basis R, U, T is left-handed; R must be negated, as `circuit.js` does), and the first chevrons floated loose of the ring.
+
+**Task 12: racecraft and tiers (done).**
+- Tiers: `TIERS` in `race.js` (easy 0.94, pro 0.98, elite 1) scales each rival's `pace`; a Difficulty row in the menu (after Ghost, so `assist` stays first). No rubber-banding; "AI times ignore the player" still passes. Test "rivals lap slower on Easy than on Pro, and slower on Pro than on Elite" (Launch, mean best lap of laps 2–3) fails with all tiers at 1.
+- The rival grid is shuffled per seed. In skill order Airfield was a procession.
+- Air lines: a driver flies its `nerve` share of lips through an accumulator (`daring += nerve`, fly when it reaches 1) instead of a coin flip per lip, and keeps 0.6 gas in reserve for a planned flight.
+- Racecraft (`driver.js`):
+  - Follow is kinematic (`keepBack`: brake at 7 m/s² to arrive 7 m behind). A car still overlapping the one it is passing keeps the full 7 m.
+  - A pass starts only when the car is not already passing. Under braking it needs a later braking point than the rival's (`late`; the player counts as 6). Off a straight it needs to be within 16 m, at under 6 m/s closing.
+  - Defend: a chaser within 0.6 s and a corner 70 m ahead move the bias toward the inside for 1 s, at most once per 4 s.
+  - Side by side: `SPACE` 3.2 m, judged on the gap 0.5 s ahead from both cars' lateral speeds. When the rule overrides the target, the bias is pinned to it and the slope is zeroed, so heading and position agree. Committed air-line cars keep the old rule; with the prediction it pushed them off their lane in the lap-1 run-up.
+  - Draft: on straights a follower 7–45 m back tucks in behind.
+- Bugs found by tracing incidents, each fixed:
+  - Pass, defend and tuck goals subtracted the current bias, so a passing car settled halfway to its pass lane and clipped the rival (8 of 30 Easy contacts at Proving 2645). Goals are now absolute bias targets; defend measures against the line at the corner it defends.
+  - The bias jumped between ±2.5 m/s when its goal flipped. At 70 m/s the steering could not follow that heading step: the Airfield tuck overshot 4.5 m into the wall. The bias now moves at up to 2.5 m/s with 4 m/s² of lateral acceleration.
+  - Landings: for 0.5 s after touchdown the steering error ramps in from the car's own lane and heading (the Jump crest landed 1.3 m off the line at 68 m/s and fishtailed). An air-line car that lands on a straight holds its landing lane to the end of the span, then rejoins at the bias rate; before, it chased the ground line through the chicane under the jump and hit the wall at 850 (9 of 10 Proving wall stops).
+  - Takeoff: the launch hold (no side-by-side override, zero slope) now runs to 15 m past the lip, where the car is still on the ramp. The override fired there and threw AAL diagonally off the lip.
+  - Run-up: no passes, tucks or defends in the 200 m before a lip, so ground cars reach the ground lane. A committed car aborts when a slower uncommitted car within 60 m sits in its lane and it can still brake to the ground lip speed. Two lap-1 mid-air collisions wrecked cars in the chicane; a broader abort (any car to follow) cut Proving passes from 32 to 7 and was dropped.
+  - The boost hold ended whenever a car had traffic close ahead, so an attacking car fired 1-tick bursts (NAI 39 in a race, the burst test failed at 13 per lap). The hold now survives an attack (NAI 9).
+  - `steerTo` yaw-rate gain 0.7 → 2.0. Offset lanes get their own corner speed (`arc`), and a bias-pushed lane stops 1.2 m short of the limit.
+- Phase 2b prep: barrier offsets are read through `wallAt(track, i, side)` in `drive.js` (`nearestRoad`, `roadAt`, `tools/exploits.mjs`), so Task 25 can swap in `wallL`/`wallR`. The corridor rule outside air spans is unchanged and height-independent.
+- Tried and dropped: a speed-scaled steering margin (99–131 wall stops per 6 GPs) and a grip-limited yaw demand (a Proving TT wall stop).
+
+**Task 13: AI benchmark (done).**
+- `tools/ai-bench.mjs N venue` runs N seeded GPs per tier through `raceStats` and prints one JSON per tier: lap ratio (Elite against the line, Easy and Pro against Elite), held passes, player-contact episodes (autopilot as the player, while it is still racing), stuck cars, air lines per driver (fewest per race), wins. Bands: Elite 0.95–1.08 of the line, Easy 1.025–1.08 and Pro 1.003–1.04 of Elite; held ≥ 4, contacts ≤ 3, stuck 0, every driver ≥ 1 air line on venues with spans. Exits 1 on any failure.
+- `node tools/ai-bench.mjs 20 <venue>`:
+
+  | Venue | Tier | Lap check | Held | Contacts | Result |
+  |---|---|---|---|---|---|
+  | Proving | Easy | 1.037 | 30.5 | 2.2 | PASS |
+  | Proving | Pro | 1.011 | 27.4 | 1.9 | PASS |
+  | Proving | Elite | 0.964 | 29.1 | 1.6 | PASS |
+  | Launch | Easy | 1.044 | 9.3 | 1.6 | PASS |
+  | Launch | Pro | 1.015 | 5.7 | 1.4 | PASS |
+  | Launch | Elite | 1.029 | 6.0 | 1.0 | PASS |
+  | Airfield | Easy | 1.043 | 5.3 | 2.3 | PASS |
+  | Airfield | Pro | 1.013 | 3.0 | 1.5 | FAIL held |
+  | Airfield | Elite | 1.056 | 2.9 | 1.1 | FAIL held |
+
+  Proving air lines per race: every driver flies 2 or more (VOG 2.1 to FER 4.5 on average).
+- `race-gate 20`: Proving PASS (FER 10, REY 5, AAL 4, YOU 1; 32.0 passes), Launch PASS (REY 6, NAI 4, AAL 4, HAN 3, VOG 2, FER 1; 6.8), Airfield FAIL on passes only (3.6 against 5; REY 6, NAI 4, AAL 3, HAN 3, OKY 2, VOG 2). 0 resets, wrecks or DNFs on all three; 20 distinct orders each.
+- Open: Airfield passing. Clean racing removed the crash chaos that used to produce passes, and every car has the same straight-line speed (tiers and skill only change corner speed; the draft pays gas, not speed). Proposed product call: a modest slipstream drag reduction.
+- `npm test` 91 of 91. Exploits PASS on all three venues. Wall stops (a speed loss over 10 m/s on a wall, 6 GPs): Proving 0, Launch 1, Airfield 3. TT bot laps: Proving 84.40 / 81.96 / 76.71, Airfield 79.27 / 76.32 / 76.32, Launch 69.83 / 66.89 / 67.27, no wall stops or respawns.
+
+**Next:** Task 14 (bake terrain, medals, author ghosts, `SIM_VERSION` 10 → 11, `npm test`, `race-gate 20` per venue), then the Phase 2 gate report (gas re-measure on the keyboard rig, browser captures of both air lines and the wall-ride).

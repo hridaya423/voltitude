@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
-import { createRace, stepRace, createInput, eventsFor, botInput, nearMisses } from '../src/sim/race.js';
+import { createRace, stepRace, createInput, eventsFor, botInput, nearMisses, TIERS } from '../src/sim/race.js';
 import { createCar, placeCar, TUNING } from '../src/sim/drive.js';
 import { buildCircuit } from '../src/sim/circuit.js';
 import { turtle, arc } from '../tools/turtle.mjs';
@@ -55,6 +55,18 @@ test('the field is close and the order changes from race to race', () => {
     assert.ok(race.swaps >= 8, `seed ${seed}: ${race.swaps} passes`);
   }
   assert.ok(orders.size >= 3, `${orders.size} distinct finishing orders in 4 races`);
+});
+
+test('rivals lap slower on Easy than on Pro, and slower on Pro than on Elite', () => {
+  const launch = loadWorld('launch'), event = eventsFor(launch.track).find((e) => e.id === 'gp');
+  const lap = Object.fromEntries(Object.keys(TIERS).map((tier) => {
+    const race = createRace(launch, { event, seed: 1, tier }), inp = createInput();
+    while (!race.entries.every((e) => e.done) && race.tick < 120 * 400) { botInput(race, inp, 0.97); stepRace(race, inp); race.events.length = 0; }
+    const best = race.entries.slice(1).map((e) => Math.min(...e.laps.slice(1)));
+    return [tier, best.reduce((a, b) => a + b, 0) / best.length / 120];
+  }));
+  assert.ok(lap.easy > lap.pro * 1.01, `easy ${lap.easy.toFixed(2)} s against pro ${lap.pro.toFixed(2)} s`);
+  assert.ok(lap.pro > lap.elite * 1.005, `pro ${lap.pro.toFixed(2)} s against elite ${lap.elite.toFixed(2)} s`);
 });
 
 function put(c, s, speed, lat) {
@@ -292,4 +304,44 @@ test('a bot holds the wall-ride bank at more than 40 m/s for 3 s and earns wall 
   assert.ok(best >= 120 * 3, `longest wall-ride ${(best / 120).toFixed(1)} s`);
   assert.equal(respawns, 0);
   assert.ok(race.earned.wall > 0.15, `wall gas ${race.earned.wall?.toFixed(2)}`);
+});
+
+function gateOval() {
+  const nodes = [[0, 0, 0, 0, 10, null], ...turtle(0, 0, 0, 0, 10, [
+    [20], [280, 0, 0, { gate: { h: 6, r: 3, at: 130 } }], [arc(80, 180), 180], [300, 0, 0, { sector: 'Back' }], [arc(80, 180), 180],
+  ])].slice(0, -1);
+  return { track: buildCircuit({ w: 10, nodes }), terrain: { height: () => -50 } };
+}
+
+function flyThroughGate(w, lat, tries = 1) {
+  const { track } = w, [{ i, h }] = track.gates;
+  const race = createRace(w, { event: eventsFor(track).find((e) => e.id === 'tt') });
+  const inp = createInput(), c = race.car;
+  while (race.phase !== 'racing') stepRace(race, inp);
+  const gates = [];
+  for (let n = 0; n < tries; n++) {
+    placeCar(c, track, i - 6, 40, lat);
+    const k = (i - 6) * 3;
+    c.x += track.U[k] * h; c.y += track.U[k + 1] * h; c.z += track.U[k + 2] * h;
+    for (let t = 0; t < 30; t++) {
+      stepRace(race, inp);
+      gates.push(...race.events.filter((e) => e.type === 'gate'));
+      race.events.length = 0;
+    }
+  }
+  return { earned: race.earned.gate ?? 0, gates: gates.length };
+}
+
+test('a flight gate pays 0.25 once per lap to a car through its centre, and nothing to a car that misses by r + 1', () => {
+  const w = gateOval(), [gate] = w.track.gates;
+  assert.ok(gate && gate.h === 6 && gate.r === 3, JSON.stringify(w.track.gates));
+  const hit = flyThroughGate(w, 0);
+  assert.equal(hit.earned, 0.25);
+  assert.equal(hit.gates, 1);
+  const twice = flyThroughGate(w, 0, 2);
+  assert.equal(twice.earned, 0.25);
+  assert.equal(twice.gates, 1);
+  const miss = flyThroughGate(w, gate.r + 1);
+  assert.equal(miss.earned, 0);
+  assert.equal(miss.gates, 0);
 });

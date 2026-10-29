@@ -24,7 +24,7 @@ export function encodeRun(race, bytes) {
   let s = '';
   const u = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.length);
   for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
-  return { v: SIM_VERSION, event: race.event.id, assist: race.assist, seed: race.seed, total: race.total, splits: race.splits, laps: race.laps, inputs: btoa(s) };
+  return { v: SIM_VERSION, event: race.event.id, assist: race.assist, seed: race.seed, tier: race.tier, total: race.total, splits: race.splits, laps: race.laps, inputs: btoa(s) };
 }
 
 export function decodeInputs(run) {
@@ -39,7 +39,7 @@ export function createGhost(world, run) {
   const inputs = decodeInputs(run);
   const event = eventsFor(world.track).find((e) => e.id === run.event);
   if (!event) return null;
-  const race = createRace(world, { event, assist: run.assist, seed: run.seed });
+  const race = createRace(world, { event, assist: run.assist, seed: run.seed, tier: run.tier });
   const inp = createInput();
   let i = 0;
   const frames = inputs.length / STRIDE;

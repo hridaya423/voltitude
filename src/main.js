@@ -18,6 +18,7 @@ import { createTrackside } from './render/trackside.js';
 import { createFacility } from './render/facility.js';
 import { createGrandstands } from './render/crowd.js';
 import { createDust, createFireworks } from './render/fx.js';
+import { createGates } from './render/gates.js';
 import { createChaseCamera, createBroadcastCamera } from './render/camera.js';
 import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
@@ -36,7 +37,7 @@ function store(key, v) {
   try { localStorage.setItem(key, JSON.stringify(v)); } catch { }
 }
 
-const defaults = { assist: true, invertPitch: false, ghost: true, units: 'mph', quality: 'medium', reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, rumble: true, session: 'night', volume: 0.7, music: 0.7, keys: structuredClone(DEFAULT_KEYS) };
+const defaults = { tier: 'pro', assist: true, invertPitch: false, ghost: true, units: 'mph', quality: 'medium', reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, rumble: true, session: 'night', volume: 0.7, music: 0.7, keys: structuredClone(DEFAULT_KEYS) };
 const settings = Object.assign(structuredClone(defaults), load(STORE, {}));
 settings.keys = Object.assign(structuredClone(DEFAULT_KEYS), settings.keys);
 if (params.has('quality')) settings.quality = params.get('quality');
@@ -104,6 +105,8 @@ scene.add(facility.group, stands.group);
 const dust = createDust(terrain.height);
 scene.add(dust.points);
 const fireworks = createFireworks();
+const gates = createGates(world, (m) => skyFog(m, sunUniform, fogDensity));
+scene.add(gates.group);
 scene.add(fireworks.points);
 const finishAtPos = new THREE.Vector3();
 const standGap = (h) => stands.sites.reduce((m, i) => Math.min(m, Math.abs(i - h)), Infinity);
@@ -369,7 +372,7 @@ function startRace(ev = current) {
   sectorColors = [];
   current = ev;
   lastSeed = ev.kind === 'gp' ? 1 + Math.floor(Math.random() * 1e6) : 1;
-  race = createRace(world, { event: ev, assist: settings.assist, seed: lastSeed });
+  race = createRace(world, { event: ev, assist: settings.assist, seed: lastSeed, tier: settings.tier });
   recorder = createRecorder();
   ghost = settings.ghost ? createGhost(world, ghostRun(ev)) : null;
   const ref = ev.kind === 'tt' ? lapSplits(ghostRun(ev)) : null;
@@ -553,6 +556,7 @@ function handleEvents() {
       case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, 'good'); audio.event('overtake', race.pos === 1 ? 1 : 0); } else audio.event('overtaken'); updateTower(); break;
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
       case 'near_miss': audio.event('near_miss'); break;
+      case 'gate': gates.pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
       case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
       case 'land': {
@@ -788,6 +792,7 @@ function loop(now) {
     venueArt?.update(time, camera, NIGHT ? 1 : 0);
     stands.update(time, dt, NIGHT ? 1 : 0, camera);
     fireworks.update(time, renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360));
+    gates.update(time, dt, renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360));
   }
   c.clearance = c.mode === 0 ? 6 : 0; c.contact = c.mode !== 0; c.wy = c.yawRate; c.bank = 0; c.impact = 0;
   audio.listen(camera);

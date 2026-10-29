@@ -90,7 +90,7 @@ export function steerTo(c, track, target, slope, kff) {
   const yaw = -(c.ox * c.ux + c.oy * c.uy + c.oz * c.uz);
   const dmax = Math.atan(WHEELBASE * kmax) + 0.03;
   const dcmd = cl(Math.atan(WHEELBASE * cl(kff, -kmax, kmax)) - 0.45 * eHead - cl(Math.atan((0.5 * eLat) / Math.max(sp, 8)), -0.12, 0.12), -dmax, dmax);
-  const delta = cl(dcmd + ((WHEELBASE / Math.max(sp, 8)) * 0.7) * (sp * (Math.tan(dcmd) / WHEELBASE) - yaw), -dmax, dmax);
+  const delta = cl(dcmd + ((WHEELBASE / Math.max(sp, 8)) * 2.0) * (sp * (Math.tan(dcmd) / WHEELBASE) - yaw), -dmax, dmax);
   const beta = Math.atan2(c.slip, Math.max(Math.abs(c.vf), 3));
   return cl((delta + cl(1.5 * (beta - cl(beta, -0.1, 0.1)), -0.3, 0.3) * cl((sp - 15) / 10, 0, 1)) / steerLimit(sp));
 }
@@ -145,12 +145,15 @@ const AIR_PAD = 40;
 const WALL_HIT = 1, WALL_HARD = 5, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
 const WALL_TOP = 1.16;
 
+export const wallAt = (track, i, side) => track.halfW[i];
+
 function nearestRoad(track, x, y, z, hint) {
   const i = nearestIndex(track, x, y, z, hint, 10);
   const span = track.air?.[i];
   if (!span) return i;
   const { H, R } = track, k = i * 3;
-  if (Math.abs((x - H[k]) * R[k] + (y - H[k + 1]) * R[k + 1] + (z - H[k + 2]) * R[k + 2]) <= track.halfW[i] + 0.4) return i;
+  const lat = (x - H[k]) * R[k] + (y - H[k + 1]) * R[k + 1] + (z - H[k + 2]) * R[k + 2];
+  if (Math.abs(lat) <= wallAt(track, i, Math.sign(lat)) + 0.4) return i;
   const { from, to } = track.airs[span - 1], len = (to - from + track.lap) % track.lap;
   return nearestIndex(track, x, y, z, (from + (len >> 1)) % track.lap, (len >> 1) + AIR_PAD);
 }
@@ -159,7 +162,7 @@ const sf = { hit: false, i: 0, hs: 0, lat: 0, w: 0, nx: 0, ny: 1, nz: 0, rx: 0, 
 
 function roadAt(track, x, y, z, hint, s) {
   const i = nearestRoad(track, x, y, z, hint);
-  const { H, T, U, R, n, gap, halfW } = track;
+  const { H, T, U, R, n, gap } = track;
   let k = i * 3;
   let d = (x - H[k]) * T[k] + (y - H[k + 1]) * T[k + 1] + (z - H[k + 2]) * T[k + 2];
   let j = d >= 0 ? i : i - 1;
@@ -181,8 +184,8 @@ function roadAt(track, x, y, z, hint, s) {
   s.hs = dx * ux + dy * uy + dz * uz + HEART;
   s.nx = ux; s.ny = uy; s.nz = uz;
   s.rx = rx; s.ry = ry; s.rz = rz;
-  s.w = halfW[j];
-  s.hit = Math.abs(s.lat) <= halfW[j] + 0.4 && s.hs > -2;
+  s.w = wallAt(track, j, Math.sign(s.lat));
+  s.hit = Math.abs(s.lat) <= s.w + 0.4 && s.hs > -2;
   s.road = true;
   return s;
 }

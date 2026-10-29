@@ -1,10 +1,11 @@
 import { createCar, placeCar, stepCar, DT } from './drive.js';
-import { ROSTER, PLAYER } from './drivers.js';
+import { ROSTER, PLAYER, rng } from './drivers.js';
 import { createDriver, drive, lineFor } from './driver.js';
 import { resolveContacts, clearance } from './contact.js';
 import { GAIN, earn, flushGains, landingGain } from './gas.js';
 
 export const SIM_VERSION = 10;
+export const TIERS = Object.freeze({ easy: 0.94, pro: 0.98, elite: 1 });
 export const COUNTDOWN = 240;
 export const lightTick = (n) => -220 + 40 * (n - 1);
 const CP_RADIUS = 45;
@@ -70,16 +71,16 @@ function initEntry(e, world, event, slot) {
   const hint = car.hint;
   return Object.assign(e, {
     car, next: 0, splits: [], lastIdx: g.i, lastSpeed: 0, cpIdx: g.i, cpSpeed: 0, used: new Set(), respawnIn: 0, lost: 0, resetHeld: false,
-    wrecks: 0, respawns: 0, tricks: 0, maxSpeed: 0, airTime: 0, still: 0, earned: {},
+    wrecks: 0, respawns: 0, tricks: 0, maxSpeed: 0, airTime: 0, still: 0, earned: {}, gateLaps: [],
     done: false, total: 0, laps: [], lapStart: 0, prog: track.closed && hint > track.lap / 2 ? hint - track.lap : hint, lastHint: hint,
     pos: slot + 1, grid: slot + 1,
   });
 }
 
-export function createRace(world, { event, assist = true, seed = 1 }) {
+export function createRace(world, { event, assist = true, seed = 1, tier = 'pro' }) {
   const { track } = world;
   const race = initEntry({
-    world, event, assist, seed, tick: 0, raceTick: -COUNTDOWN, phase: 'countdown',
+    world, event, assist, seed, tier, tick: 0, raceTick: -COUNTDOWN, phase: 'countdown',
     events: [], gasPending: {}, index: 0, swaps: 0, passes: 0, contacts: 0, finished: 0, identity: PLAYER,
   }, world, event, event.kind === 'gp' ? GRID_SLOT : 0);
   race.entries = [race];
@@ -87,10 +88,14 @@ export function createRace(world, { event, assist = true, seed = 1 }) {
   race.rel = new Map();
   race.held = new Map();
   if (track.closed && event.kind === 'gp') {
-    const slots = [0, 1, 2, 3, 4, 5, 6, 7].filter((s) => s !== GRID_SLOT);
+    const slots = [0, 1, 2, 3, 4, 5, 6, 7].filter((s) => s !== GRID_SLOT), draw = rng(seed * 2246822519 + 1);
+    for (let n = slots.length - 1; n > 0; n--) {
+      const m = Math.floor(draw() * (n + 1));
+      [slots[n], slots[m]] = [slots[m], slots[n]];
+    }
     ROSTER.forEach((profile, k) => {
       const e = initEntry({ world, event, index: k + 1, identity: profile }, world, event, slots[k]);
-      e.driver = createDriver(profile, seed * 7919 + k * 104729);
+      e.driver = createDriver(profile, seed * 7919 + k * 104729, TIERS[tier]);
       race.entries.push(e);
     });
     race.order = race.entries.slice().sort((a, b) => a.grid - b.grid);
@@ -157,6 +162,7 @@ function stepEntry(race, e, inp) {
   if (c.mode === 0) e.airTime++;
   e.maxSpeed = Math.max(e.maxSpeed, c.speed);
   progress(race, e);
+  if (track.gates?.length) gatePasses(race, e, px, py, pz);
 
   if (e === race && c.mode === 1) {
     for (const p of track.pads) {
@@ -200,6 +206,23 @@ function stepEntry(race, e, inp) {
     }
     if (e.next >= race.event.cps.length) finishEntry(race, e);
     else if (e === race) emit(race, 'check', { index: e.splits.length - 1, t: race.raceTick });
+  }
+}
+
+function gatePasses(race, e, px, py, pz) {
+  const { H, U, T, gates } = race.world.track, c = e.car;
+  for (let g = 0; g < gates.length; g++) {
+    if (e.gateLaps[g] === e.laps.length) continue;
+    const { i, h, r } = gates[g], k = i * 3;
+    const cx = H[k] + U[k] * h, cy = H[k + 1] + U[k + 1] * h, cz = H[k + 2] + U[k + 2] * h;
+    const d0 = (px - cx) * T[k] + (py - cy) * T[k + 1] + (pz - cz) * T[k + 2];
+    const d1 = (c.x - cx) * T[k] + (c.y - cy) * T[k + 1] + (c.z - cz) * T[k + 2];
+    if (d0 >= 0 || d1 < 0) continue;
+    const f = d0 / (d0 - d1);
+    if (Math.hypot(px + (c.x - px) * f - cx, py + (c.y - py) * f - cy, pz + (c.z - pz) * f - cz) > r) continue;
+    e.gateLaps[g] = e.laps.length;
+    earn(race, e, 'gate', GAIN.gate);
+    if (e === race) emit(race, 'gate', { index: g });
   }
 }
 
