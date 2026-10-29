@@ -1031,3 +1031,25 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - Boot to driving (`tools/perf.mjs` `bootMs`, autostart): Proving 4.4 s, Airfield 5.2 s, Launch 6.4 s, Proving night 4.0 s. Under 10 s with no change.
 - Looked at: before and after (scratchpad `t21/sheet.jpg`), the sector bar after two purple sectors (`t21/sector3-clock.png`), and all three states forced (`t21/sector4-clock.png`).
 - `npm test` 115 of 115.
+
+**Task 22: game-feel audit (done).**
+- `docs/feel.md`: Swink's six parts for steer, boost, fly and land, with the current camera, shake, sound, rumble and time-scale values from the code, then a tuning log of one change at a time.
+- Gaps found:
+  - boost ignition had no onset (FOV eased in over 0.4 s)
+  - a perfect landing shook less than a clean one (0.25 against 0.35)
+  - kerbs had sound but no rumble
+  - lift start had no rumble
+  - near misses did not read "CLOSE" as the design asks
+- Changes, each with evidence:
+  1. Boost ignition FOV punch, +3.8° on the first frame, plus rumble. Seeded before and after clips from the same race; FOV trace.
+  2. Perfect landing gets a −2.4° thump, shake 0.3 and stronger rumble; clean drops to a −1.2° thump and shake 0.2. Clips and FOV trace.
+  3. Kerb rumble pulses with speed. Rumble-call log over the same keyboard drive: 0 → 18 pulses.
+  4. Lift-start rumble pulse. Same log.
+  5. Near-miss gain reads "+12 CLOSE". Probe: 13.4:1, 14 px.
+- Time scale stays unused on purpose (reason in `feel.md`).
+- Tools (scratchpad):
+  - `clip.mjs` records a 3 s clip around a boost or landing toast. It seeds `Math.random` and uses a CDP screencast, because Playwright's video recorder could not spawn its ffmpeg here.
+  - `drivelog.mjs` drives by keyboard and logs rumble calls.
+  - Clips with fewer than 150 frames were discarded and re-recorded: the delegates' renders pushed the load average to 15.
+- Found: a hard steer onto a kerb at speed throws the car airborne over the kerb lip, so the kerb sound and rumble skip it. Logged in `feel.md`; not changed.
+- `npm test` 115 of 115.
