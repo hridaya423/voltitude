@@ -131,7 +131,7 @@ for (const o of [skyMesh, terrainGroup, course.group, venueArt?.group].filter(Bo
 const carView = createCarView({ quality: settings.quality, envMap, headlights: NIGHT });
 scene.add(carView.root);
 post.track(carView.root);
-const garage = createGarage({ renderer, night: NIGHT, settings, sunUniform, fogDensity });
+const garage = createGarage({ renderer, night: NIGHT, settings, sunUniform, fogDensity, skyTex });
 scene.add(garage.group);
 const garageKeep = [camera, skyMesh, carView.root, sun.lights[0].parent];
 const rivalViews = venue.circuit ? ROSTER.map((r) => { const v = createCarView({ quality: 'low', envMap, color: r.color, lite: true }); v.root.visible = false; v.root.traverse((o) => { o.layers.set(1); o.castShadow = false; }); scene.add(v.root); return v; }) : [];

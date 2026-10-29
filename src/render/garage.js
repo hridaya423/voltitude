@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
 import { drawBoard, drawTyre, drawFloor, drawTelemetry, BOARD, TYRE, FLOOR, TELE } from './garage-screens.js';
 import { createPeople } from './people.js';
+import { skyUniforms, SKY_GLSL } from './sky.js';
 
 export const ANCHOR = new THREE.Vector3(0, 3000, 0);
 const TABLE_H = 0.08, CAR_Y = 0.59 + TABLE_H;
@@ -74,7 +75,7 @@ function bakeRoom(renderer, night) {
   return env;
 }
 
-export function createGarage({ renderer, night, settings, sunUniform, fogDensity }) {
+export function createGarage({ renderer, night, settings, sunUniform, fogDensity, skyTex }) {
   const group = new THREE.Group();
   group.position.copy(ANCHOR);
   const env = bakeRoom(renderer, night);
@@ -107,7 +108,7 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
   const cyl = (key, r, h, x, y, z, seg = 18) => put(key, new THREE.CylinderGeometry(r, r, h, seg), x, y + h / 2, z);
 
   const W = 13, Z0 = -9.5, Z1 = 11.7, H = 8.8;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, Z1 - Z0).rotateX(-Math.PI / 2), std({ map: floorTex, roughness: 0.34, metalness: 0.1, envMapIntensity: night ? 1.25 : 0.45 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, Z1 - Z0).rotateX(-Math.PI / 2), std({ map: floorTex, roughness: 0.55, metalness: 0.1, envMapIntensity: night ? 1.25 : 0.45 }));
   floor.position.set(0, 0, (Z0 + Z1) / 2);
   floor.receiveShadow = true;
   group.add(floor);
@@ -248,13 +249,22 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
     const x = bp.getX(i), y = bp.getY(i), z = bp.getZ(i);
     buv.setXY(i, 0.6 + (Math.atan2(x, z) + 0.38) / (Math.PI * 2), 0.5 + Math.atan2(y - 1.5, R) / Math.PI);
   }
-  const backMat = new THREE.MeshBasicMaterial({ color: night ? new THREE.Color(0.5, 0.42, 0.5) : new THREE.Color(1.6, 1.5, 1.4), side: THREE.BackSide, toneMapped: false, fog: false });
-  new THREE.TextureLoader().loadAsync('assets/sky/golden_sky_4k.jpg').then((t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; backMat.map = t; backMat.needsUpdate = true; });
+  const backMat = night ? new THREE.ShaderMaterial({
+    uniforms: { ...skyUniforms, tSky: { value: skyTex } },
+    vertexShader: 'varying vec3 vDir; void main() { vDir = position - vec3(0.0, 1.5, 0.0); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `varying vec3 vDir; uniform sampler2D tSky; ${SKY_GLSL} void main() {
+      vec3 d = normalize(vDir);
+      float l = dot(skyDecode(texture2D(tSky, skyUv(vec3(d.x, max(d.y, 0.003), d.z))).rgb), vec3(0.2126, 0.7152, 0.0722));
+      gl_FragColor = vec4(mix(vec3(0.25, 0.16, 0.1), vec3(0.01, 0.016, 0.045), smoothstep(0.0, 0.12, d.y)) + max(l - 1.2, 0.0), 1.0);
+    }`,
+    side: THREE.BackSide,
+  }) : new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.5, 1.4), side: THREE.BackSide, toneMapped: false, fog: false });
+  if (!night) new THREE.TextureLoader().loadAsync('assets/sky/golden_sky_4k.jpg').then((t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; backMat.map = t; backMat.needsUpdate = true; });
   const backdrop = new THREE.Mesh(backGeo, backMat);
   group.add(yard, sand, backdrop);
 
   const table = new THREE.Group();
-  const deck = new THREE.Mesh(new THREE.CylinderGeometry(2.95, 2.95, 0.02, 64).translate(0, TABLE_H - 0.01, 0), std({ color: '#16181d', roughness: 0.28, metalness: 0.85 }));
+  const deck = new THREE.Mesh(new THREE.CylinderGeometry(2.95, 2.95, 0.02, 64).translate(0, TABLE_H - 0.01, 0), std({ color: '#16181d', roughness: 0.5, metalness: 0.7, envMapIntensity: 0.5 }));
   deck.receiveShadow = true;
   const leds = [];
   for (let i = 0; i < 48; i++) {
@@ -269,10 +279,10 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
 
   let people = null;
   const CREW = [
-    { x: 5.0, z: 7.9, yaw: 1.05, char: 0, seed: [0.01, 0.05, 0.72, 0.64] },
-    { x: -7.6, z: 11.2, yaw: 0.3, char: 1, seed: [0.13, 0.6, 0.72, 0.42] },
-    { x: -9.4, z: -3.6, yaw: 0.82, char: 2, seed: [0.19, 0.27, 0.72, 0.21] },
-    { x: 4.1, z: -0.8, yaw: -1.3, char: 3, seed: [0.17, 0.62, 0.72, 0.22] },
+    { x: 6.6, z: 15.4, yaw: 1.05, char: 0, seed: [0.01, 0.05, 0.72, 0.64] },
+    { x: -7.4, z: 15.9, yaw: 0.3, char: 1, seed: [0.13, 0.6, 0.72, 0.42] },
+    { x: -9.2, z: 17.1, yaw: 0.82, char: 2, seed: [0.19, 0.27, 0.72, 0.21] },
+    { x: 8.4, z: 16.6, yaw: -1.3, char: 3, seed: [0.17, 0.62, 0.72, 0.22] },
   ];
   createPeople(renderer, sunUniform, fogDensity).then((p) => {
     people = p;
@@ -291,9 +301,11 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
     [spot('#ffe4c4', 520, 0.42, [-5.4, 5.6, -4.8], [0, 0.6, 0]), 520],
     [spot('#b9d2ff', 700, 0.4, [4.6, 3.4, 5.8], [0, 0.7, 0]), 700],
     [spot('#f4f6ff', 150, 1.0, [0, 5.3, 0], [0, 0, 0]), 150],
-    [spot('#ffb070', 260, 0.5, [0, 3.6, Z1 + 14], [0, 0, -2], 1.2), 260],
+    [spot('#fff1e0', 160, 0.42, [5.6, 3.2, -5.2], [0, 0.6, 0]), 160],
+    [spot('#ffb070', 140, 0.14, [0, 3.6, Z1 + 14], [0, 0.6, 0], 1.2), 140],
   ];
   const lights = [spot('#ffd9d4', 260, 1.0, [0, 5.2, 8.6], [0, 0.4, -0.5]), spot('#fff6e6', 700, 0.8, [0, 7.8, -2], [0, 0, 5.9]), spot('#ffe8d0', 460, 0.55, [-1.6, 6.8, 2.7], [-4.7, 1.2, 2.2])];
+  for (const l of [studio[0][0], studio[2][0], studio[3][0], lights[0]]) { l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -0.0004; }
   const base = [260, night ? 700 : 420, 460];
   const level = [1, 0.2, 0.2], want = [1, 0.2, 0.2];
   const spots = [...studio.map(([l]) => l), ...lights];
