@@ -17,14 +17,16 @@ function plumeGeometry(count) {
     d.fromArray(n.dir).normalize();
     a.set(0, 1, 0); if (Math.abs(d.y) > 0.9) a.set(1, 0, 0);
     a.cross(d).normalize(); b.crossVectors(d, a);
-    const o = along.length;
-    for (let r = 0; r <= 1; r++) for (let i = 0; i < seg; i++) {
-      const t = (i / seg) * Math.PI * 2;
-      base.push(...n.pos); dir.push(d.x, d.y, d.z);
-      rad.push((a.x * Math.cos(t) + b.x * Math.sin(t)) * 0.075, (a.y * Math.cos(t) + b.y * Math.sin(t)) * 0.075, (a.z * Math.cos(t) + b.z * Math.sin(t)) * 0.075);
-      along.push(r); nid.push(k);
+    for (const s of [0.075, 0.05, 0.025]) {
+      const o = along.length;
+      for (let r = 0; r <= 1; r++) for (let i = 0; i < seg; i++) {
+        const t = (i / seg) * Math.PI * 2;
+        base.push(...n.pos); dir.push(d.x, d.y, d.z);
+        rad.push((a.x * Math.cos(t) + b.x * Math.sin(t)) * s, (a.y * Math.cos(t) + b.y * Math.sin(t)) * s, (a.z * Math.cos(t) + b.z * Math.sin(t)) * s);
+        along.push(r); nid.push(k);
+      }
+      for (let i = 0; i < seg; i++) { const j = (i + 1) % seg; idx.push(o + i, o + j, o + seg + i, o + j, o + seg + j, o + seg + i); }
     }
-    for (let i = 0; i < seg; i++) { const j = (i + 1) % seg; idx.push(o + i, o + j, o + seg + i, o + j, o + seg + j, o + seg + i); }
   });
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(base, 3));
@@ -47,17 +49,17 @@ function createPlume(lite) {
         int k = int(nid + 0.5);
         float len = uLen[k];
         vT = along; vP = uPow[k]; vN = nid;
-        vec3 p = position + dir * along * len + rad * (1.0 + along * (k < 4 ? 2.2 : 2.4));
+        vec3 p = position + dir * along * len + rad * (1.0 + along * (k < 4 ? 1.4 : 2.4));
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
     fragmentShader: /* glsl */ `
       uniform float uBoost; uniform float uTime; uniform vec3 uColor; varying float vT; varying float vP; varying float vN;
       void main() {
         if (vP < 0.01) discard;
-        float fade = pow(1.0 - clamp(vT, 0.0, 1.0), 1.6);
         float rear = step(vN, 3.5);
+        float fade = pow(1.0 - clamp(vT, 0.0, 1.0), 1.6 + 1.4 * rear);
         float flick = 0.85 + 0.15 * sin(uTime * 90.0 + vN * 7.0);
-        vec3 c = mix(uColor, vec3(1.0, 0.7, 0.95), uBoost * 0.35 * rear) * fade * flick * vP * (1.6 - 1.2 * rear);
+        vec3 c = mix(uColor, vec3(1.0, 0.7, 0.95), uBoost * 0.35 * rear) * fade * flick * vP * (0.55 - 0.4 * rear);
         gl_FragColor = vec4(c, 1.0);
       }`,
     transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,

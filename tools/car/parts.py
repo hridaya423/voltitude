@@ -97,10 +97,10 @@ def blade():
     ob.data.materials.append(mats.get('gloss'))
     y = ue - S.L / 2 + 0.002
     pts = [Vector((w, y, 0.872 + S.GROUND)) for w in np.linspace(-0.87, 0.87, 41)]
-    add('light_tail', sweep(pts, 0.004, 0.01), 'light_tail')
+    add('light_tail', sweep(pts, 0.004, 0.018), 'light_tail')
     for side in (1, -1):
-        pts = [Vector((w * side, y + 0.001, 0.872 + S.GROUND)) for w in np.linspace(0.62, 0.86, 9)]
-        add('lens', sweep(pts, 0.003, 0.012), 'lens')
+        pts = [Vector((w * side, y + 0.002, 0.872 + S.GROUND)) for w in np.linspace(0.62, 0.86, 9)]
+        add('lens', sweep(pts, 0.003, 0.02), 'lens')
 
 
 def tail():
@@ -132,7 +132,7 @@ def tail():
 
 def nozzles():
     shelf = [(-0.6, 0.44), (0.6, 0.44), (0.67, 0.565), (-0.67, 0.565)]
-    ob = add('nozzle_shelf', prism([(-w, v + S.GROUND) for w, v in shelf], S.L / 2 - 0.07, S.L / 2 + 0.015), 'carbon')
+    ob = add('nozzle_shelf', prism([(-w, v + S.GROUND) for w, v in shelf], S.L / 2 - 0.07, S.L / 2 + 0.015), 'black')
     ob.rotation_euler = (0, 0, math.pi / 2)
     for v in (0.478, 0.522):
         add('louvre', box((0, S.L / 2 + 0.018, v + S.GROUND), (1.2, 0.008, 0.006)), 'black')
@@ -148,10 +148,9 @@ def nozzles():
 def diffuser():
     lo, hi, hw = S.DIFFUSER
     u1 = S.L + 0.02
-    add('diffuser', box((0, u1 - 0.06 - S.L / 2, 0.108 + S.GROUND), (2 * hw + 0.05, 0.12, 0.024)), 'black')
     for w in (-hw - 0.012, -hw / 2, 0.0, hw / 2, hw + 0.012):
         t = 0.012 if abs(w) > hw else 0.008
-        add('strake', prism([(u - S.L / 2, v + S.GROUND) for u, v in ((4.08, 0.135), (u1, 0.096), (u1, hi + 0.005), (4.3, hi + 0.005))], w - t, w + t), 'carbon')
+        add('strake', prism([(u - S.L / 2, v + S.GROUND) for u, v in ((4.08, 0.135), (u1, 0.096), (u1 - 0.14, hi + 0.005), (4.3, hi + 0.005))], w - t, w + t), 'liner')
 
 
 def wing():
