@@ -259,8 +259,15 @@ export function createTerrain(terrain, sunUniform, fogDensity, textures, venue, 
     const ring = 2 * (nc + nr) - 4;
     const vc = nc * nr + ring;
     const P = new Float32Array(vc * 3), Nn = new Float32Array(vc * 3), C = new Float32Array(vc * 3), V = new Float32Array(vc), L = new Float32Array(vc), Rk = new Float32Array(vc);
+    const floorAt = (k) => {
+      let y = pos[k * 3 + 1];
+      if (st === 1 || roadD[k] > BAND) return y;
+      const i = k % res, j = (k - i) / res;
+      for (let b = Math.max(0, j - st); b <= Math.min(res - 1, j + st); b++) for (let a = Math.max(0, i - st); a <= Math.min(res - 1, i + st); a++) y = Math.min(y, pos[(b * res + a) * 3 + 1]);
+      return y;
+    };
     const put = (o, k, drop) => {
-      P[o * 3] = pos[k * 3]; P[o * 3 + 1] = pos[k * 3 + 1] - drop; P[o * 3 + 2] = pos[k * 3 + 2];
+      P[o * 3] = pos[k * 3]; P[o * 3 + 1] = floorAt(k) - drop; P[o * 3 + 2] = pos[k * 3 + 2];
       for (let q = 0; q < 3; q++) { Nn[o * 3 + q] = nor[k * 3 + q]; C[o * 3 + q] = col[k * 3 + q]; }
       V[o] = vis[k];
       L[o] = lake[k];

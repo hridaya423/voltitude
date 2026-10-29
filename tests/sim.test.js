@@ -67,6 +67,23 @@ for (const id of Object.keys(VENUES)) {
     assert.ok(worst > 0.1, `terrain ${(-worst).toFixed(2)} m above road at sample ${at}`);
   });
 
+  if (circuit) test(`${name}: terrain stays under the road edge and run-off and below the barrier tops, banks and jumps included`, () => {
+    const { P, R, U, gap, loopMask, wallL, wallR, lap } = world.track;
+    let edge = -Infinity, top = -Infinity, ei = '', ti = '';
+    for (let i = 0; i < lap; i++) {
+      if (gap[i] || loopMask[i]) continue;
+      const k = i * 3;
+      for (const side of [-1, 1]) {
+        const wall = side < 0 ? wallL[i] : wallR[i];
+        const over = (lat, up) => { const l = side * lat; return world.terrain.height(P[k] + R[k] * l + U[k] * up, P[k + 2] + R[k + 2] * l + U[k + 2] * up) - (P[k + 1] + R[k + 1] * l + U[k + 1] * up); };
+        for (let lat = 0; lat <= wall - 1; lat += 0.5) if (over(lat, 0) > edge) { edge = over(lat, 0); ei = `sample ${i}, ${side * lat} m`; }
+        if (over(wall + 0.3, 1.16) > top) { top = over(wall + 0.3, 1.16); ti = `sample ${i}, side ${side}`; }
+      }
+    }
+    assert.ok(edge < 0.05, `terrain ${edge.toFixed(2)} m above the road or run-off at ${ei}`);
+    assert.ok(top < -0.6, `terrain ${(top + 1.16).toFixed(2)} m up a 1.16 m barrier at ${ti}`);
+  });
+
   if (circuit) test(`${name}: the terrain lies just under the run-off`, () => {
     const { P, R, halfW, wallL, wallR, lap } = world.track;
     let high = -Infinity, deep = -Infinity, hi = -1, lo = -1;

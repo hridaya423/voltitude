@@ -200,7 +200,7 @@ export function erode(H, res, cell, drops, seed = 7) {
 }
 
 export const RAISE = 14;
-const RUN_SINK = 0.2, ROAD_SINK = 0.6, FILL = 8;
+const RUN_SINK = 0.2, ROAD_SINK = 0.6, FILL = 8, SHELF = 1.5;
 
 export function buildTerrain(track, shaped, T) {
   const g = grid(T);
@@ -231,7 +231,7 @@ export function buildTerrain(track, shaped, T) {
       if (a < pinD[k]) { pinD[k] = a; pin[k] = P[k3 + 1] + R[k3 + 1] * lat - (under ? ROAD_SINK : RUN_SINK); }
       return;
     }
-    const c = low[s] + slope * Math.max(0, d - w - 1);
+    const c = low[s] + slope * Math.max(0, d - w - 1 - SHELF * cell);
     if (c < ceil[k]) ceil[k] = c;
     if (!gap[s] && U[k3 + 1] > 0.97 && d < w + 30) {
       const f = P[k3 + 1] - 0.3 - 0.9 * Math.max(0, d - w - 2);
