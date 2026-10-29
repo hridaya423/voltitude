@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { UNIT_LUX } from './sky.js';
+
+export const EV100 = { day: 13.9, night: 7.8 };
+export const exposureFor = (night, s = night ? 'night' : 'day') => 0.18 * 2 ** 4.026 * UNIT_LUX[s] / (1.2 * 2 ** EV100[s]);
 
 const VERT = /* glsl */ `
 varying vec2 vUv;
@@ -177,9 +181,9 @@ void main() {
 }`;
 
 const DOWN = /* glsl */ `
-uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uThreshold; uniform float uKnee; uniform bool uPrefilter;
+uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uThreshold; uniform float uKnee; uniform bool uPrefilter; uniform float uExposure;
 varying vec2 vUv;
-vec3 tap(vec2 o) { return texture2D(tSrc, vUv + o * uTexel).rgb; }
+vec3 tap(vec2 o) { return texture2D(tSrc, vUv + o * uTexel).rgb * (uPrefilter ? uExposure : 1.0); }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 vec3 karis(vec3 a, vec3 b, vec3 c, vec3 d) {
   float wa = 1.0 / (1.0 + luma(a)), wb = 1.0 / (1.0 + luma(b)), wc = 1.0 / (1.0 + luma(c)), wd = 1.0 / (1.0 + luma(d));
@@ -288,8 +292,7 @@ void main() {
     }
     col = acc / wsum;
   }
-  col += texture2D(tBloom, vUv).rgb * uBloom;
-  col = agx(col * uExposure);
+  col = agx(col * uExposure + texture2D(tBloom, vUv).rgb * uBloom);
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(vec3(l), col, uSaturation);
   col = col * uGain + uLift * (1.0 - col);
@@ -354,7 +357,8 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
     tDepth: { value: null }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uVP: { value: new THREE.Matrix4() },
   };
   const fs = (fragmentShader, uniforms) => new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader, uniforms, depthTest: false, depthWrite: false });
-  const down = fs(DOWN, { tSrc: { value: null }, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 1.6 }, uKnee: { value: 0.8 }, uPrefilter: { value: true } });
+  const exposure = { value: exposureFor(night) };
+  const down = fs(DOWN, { tSrc: { value: null }, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 2.0 }, uKnee: { value: 1.0 }, uPrefilter: { value: true }, uExposure: exposure });
   const up = fs(UP, { tSrc: { value: null }, tPrev: { value: null }, uTexel: { value: new THREE.Vector2() }, uRadius: { value: 1 } });
   const velocity = fs(VELOCITY, { tDepth: shared.tDepth, tCar: { value: null }, uInvProj: shared.uInvProj, uCamWorld: shared.uCamWorld, uPrevVP: shared.uPrevVP });
   const gtao = fs(GTAO, { tDepth: shared.tDepth, uInvProj: shared.uInvProj, uFullTexel: { value: new THREE.Vector2() }, uRadius: { value: 1.5 }, uFocal: { value: new THREE.Vector2() }, uFrame: { value: 0 }, uPower: { value: 1.4 } });
@@ -363,7 +367,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
   const lut = makeLut(night);
   const comp = fs(COMPOSITE, {
     tDepth: shared.tDepth, uInvProj: shared.uInvProj, uCamWorld: shared.uCamWorld,
-    tScene: { value: null }, tBloom: { value: null }, tVel: { value: null }, tLut: { value: lut }, uBloom: { value: 0.08 }, uExposure: { value: 1 }, uTexel: { value: new THREE.Vector2() },
+    tScene: { value: null }, tBloom: { value: null }, tVel: { value: null }, tLut: { value: lut }, uBloom: { value: 0.08 }, uExposure: exposure, uTexel: { value: new THREE.Vector2() },
     uBlur: { value: 0 }, uSharpen: { value: 0.5 }, uAberration: { value: 0 }, uVignette: { value: 0.38 },
     uTime: { value: 0 }, uGrain: { value: 0.016 }, uLift: { value: new THREE.Vector3(0.006, 0.005, 0.01) }, uGain: { value: new THREE.Vector3(1.0, 1.0, 1.0) }, uSaturation: { value: 1.08 }, uFlash: { value: 0 }, uHeat: { value: 0 },
   });
