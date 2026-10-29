@@ -890,7 +890,7 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - `race.js` `towFor`: a car above 30 m/s on the ground, 4–25 m behind another and within 2.5 m of its line, gets `c.tow` up to 0.2, full from 8 m in, fading to 0 at 25 m and at 2.5 m to the side. `drive.js` scales air drag by `1 - c.tow`. Solo runs never set it, so TT and the author ghosts are unchanged (re-run byte-identical).
 - Test "a car in the wake of another on a straight gains on one in clean air" (rival held 6 m ahead for 2 s): 70.05 against 69.67 m/s; with the tow at 0 both are 69.67, so it fails.
 - Surprise: the tow alone did not create passes (Airfield held passes 3.55 → 3.9). Rivals in a wake were at full throttle only 12% of the time: the follow law turns the drag cut into lifting. The passes came from pulling out later: `TUCK` 16 → 10 m (Airfield held 5.6 with the tow at 0 or 0.2). The tow mostly rewards a player who stays flat out in a wake.
-- The tier test compared mean best laps in a full field, and traffic noise flipped Pro and Elite on Launch (70.31 against 70.65 s). It now races one rival with the player: Easy 72.2, Pro 68.67, Elite 67.91 s; with all tiers at 1 it fails.
+- The tier test compared mean best laps in a full field, and traffic noise flipped Pro and Elite on Launch (70.31 against 70.65 s). It now races one rival with the player: Easy 70.65, Pro 68.67, Elite 67.91 s; with all tiers at 1 it fails.
 
 **Phase 2 gate report (2026-10-29, after Task 14 and the tow).**
 
