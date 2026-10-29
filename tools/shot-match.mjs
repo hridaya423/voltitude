@@ -49,7 +49,9 @@ for (const session of sessions) {
   await page.addInitScript(() => { let s = 1; Math.random = () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; });
   await page.route('**/src/main.js', async (route) => {
     const res = await route.fetch();
-    const body = (await res.text()) + '\nwindow.__shot = { get race() { return race; }, carView, camera, THREE };';
+    const src = await res.text(), seeded = src.replace("lastSeed = ev.kind === 'gp' ? 1 + Math.floor(Math.random() * 1e6) : 1", 'lastSeed = 1');
+    if (seeded === src) throw new Error('shot-match: grid seed hook not found in main.js');
+    const body = seeded + '\nwindow.__shot = { get race() { return race; }, carView, camera, THREE };';
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
   await page.goto(`http://localhost:${port}/index.html?venue=proving&event=gp&autostart&autopilot&${session}`);
@@ -58,17 +60,24 @@ for (const session of sessions) {
   for (const [name, at, edge] of MOMENTS) {
     await page.waitForFunction((t) => window.__shot.race.raceTick >= t * 120, at, { timeout: 120000, polling: 16 });
     const file = join(out, `${session}-${name}.png`);
+    await page.screenshot({ path: file });
     const car = await page.evaluate(() => {
       const { carView, camera, THREE, race } = window.__shot;
       const box = new THREE.Box3(), v = new THREE.Vector3(), inv = new THREE.Matrix4();
       carView.root.updateMatrixWorld(true);
       inv.copy(carView.root.matrixWorld).invert();
-      carView.root.traverseVisible((o) => { if (!o.isMesh || !o.material?.isMeshStandardMaterial) return; o.geometry.computeBoundingBox(); box.union(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); });
-      let lo = 1, hi = -1, top = -1, bottom = 1;
-      for (let k = 0; k < 8; k++) { v.set(k & 1 ? box.max.x : box.min.x, k & 2 ? box.max.y : box.min.y, k & 4 ? box.max.z : box.min.z).applyMatrix4(carView.root.matrixWorld).project(camera); lo = Math.min(lo, v.x); hi = Math.max(hi, v.x); top = Math.max(top, v.y); bottom = Math.min(bottom, v.y); }
+      let top = -1, bottom = 1;
+      carView.root.traverseVisible((o) => {
+        if (!o.isMesh || !o.material?.isMeshStandardMaterial) return;
+        o.geometry.computeBoundingBox();
+        box.union(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)));
+        const p = o.geometry.attributes.position;
+        for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).project(camera); top = Math.max(top, v.y); bottom = Math.min(bottom, v.y); }
+      });
+      let lo = 1, hi = -1;
+      for (let k = 0; k < 8; k++) { v.set(k & 1 ? box.max.x : box.min.x, k & 2 ? box.max.y : box.min.y, k & 4 ? box.max.z : box.min.z).applyMatrix4(carView.root.matrixWorld).project(camera); lo = Math.min(lo, v.x); hi = Math.max(hi, v.x); }
       return { width: +((Math.min(1, hi) - Math.max(-1, lo)) / 2).toFixed(3), inFrame: bottom > -1 && top < 1, mph: Math.round(race.car.speed * 2.237) };
     });
-    await page.screenshot({ path: file });
     const m = await metrics(file);
     const g = GATE[session];
     const fails = [m.hue < g.hue && 'hue', m.edge < edge && 'edge', m.L50 < g.L50 && 'L50', m.L98 < g.L98 && 'L98', (car.width < g.carMin || car.width > g.carMax) && 'car', !car.inFrame && 'cropped'].filter(Boolean);
