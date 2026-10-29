@@ -54,6 +54,7 @@ for (const session of sessions) {
   });
   await page.goto(`http://localhost:${port}/index.html?venue=proving&event=gp&autostart&autopilot&${session}`);
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__shot?.race.phase === 'racing', null, { timeout: 120000, polling: 50 });
+  if (process.env.NOHUD) await page.addStyleTag({ content: '#hud { display: none !important; }' });
   for (const [name, at, edge] of MOMENTS) {
     await page.waitForFunction((t) => window.__shot.race.raceTick >= t * 120, at, { timeout: 120000, polling: 16 });
     const file = join(out, `${session}-${name}.png`);
