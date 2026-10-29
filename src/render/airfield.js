@@ -55,7 +55,7 @@ function towerSite(track) {
   if (k < 0) return null;
   const end = track.sectors[k + 1]?.i ?? track.lap;
   let i = track.sectors[k].i, best = 0;
-  for (let j = i; j < end; j++) if (Math.abs(track.curv[j]) > best) { best = Math.abs(track.curv[j]); i = j; }
+  for (let j = i; j < end; j++) if (!track.air[j] && Math.abs(track.curv[j]) > best) { best = Math.abs(track.curv[j]); i = j; }
   const side = track.curv[i] > 0 ? -1 : 1, off = Math.max(track.wallL[i], track.wallR[i]) + 45, o = i * 3;
   return { x: track.P[o] + track.R[o] * off * side, z: track.P[o + 2] + track.R[o + 2] * off * side, top: track.P[o + 1] };
 }

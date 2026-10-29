@@ -6,7 +6,8 @@ import { loadWorld } from './load-world.mjs';
 const out = process.argv[2] || '/tmp/gates';
 const port = process.env.PORT || 8790;
 const sessions = (process.env.SESSIONS || 'day,night').split(',');
-const { track } = loadWorld('proving');
+const venue = process.env.VENUE || 'proving';
+const { track } = loadWorld(venue);
 mkdirSync(out, { recursive: true });
 
 function cam(gate, dist, up, side = 0) {
@@ -27,7 +28,7 @@ async function open(session, extra = '') {
     const body = (await res.text()) + '\nwindow.__shot = { get race() { return race; }, camera, gates };';
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
-  await page.goto(`http://localhost:${port}/index.html?venue=proving&event=gp&autostart&autopilot&${session}${extra}`);
+  await page.goto(`http://localhost:${port}/index.html?venue=${venue}&event=gp&autostart&autopilot&${session}${extra}`);
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__shot?.race.phase === 'racing', null, { timeout: 120000, polling: 50 });
   return page;
 }
