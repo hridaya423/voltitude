@@ -77,7 +77,7 @@ export function buildCourse(def) {
     speedCap[i] = Math.abs(curv[i]) > 1e-5 ? Math.sqrt(42 / Math.abs(curv[i])) : 999;
   }
   if (finish < 0) finish = n - 1;
-  return { n, step: 1, len: n - 1, H, P, T, U, R, halfW, wallL: halfW, wallR: halfW, gap, chasm, wall, roof, bot, speedCap, curv, cps, pads, sectors, finish };
+  return { n, step: 1, len: n - 1, H, P, T, U, R, halfW, wallL: halfW, wallR: halfW, runoff: { L: wall, R: wall, gravelL: gap, gravelR: gap, tyreL: gap, tyreR: gap }, gap, chasm, wall, roof, bot, speedCap, curv, cps, pads, sectors, finish };
 }
 
 export function nearestIndex(track, x, y, z, hint, window = 40) {

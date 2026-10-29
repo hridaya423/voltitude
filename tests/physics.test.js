@@ -4,6 +4,7 @@ import { loadWorld } from '../tools/load-world.mjs';
 import { flatWorld, zeroToSixty, topSpeed, braking, skidpad, wallScrape } from '../tools/physics-lab.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput } from '../src/sim/race.js';
 import { placeCar, createCar, stepCar, steerTo, TUNING } from '../src/sim/drive.js';
+import { lineFor } from '../src/sim/driver.js';
 
 const lab = flatWorld();
 const near = (value, target, label) => assert.ok(Math.abs(value / target - 1) <= 0.05, `${label}: ${value.toFixed(3)} vs ${target}`);
@@ -114,4 +115,67 @@ test('a car facing the wrong way beside the wall steers away from it and turns a
   }
   const h = c.hint * 3;
   assert.ok(c.fx * T[h] + c.fz * T[h + 2] > 0.7, `facing ${(c.fx * T[h] + c.fz * T[h + 2]).toFixed(2)} along the track`);
+});
+
+const proving = loadWorld('proving');
+
+function intoCorner(world, from, v0, braked) {
+  const { track } = world, L = lineFor(track), N = track.lap, i0 = (from - 60 + N) % N;
+  const c = createCar(), inp = createInput();
+  placeCar(c, track, i0, v0, L.off[i0]);
+  const out = { wreck: false, tyres: 0, t: Infinity, kinds: new Set() };
+  for (let t = 0; t < 120 * 30; t++) {
+    const h = c.hint, ahead = (h + Math.round(c.speed * 0.25)) % N;
+    inp.steer = steerTo(c, track, L.off[h], 0, track.curv[h]);
+    inp.throttle = braked ? Math.max(0, Math.min(1, (L.v[ahead] - c.speed) / 2.5)) : 0;
+    inp.brake = braked && c.speed > L.v[ahead] + 0.6 ? 1 : 0;
+    stepCar(c, inp, world, t, true);
+    for (const w of c.wl) if (w.hit) out.kinds.add(w.kind);
+    for (const e of c.ev) { if (e.type === 'wreck') out.wreck = true; if (e.type === 'scrape') out.tyres = Math.max(out.tyres, e.v); }
+    c.ev.length = 0;
+    const d = (c.hint - i0 + N) % N;
+    if (d > 60 + 250 && d < N / 2) { out.t = t / 120; break; }
+  }
+  return out;
+}
+
+test('a car that runs wide at 60 m/s into a corner with 13 m or more of run-off does not wreck, and loses time to braking', () => {
+  const { track } = proving, { lap: N, curv, runoff } = track;
+  const corners = [];
+  for (let i = 0; i < N; i++) {
+    const on = (j) => Math.abs(curv[j]) > 0.006 && !track.loopMask[j] && !track.air[j];
+    if (on(i) && !on((i + N - 1) % N) && (curv[i] > 0 ? runoff.L : runoff.R)[(i + 20) % N] >= 12.5) corners.push(i);
+  }
+  assert.ok(corners.length >= 3, `${corners.length} corners`);
+  for (const from of corners) {
+    const wide = intoCorner(proving, from, 60, false), braked = intoCorner(proving, from, 60, true);
+    assert.ok(wide.kinds.has('grass'), `corner ${from}: never reached the grass`);
+    assert.equal(wide.wreck, false, `corner ${from}: wrecked, tyre hit ${wide.tyres.toFixed(1)} m/s`);
+    assert.ok(wide.t > braked.t, `corner ${from}: wide ${wide.t.toFixed(2)} s, braked ${braked.t.toFixed(2)} s`);
+  }
+});
+
+function runoffStrip(gravel) {
+  const world = flatWorld(3000, 10), { track } = world;
+  track.wallL = track.halfW.map((w) => w + 300);
+  track.runoff = { ...track.runoff, gravelL: new Uint8Array(track.n).fill(gravel ? 1 : 0) };
+  return world;
+}
+
+function coast(world, lat, v0) {
+  const c = createCar(), inp = createInput();
+  placeCar(c, world.track, 300, v0, lat);
+  const x0 = c.x, z0 = c.z;
+  for (let t = 0; t < 120 * 60 && c.speed > 0.5; t++) stepCar(c, inp, world, t, false);
+  return { dist: Math.hypot(c.x - x0, c.z - z0), kind: c.wl[0].kind, speed: c.speed };
+}
+
+test('gravel stops a coasting 40 m/s car within 140 m, grass and paved run-off do not', () => {
+  const gravel = coast(runoffStrip(true), -14, 40), grass = coast(runoffStrip(false), -14, 40), paved = coast(runoffStrip(false), -9.8, 40);
+  assert.equal(gravel.kind, 'gravel');
+  assert.equal(grass.kind, 'grass');
+  assert.equal(paved.kind, 'paved');
+  assert.ok(gravel.dist < 140, `gravel ${gravel.dist.toFixed(0)} m`);
+  assert.ok(grass.dist > 300, `grass ${grass.dist.toFixed(0)} m`);
+  assert.ok(paved.dist > grass.dist, `paved ${paved.dist.toFixed(0)} m`);
 });

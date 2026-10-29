@@ -98,7 +98,7 @@ const K_AIR = 1 - Math.exp(-12 * DT);
 
 function createWheels() {
   return WHEELS.map((w) => ({
-    om: 0, hint: 0, a: 0, x: 0, xp: 0, hit: false, fz: 0, kap: 0, road: false,
+    om: 0, hint: 0, a: 0, x: 0, xp: 0, hit: false, fz: 0, kap: 0, road: false, kind: 'road',
     nx: 0, ny: 1, nz: 0, px: 0, py: 0, pz: 0, mu: 1, w,
   }));
 }
@@ -144,6 +144,11 @@ export function placeCar(c, track, i, speed, lat = 0) {
 const AIR_PAD = 40;
 const WALL_HIT = 1, WALL_HARD = 5, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
 const WALL_TOP = 1.16;
+const TYRE_MU = 1, TYRE_WRECK = 45, TYRE_SPIN = 0.5;
+
+export const GRIP = { road: 1, kerb: 1, paved: 0.9, grass: 0.55, gravel: 0.45, terrain: 0.58 };
+export const DRAG = { road: 0, kerb: 0, paved: 0, grass: 0.15 * G, gravel: 0.6 * G, terrain: 0 };
+const KERB_IN = 2.6, PAVED_IN = 0.9, PAVED_OUT = 1.1, KERB_CURV = 0.00455;
 
 export const wallAt = (track, i, side) => (side < 0 ? track.wallL[i] : track.wallR[i]);
 
@@ -158,7 +163,7 @@ function nearestRoad(track, x, y, z, hint) {
   return nearestIndex(track, x, y, z, (from + (len >> 1)) % track.lap, (len >> 1) + AIR_PAD);
 }
 
-const sf = { hit: false, i: 0, hs: 0, lat: 0, w: 0, nx: 0, ny: 1, nz: 0, rx: 0, ry: 0, rz: 1, road: true };
+const sf = { hit: false, i: 0, hs: 0, lat: 0, w: 0, nx: 0, ny: 1, nz: 0, rx: 0, ry: 0, rz: 1, road: true, kind: 'road', tyre: 0 };
 
 function roadAt(track, x, y, z, hint, s) {
   const i = nearestRoad(track, x, y, z, hint);
@@ -187,6 +192,10 @@ function roadAt(track, x, y, z, hint, s) {
   s.w = wallAt(track, j, Math.sign(s.lat));
   s.hit = Math.abs(s.lat) <= s.w + 0.4 && s.hs > -2;
   s.road = true;
+  const a = Math.abs(s.lat), edge = track.halfW[j], run = track.runoff;
+  s.tyre = (s.lat < 0 ? run.tyreL : run.tyreR)[j];
+  s.kind = a <= edge - PAVED_IN ? (a > edge - KERB_IN && Math.abs(track.curv[j]) > KERB_CURV ? 'kerb' : 'road')
+    : a <= edge + PAVED_OUT ? 'paved' : (s.lat < 0 ? run.gravelL : run.gravelR)[j] ? 'gravel' : 'grass';
   return s;
 }
 
@@ -197,6 +206,7 @@ function ground(height, x, y, z, s) {
   s.nx = gx / l; s.ny = 2 / l; s.nz = gz / l;
   s.hs = (y - h) * s.ny;
   s.road = false;
+  s.kind = 'terrain';
   s.hit = true;
   return s;
 }
@@ -309,7 +319,7 @@ export function stepCar(c, inp, world, tick, assist) {
   c.delta += Math.max(-3 * DT, Math.min(3 * DT, inp.steer * lock - c.delta));
   const cd = Math.cos(c.delta), sd = Math.sin(c.delta);
 
-  let hits = 0, roadHits = 0, anx = 0, any = 0, anz = 0, sumFz = 0;
+  let hits = 0, roadHits = 0, anx = 0, any = 0, anz = 0, sumFz = 0, dig = 0;
   const wl = c.wl;
   for (let k = 0; k < 4; k++) {
     const w = wl[k], P = w.w, s = sw[k];
@@ -321,11 +331,12 @@ export function stepCar(c, inp, world, tick, assist) {
     const d = s.hs / Math.max(0.3, c.ux * s.nx + c.uy * s.ny + c.uz * s.nz);
     w.hit = d < LD + P.R && d > -0.8;
     w.road = s.road;
+    w.kind = s.kind;
     if (!w.hit) { w.fz = 0; w.xp = 0; w.x = 0; continue; }
     w.x = LD - (d - P.R);
     w.px = mx - c.ux * d; w.py = my - c.uy * d; w.pz = mz - c.uz * d;
     w.nx = s.nx; w.ny = s.ny; w.nz = s.nz;
-    w.mu = s.road ? 1 : 0.58;
+    w.mu = GRIP[s.kind];
     hits++;
   }
   for (let k = 0; k < 4; k++) {
@@ -406,6 +417,7 @@ export function stepCar(c, inp, world, tick, assist) {
     pushForce(tx * fxT + sx * fyT + nx * w.fz, ty * fxT + sy * fyT + ny * w.fz, tz * fxT + sz * fyT + nz * w.fz, w.px - COM[0], w.py - COM[1], w.pz - COM[2]);
     anx += nx * w.fz; any += ny * w.fz; anz += nz * w.fz;
     sumFz += w.fz;
+    dig += DRAG[w.kind] / 4;
     if (w.road) roadHits++;
   }
   c.load = sumFz;
@@ -419,6 +431,8 @@ export function stepCar(c, inp, world, tick, assist) {
     const dn = 0.5 * T.rho * fwd * fwd * T.clA;
     pushAt(c, -c.ux * dn * T.downFront, -c.uy * dn * T.downFront, -c.uz * dn * T.downFront, 0, -0.25, 1.41);
     pushAt(c, -c.ux * dn * (1 - T.downFront), -c.uy * dn * (1 - T.downFront), -c.uz * dn * (1 - T.downFront), 0, -0.24, -1.54);
+    const fd = (m * dig * Math.min(1, sp / 2)) / sp;
+    F[0] -= c.vx * fd; F[1] -= c.vy * fd; F[2] -= c.vz * fd;
   }
 
   c.boosting = !!inp.boost && c.gas > 1e-4;
@@ -523,7 +537,7 @@ function collide(c, q, air) {
   const side0 = q.w - 0.9;
   const qlat = q.lat;
   if (air && Math.abs(qlat) > side0) return;
-  let press = 0;
+  let press = 0, tyreSide = 0;
   for (let k = 0; k < HULL.length; k++) {
     body(c, HULL[k][0], HULL[k][1], HULL[k][2], at);
     const rx = at[0] - cg[0], ry = at[1] - cg[1], rz = at[2] - cg[2];
@@ -538,6 +552,7 @@ function collide(c, q, air) {
     press += vr;
     const vt = Math.hypot(c.vx - q.rx * vr * side, c.vy - q.ry * vr * side, c.vz - q.rz * vr * side);
     const ang = Math.atan2(vr, vt);
+    if (q.tyre) { tyreSide = side; continue; }
     const hit = impulse(c, rx, ry, rz, -q.rx * side, -q.ry * side, -q.rz * side, 0.2 * Math.max(0, Math.min(1, (ang - 0.2) / 1.2)), 0.18);
     if (hit > 3) c.ev.push({ type: 'scrape', v: hit, side, angle: ang });
     const roll = c.ox * c.fx + c.oy * c.fy + c.oz * c.fz;
@@ -545,8 +560,23 @@ function collide(c, q, air) {
   }
   c.wallT = press ? c.wallT + 1 : 0;
   if (!press) return;
+  if (tyreSide) return tyreHit(c, q, tyreSide);
   const drag = WALL_DRAG * DT * Math.min(1, Math.max(0, c.wallT - WALL_GRACE) / WALL_RAMP);
   const sp = Math.hypot(c.vx, c.vy, c.vz), k = Math.max(0, sp - (WALL_HIT * press * (1 + (press / WALL_HARD) ** 2) + drag) * Math.min(1, sp / 40)) / Math.max(sp, 1e-6);
   c.vx *= k; c.vy *= k; c.vz *= k;
   if (press > WALL_WRECK && !c.wrecked) { c.ev.push({ type: 'wreck', v: press }); c.wrecked = true; }
+}
+
+function tyreHit(c, q, side) {
+  const nx = q.rx * side, ny = q.ry * side, nz = q.rz * side;
+  const vn = c.vx * nx + c.vy * ny + c.vz * nz;
+  const drag = WALL_DRAG * DT * Math.min(1, Math.max(0, c.wallT - WALL_GRACE) / WALL_RAMP);
+  if (vn > 0) {
+    c.vx -= nx * vn; c.vy -= ny * vn; c.vz -= nz * vn;
+    c.ox *= TYRE_SPIN; c.oy *= TYRE_SPIN; c.oz *= TYRE_SPIN;
+    if (vn > 3) c.ev.push({ type: 'scrape', v: vn, side, angle: Math.atan2(vn, Math.hypot(c.vx, c.vy, c.vz)) });
+    if (vn > TYRE_WRECK && !c.wrecked) { c.ev.push({ type: 'wreck', v: vn }); c.wrecked = true; }
+  }
+  const sp = Math.hypot(c.vx, c.vy, c.vz), k = Math.max(0, sp - TYRE_MU * Math.max(0, vn) - drag) / Math.max(sp, 1e-6);
+  c.vx *= k; c.vy *= k; c.vz *= k;
 }
