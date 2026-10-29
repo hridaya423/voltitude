@@ -31,7 +31,6 @@ kbd { font: 600 14px/1 var(--ui); letter-spacing: 0.04em; padding: 3px 6px; bord
 button { font: inherit; }
 
 .hud { position: fixed; inset: 0; pointer-events: none; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 14px rgba(0, 0, 0, 0.5); }
-.hud::before { content: ''; position: absolute; inset: 0 0 auto; height: 150px; background: linear-gradient(rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0)); }
 .hud-tl { position: absolute; top: max(24px, env(safe-area-inset-top)); left: var(--gut); display: grid; text-shadow: none; }
 .card-label { font: 400 14px/1 var(--display); letter-spacing: 0.2em; background: var(--plate); padding: 12px 12px 6px; border-radius: 8px 8px 0 0; }
 .card-label::before { content: ''; display: inline-block; width: 18px; height: 2px; background: var(--red); vertical-align: middle; margin-right: 10px; }
