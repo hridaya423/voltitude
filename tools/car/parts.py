@@ -76,12 +76,35 @@ def splitter():
     add('splitter', bm, 'trim')
 
 
+def blade():
+    bm = bmesh.new()
+    ue, uf, top = S.L + 0.035, S.L - 0.13, 0.922
+    hw = S.BLADE[4] + 0.025
+    rings = []
+    for w in np.linspace(-hw, hw, 33):
+        h = 0.02 + 0.085 * min(1.0, (hw - abs(w)) / 0.16)
+        pts = ((ue, top), (ue, top - h), (uf, top - h * 0.45), (uf, top))
+        rings.append([bm.verts.new(to_blender(u, w, v)) for u, v in pts])
+    for r0, r1 in zip(rings, rings[1:]):
+        for k in range(4):
+            j = (k + 1) % 4
+            f = bm.faces.new((r0[k], r0[j], r1[j], r1[k]))
+            f.material_index = 1 if k == 0 else 0
+    for r in (rings[0], rings[-1][::-1]):
+        bm.faces.new(r)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    ob = add('blade', bm, 'paint')
+    ob.data.materials.append(mats.get('gloss'))
+    y = ue - S.L / 2 + 0.002
+    pts = [Vector((w, y, 0.872 + S.GROUND)) for w in np.linspace(-0.87, 0.87, 41)]
+    add('light_tail', sweep(pts, 0.004, 0.01), 'light_tail')
+    for side in (1, -1):
+        pts = [Vector((w * side, y + 0.001, 0.872 + S.GROUND)) for w in np.linspace(0.62, 0.86, 9)]
+        add('lens', sweep(pts, 0.003, 0.012), 'lens')
+
+
 def tail():
-    u0, u1, v0, v1 = S.BLADE[:4]
-    add('blade', box((0, (u0 + u1) / 2 - S.L / 2, (v0 + v1) / 2 + S.GROUND), (2 * S.BLADE[4], u1 - u0, v1 - v0)), 'gloss')
-    y = u1 - S.L / 2 + 0.003
-    pts = [Vector((w, y, 0.855 + S.GROUND)) for w in np.linspace(-0.87, 0.87, 41)]
-    add('light_tail', sweep(pts, 0.003, 0.006, up=Vector((0, 0, 1))), 'light_tail')
+    blade()
     py = S.L / 2 - 0.08 + 0.004
     add('plate', box((0, py, 0.66 + S.GROUND), (0.305, 0.008, 0.152)), 'plate')
     cu = bpy.data.curves.new('rdstr', 'FONT')
@@ -108,29 +131,27 @@ def tail():
 
 
 def nozzles():
-    add('nozzle_bar', box((0, S.L / 2 + 0.006, 0.52 + S.GROUND), (1.24, 0.03, 0.13)), 'gloss')
-    ring = [(0.0, 0.034), (0.0, 0.047), (-0.006, 0.05), (-0.08, 0.05), (-0.08, 0.034)]
-    inner = [(-0.004, 0.0), (-0.004, 0.026), (-0.06, 0.034)]
+    shelf = [(-0.6, 0.44), (0.6, 0.44), (0.67, 0.565), (-0.67, 0.565)]
+    ob = add('nozzle_shelf', prism([(-w, v + S.GROUND) for w, v in shelf], S.L / 2 - 0.07, S.L / 2 + 0.015), 'carbon')
+    ob.rotation_euler = (0, 0, math.pi / 2)
+    for v in (0.478, 0.522):
+        add('louvre', box((0, S.L / 2 + 0.018, v + S.GROUND), (1.2, 0.008, 0.006)), 'black')
+    lip = [(0.0, 0.048), (-0.072, 0.048), (-0.078, 0.046), (-0.08, 0.042), (-0.079, 0.038), (-0.074, 0.036), (-0.066, 0.036)]
+    throat = [(-0.066, 0.036), (-0.035, 0.03), (-0.005, 0.022), (0.0, 0.0)]
     for w in S.NOZZLES:
-        for name, prof, mat in (('nozzle', ring, 'brass'), ('nozzle_in', inner, 'gunmetal')):
-            ob = mesh_object(name, lathe(prof, 48), mat, None, True)
+        for name, prof, mat in (('nozzle', lip, 'lip'), ('nozzle_in', throat, 'throat')):
+            ob = mesh_object(name, lathe(prof, 40), mat, None, True)
             ob.rotation_euler = (0, 0, -math.pi / 2)
             ob.location = (w, S.L / 2 - 0.045, 0.50 + S.GROUND)
 
 
 def diffuser():
     lo, hi, hw = S.DIFFUSER
-    u0, u1 = 4.05, S.L + 0.02
-    add('diffuser', box((0, (u0 + u1) / 2 - S.L / 2, 0.115 + S.GROUND), (2 * hw + 0.04, u1 - u0, 0.02)), 'black')
-    for w in (hw + 0.008, -hw - 0.008):
-        add('diffuser', prism([(u - S.L / 2, v + S.GROUND) for u, v in ((4.1, 0.105), (u1, 0.105), (u1, hi + 0.01), (4.3, hi + 0.01))], w - 0.008, w + 0.008), 'black')
-    for w in (0.0, 0.31, -0.31):
-        add('diffuser', prism([(u - S.L / 2, v + S.GROUND) for u, v in ((4.12, 0.125), (u1 - 0.01, 0.125), (u1 - 0.01, hi), (4.35, hi))], w - 0.005, w + 0.005), 'black')
-    ring = [(0.0, 0.05), (0.0, 0.062), (-0.12, 0.062), (-0.12, 0.05)]
-    for w in (0.155, -0.155, 0.465, -0.465):
-        ob = mesh_object('outlet', lathe(ring, 32), 'gunmetal', None, True)
-        ob.rotation_euler = (0, 0, -math.pi / 2)
-        ob.location = (w, S.L / 2 - 0.29, 0.34 + S.GROUND)
+    u1 = S.L + 0.02
+    add('diffuser', box((0, u1 - 0.06 - S.L / 2, 0.108 + S.GROUND), (2 * hw + 0.05, 0.12, 0.024)), 'black')
+    for w in (-hw - 0.012, -hw / 2, 0.0, hw / 2, hw + 0.012):
+        t = 0.012 if abs(w) > hw else 0.008
+        add('strake', prism([(u - S.L / 2, v + S.GROUND) for u, v in ((4.08, 0.135), (u1, 0.096), (u1, hi + 0.005), (4.3, hi + 0.005))], w - t, w + t), 'carbon')
 
 
 def wing():

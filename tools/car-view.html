@@ -20,7 +20,7 @@ scene.add(gltf.scene); window.CAR = gltf.scene;
 const box = new THREE.Box3().setFromObject(gltf.scene), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
 const views = (q.get('views') || 'front34,side,rear34,top').split(',');
 const d = Math.max(s.x, s.y, s.z) * 1.15;
-const P = { front34: [-1, 0.45, 1.1], side: [1.6, 0.15, 0], rear34: [1, 0.5, -1.1], top: [0.001, 1.8, 0], front: [0, 0.3, 1.6], rear: [0, 0.3, -1.6], low: [-0.9, 0.05, 1] };
+const P = { front34: [-1, 0.45, 1.1], side: [1.6, 0.15, 0], rear34: [1, 0.5, -1.1], top: [0.001, 1.8, 0], front: [0, 0.3, 1.6], rear: [0, 0.3, -1.6], low: [-0.9, 0.05, 1], lowrear: [0, 0.02, -0.95] };
 const cam = new THREE.PerspectiveCamera(35, W / H, 0.01, 100);
 window.SHOT = (v) => { const p = P[v]; cam.position.set(c.x + p[0] * d, c.y + p[1] * d, c.z + p[2] * d); cam.lookAt(c); r.render(scene, cam); };
 SHOT(views[0]);
