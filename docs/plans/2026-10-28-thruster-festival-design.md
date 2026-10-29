@@ -11,6 +11,7 @@ This design replaces the "normal racing game" direction from `2026-10-28-aaa-pas
 | Core identity | Thruster stunt racer. Boost and flight are the core action. |
 | World fiction | A flight-racing festival at a private rocket test range. |
 | Vertical slice | Proving Ground. Airfield and Launch Complex stay playable and frozen. |
+| Airfield and Launch Complex | No longer frozen. Both come up to the Proving Ground slice standard in Phase 5, each keeping its identity: Airfield is a runway and hangars, Launch is a rocket complex with the 50° wall-ride. Added 2026-10-29. |
 | Gas economy | The player earns gas by skill. Gas pads and regen refill are removed. |
 | Realism | The car look, sound, mass, power and top speed follow Tesla's published figures. The thruster economy does not. |
 | Run-off | F1-style run-off areas (paved strip, then grass or gravel) on corner outsides. A mistake costs time, not a wreck. Added 2026-10-29. |
@@ -133,7 +134,7 @@ Report each gate result, including the gates that fail.
 ## Out of scope until the slice passes
 
 - New venues or new events.
-- Work on Airfield and Launch Complex, except bug fixes.
+- Work on Airfield and Launch Complex, except bug fixes. Lifted 2026-10-29: see Phase 5.
 - An open world.
 
 ## Sources

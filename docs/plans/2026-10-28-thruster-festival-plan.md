@@ -514,6 +514,46 @@ Rivals use the hi model with livery colours in `src/render/car.js` `createCarVie
 - `tools/perf.mjs` passes on a quiet machine.
 - `npm test` and `ai-bench` are green.
 
+## Phase 5: Airfield and Launch Complex to the slice standard
+
+The user lifted the freeze on 2026-10-29: "make Airfield and Launch Complex as good as Proving Ground". Each venue keeps its identity. Airfield is a runway and hangars. Launch is a rocket complex with the 50° wall-ride.
+
+Most of the slice systems already read track data, so they apply to any venue: run-off (Task 25–27), track limits (Task 31), festival placement by screen time (Task 17), floodlights (Task 18) and the terrain fixes (Task 19). What the two venues lack is air: neither has a jump, an air span or a gate, so the AI never flies there, the lip markings never draw, and the festival has no air lines to dress.
+
+The user asked for light testing on this phase ("dont needa do that much testing"). Run each gate once, one process at a time. Skip the perf gate (the machine is loaded); report any large frame-cost change seen in passing.
+
+### Task 32: Airfield runway air line
+
+**Files:** Modify `src/sim/venues.js` (`AIRFIELD.nodes`).
+
+**Approach:**
+- Lay the Proving back-straight air line template on the runway (the start straight, heading +z): a raised approach, a jump node (`kick 11, ramp 25, flare 10`), an `air` span of 340 m, a gate (`h 10.8, r 4.5, at 105`), and a 15 m pylon chicane that the flight skips.
+- The runway is flat, so the approach climbs 6 m to the jump node and the landing descends back to the runway, instead of the downhill landing at Proving.
+- The chicane stays inside the runway box, so it reads as pylons laid out on the apron.
+
+### Task 33: Launch pad-straight air line
+
+**Files:** Modify `src/sim/venues.js` (`LAUNCH.nodes`).
+
+**Approach:**
+- The same template on the main pad straight, before the Tank Farm.
+- The tower crest and the wall-ride stay as they are.
+- The wall-ride kerb launch (1092–1122, about 90 mph): add a test that drives a car in from the straight along each kerb. If it stays down, the report was a harness artefact; record that and keep the test as a guard.
+
+### Task 34: Dependent data
+
+- `tools/bake-terrain.mjs airfield` and `launch`.
+- `tools/medals.mjs` (author ghosts and medals for all venues, since the wall scrape changed the sim).
+- Bump `SIM_VERSION`.
+- `npm test`.
+
+### Task 35: Look and gates
+
+**Verify:**
+- Before and after contact sheets for each venue: the air line from the chase camera (approach, lip, gate, landing), day and night.
+- Shot-match on each venue, day and night, HUD on and off.
+- `tools/exploits.mjs` and `tools/ai-bench.mjs` on each venue. Every driver must take the air line at least once per race.
+
 ## Phase 4: External proof
 
 ### Task 23: Blind clip test kit
