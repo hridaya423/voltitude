@@ -5,7 +5,7 @@ import { VENUES } from '../src/sim/venues.js';
 import { seaMask } from '../src/sim/terrain.js';
 import { createRace, stepRace, createInput, unpackInput, packInput, eventsFor, botInput } from '../src/sim/race.js';
 import { createRecorder, encodeRun, createGhost } from '../src/sim/ghost.js';
-import { placeCar, TUNING } from '../src/sim/drive.js';
+import { placeCar, TUNING, wallAt } from '../src/sim/drive.js';
 import { lineFor } from '../src/sim/driver.js';
 import { contactPair } from '../src/sim/contact.js';
 
@@ -143,7 +143,7 @@ test('barriers keep the car on the road', () => {
   inp.throttle = 1; inp.steer = 1;
   for (let t = 0; t < 120 * 4; t++) stepRace(race, inp);
   assert.equal(race.car.mode, 1);
-  assert.ok(Math.abs(race.car.lat) <= world.track.halfW[race.car.hint] - 1.8);
+  assert.ok(Math.abs(race.car.lat) <= wallAt(world.track, race.car.hint, Math.sign(race.car.lat)) - 1.8);
 });
 
 test('reset returns the car to the last checkpoint', () => {
@@ -223,6 +223,19 @@ test('the teardrop loop clears itself by more than the road width', () => {
   }
   assert.ok(top - circuit.track.H[from * 3 + 1] > 25, 'loop is tall');
   assert.ok(near > 2 * Math.max(...Array.from({ length: to - from }, (_, k) => halfW[from + k])) * 0.5 + 2, `closest approach ${near.toFixed(1)} m`);
+});
+
+test('the final hairpin has 14 m of run-off on its outside, and the loop keeps its walls', () => {
+  const { curv, halfW, wallL, wallR, loopMask, air, lap } = circuit.track;
+  let last = lap - 1;
+  while (air[last] || loopMask[last] || Math.abs(curv[last]) < 0.02) last--;
+  let apex = last;
+  for (let i = last - 150; i <= last; i++) if (Math.abs(curv[i]) > Math.abs(curv[apex])) apex = i;
+  const outside = curv[apex] > 0 ? wallL : wallR;
+  assert.ok(outside[apex] - halfW[apex] >= 14, `outside run-off ${(outside[apex] - halfW[apex]).toFixed(1)} m at sample ${apex}`);
+  let loops = 0;
+  for (let i = 0; i < lap; i++) if (loopMask[i]) { loops++; assert.equal(wallL[i], halfW[i]); assert.equal(wallR[i], halfW[i]); }
+  assert.ok(loops > 100);
 });
 
 test('every car that leaves a jump lands on its down-slope, or on the road inside its air span', () => {

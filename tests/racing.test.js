@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput, nearMisses, TIERS } from '../src/sim/race.js';
-import { createCar, placeCar, TUNING } from '../src/sim/drive.js';
+import { createCar, placeCar, TUNING, wallAt } from '../src/sim/drive.js';
 import { buildCircuit } from '../src/sim/circuit.js';
 import { turtle, arc } from '../tools/turtle.mjs';
 
@@ -271,7 +271,7 @@ function launch(w, v) {
   const inp = createInput();
   while (race.phase !== 'racing') stepRace(race, inp);
   placeCar(race.car, track, track.jumps[0].lip - 30, v, 0);
-  const c = race.car, out = { race, wide: 0, respawns: 0, landed: -1, splits: [] };
+  const c = race.car, out = { race, wide: 0, over: -Infinity, respawns: 0, landed: -1, splits: [] };
   for (let t = 0; t < 120 * 90 && race.splits.length < 2; t++) {
     if (out.landed < 0 || t < out.landed + 120) Object.assign(inp, createInput(), { throttle: 0.3 });
     else botInput(race, inp, 0.9);
@@ -283,7 +283,9 @@ function launch(w, v) {
     }
     race.events.length = 0;
     const k = c.hint * 3;
-    out.wide = Math.max(out.wide, Math.abs((c.x - track.H[k]) * track.R[k] + (c.y - track.H[k + 1]) * track.R[k + 1] + (c.z - track.H[k + 2]) * track.R[k + 2]));
+    const lat = (c.x - track.H[k]) * track.R[k] + (c.y - track.H[k + 1]) * track.R[k + 1] + (c.z - track.H[k + 2]) * track.R[k + 2];
+    out.wide = Math.max(out.wide, Math.abs(lat));
+    out.over = Math.max(out.over, Math.abs(lat) - wallAt(track, c.hint, Math.sign(lat)));
   }
   return out;
 }
@@ -301,7 +303,7 @@ test('air span: a car launched at 70 m/s flies over the infield and lands on the
 test('outside an air span the walls hold a flying car on the road', () => {
   const w = airOval({ air: false });
   const out = launch(w, 70);
-  assert.ok(out.wide < w.track.halfW[w.track.jumps[0].lip] - 1.5, `widest ${out.wide.toFixed(1)} m from the centreline`);
+  assert.ok(out.over < -0.5, `widest ${out.over.toFixed(1)} m past the wall line`);
 });
 
 test('a checkpoint inside an air span is a build error', () => {

@@ -1,8 +1,10 @@
 import { HEART } from './course.js';
+import { racingLine } from './line.js';
 
 const D = Math.PI / 180;
 const DENSE = 0.25;
 export const LIM_BAND = 2.8;
+const RUN_CURV = 0.006, RUN_BASE = 3, RUN_SLOW = 6, RUN_FAST = 14, RUN_V0 = 40, RUN_V1 = 70, RUN_RAMP = 30, RUN_BACK = 300;
 
 const smoother = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * u * (u * (u * 6 - 15) + 10));
 const smootherD = (u) => (u <= 0 || u >= 1 ? 0 : 30 * u * u * (1 - u) * (1 - u));
@@ -263,10 +265,58 @@ export function buildCircuit(def) {
   const cps = sectors.slice(1).map((s) => s.i);
   for (const i of [0, ...cps]) if (air[i]) throw new Error(`checkpoint at sample ${i} is inside an air span`);
   const zeros = (T2) => new T2(n);
-  return {
+  const track = {
     n, step, len: N, closed: true, lap: N, H, P, T, U, R, halfW, gap: zeros(Uint8Array), chasm: zeros(Float32Array), wall: zeros(Float32Array), roof,
     bot, speedCap, curv, cps, pads: [], sectors, finish: N, loops, loopMask, jumps, airs, air, gates, length,
   };
+  return Object.assign(track, runoff(track));
+}
+
+function corners(track) {
+  const { lap: N, curv, loopMask } = track;
+  const out = [];
+  let s0 = 0;
+  while (s0 < N && Math.abs(curv[s0]) > RUN_CURV) s0++;
+  let cur = null;
+  for (let k = 0; k <= N; k++) {
+    const i = (s0 + k) % N, on = Math.abs(curv[i]) > RUN_CURV && !loopMask[i];
+    if (cur && (!on || Math.sign(curv[i]) !== cur.sign)) { out.push(cur); cur = null; }
+    if (on && !cur) cur = { from: i, len: 0, sign: Math.sign(curv[i]) };
+    if (cur) cur.len++;
+  }
+  return out;
+}
+
+function runoff(track) {
+  const { lap: N, n, U, loopMask, air, jumps, halfW } = track;
+  const { v } = racingLine(track);
+  const side = [new Float32Array(N).fill(RUN_BASE), new Float32Array(N).fill(RUN_BASE)];
+  const entry = new Float32Array(N).fill(Infinity);
+  for (const { from, len, sign } of corners(track)) {
+    let top = 0;
+    for (let d = -RUN_BACK; d < len; d++) top = Math.max(top, v[(from + d + N) % N]);
+    const width = RUN_SLOW + (RUN_FAST - RUN_SLOW) * Math.max(0, Math.min(1, (top - RUN_V0) / (RUN_V1 - RUN_V0)));
+    const out = side[sign > 0 ? 0 : 1];
+    for (let d = -RUN_RAMP; d < len + RUN_RAMP; d++) {
+      const j = (from + d + N) % N, w = d < 0 ? 1 + d / RUN_RAMP : d >= len ? 1 - (d - len + 1) / RUN_RAMP : 1;
+      out[j] = Math.max(out[j], RUN_BASE + (width - RUN_BASE) * w);
+      if (w > 0) entry[j] = Math.min(entry[j], top);
+    }
+  }
+  const special = (i) => loopMask[i] || U[i * 3 + 1] < 0.95 || air[i] || jumps.some((j) => i >= j.from && i <= j.to);
+  const dist = new Float32Array(N).fill(Infinity);
+  for (let i = 0; i < N; i++) if (special(i)) dist[i] = 0;
+  for (let pass = 0; pass < 2; pass++) {
+    for (let k = 1; k < 2 * N; k++) { const i = k % N, a = (i + N - 1) % N; dist[i] = Math.min(dist[i], dist[a] + 1); }
+    for (let k = 2 * N - 2; k >= 0; k--) { const i = k % N, b = (i + 1) % N; dist[i] = Math.min(dist[i], dist[b] + 1); }
+  }
+  const wallL = new Float32Array(n), wallR = new Float32Array(n), runL = new Float32Array(n), runR = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const j = i % N, f = Math.min(1, dist[j] / RUN_RAMP);
+    runL[i] = side[0][j] * f; runR[i] = side[1][j] * f;
+    wallL[i] = halfW[i] + runL[i]; wallR[i] = halfW[i] + runR[i];
+  }
+  return { wallL, wallR, runoff: { L: runL, R: runR, entry } };
 }
 
 export function wrap(track, i) {

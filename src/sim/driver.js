@@ -1,4 +1,4 @@
-import { DT, TUNING, accelAt, brakeAt, latCap, steerTo, cornerSpeed } from './drive.js';
+import { DT, TUNING, accelAt, brakeAt, latCap, steerTo, cornerSpeed, wallAt } from './drive.js';
 import { racingLine, groundLane, LIP_SPEED } from './line.js';
 import { LIM_BAND } from './circuit.js';
 import { rng } from './drivers.js';
@@ -276,7 +276,7 @@ export function drive(race, e, inp) {
   inp.throttle = clamp((vt - sp) / 2.5, 0, 1) * spare;
   inp.brake = sp > vt + 0.6 ? clamp((sp - vt) / 4, 0, 1) : 0;
   if (inp.brake > 0) inp.throttle = 0;
-  d.pinned = sp < 1.5 && Math.abs(c.lat) > track.halfW[hint] - 3.5 ? d.pinned + 1 : 0;
+  d.pinned = sp < 1.5 && Math.abs(c.lat) > wallAt(track, hint, Math.sign(c.lat)) - 3.5 ? d.pinned + 1 : 0;
   if (d.pinned > 60) d.back = 150;
   if (d.back > 0) {
     d.back--;

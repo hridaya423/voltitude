@@ -145,7 +145,7 @@ const AIR_PAD = 40;
 const WALL_HIT = 1, WALL_HARD = 5, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
 const WALL_TOP = 1.16;
 
-export const wallAt = (track, i, side) => track.halfW[i];
+export const wallAt = (track, i, side) => (side < 0 ? track.wallL[i] : track.wallR[i]);
 
 function nearestRoad(track, x, y, z, hint) {
   const i = nearestIndex(track, x, y, z, hint, 10);

@@ -911,3 +911,13 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - Captures (`cap-air.mjs`, scratchpad `air/`): span 0 lap 1, committed: run-up on the striped ramp at 133 mph, lip at 157, through the ring, over the S, a clean perfect landing on the straight at 148. Span 0 lap 2, ground route: a 78 mph hop with a perfect landing, the S at 54–63 mph. Span 1, committed: ramp, ring, flight over the ground road, clean landing at 147. Wall-ride: the car holds the 55° bank at 110–127 mph earning wall gas. The 90 m side views show the ring, the S and the field, but the cars are too small to read height from; the chase views carry the check.
 - Wall stops (6 GPs): Proving 4, Launch 1, Airfield 2. TT bot laps unchanged, no wall stops or respawns.
 - Airfield and Launch winners repeat across tiers (tiers scale every rival equally, so the order holds). Proving wins spread FER 7, REY 7, AAL 5, NAI 1.
+
+## Thruster festival, Phase 2b (2026-10-29, executing session)
+
+**Task 25: run-off data (done).** `buildCircuit` now returns `wallL`, `wallR` (`halfW` + run-off) and `runoff = { L, R, entry }`. `wallAt` reads them; `course.js` tracks alias both to `halfW`.
+- Rule: 3 m on both sides. A corner is a run of `|curv| > 0.006` with one sign. Its outside gets 6 m below 40 m/s entry, 14 m above 70 m/s, linear between, with a 30 m ramp each side. Loops, banks under `U.y` 0.95, jumps and air spans get 0, and the run-off ramps to 0 over the 30 m next to them.
+- Deviation: "entry speed" is the peak racing-line speed in the 300 m before the corner, through the corner's end. The speed at turn-in is 20–35 m/s at every hairpin, which would give 6 m everywhere. The line has a small bump in T1's braking zone, so walking back to the braking point stopped early; the window does not.
+- Result. Proving: T1 14 m, final hairpin 14, basin hairpin 13.0 (entry 66 m/s), the fast kink 12.6, the air-line S-bends 0. Airfield: 14, 8.8, 14, 9.2, 9.8, 7.7. Launch: 14, 9.4, 9.4, 7.4, 7.1; the tank-farm wall 0.
+- Test "the final hairpin has 14 m of run-off on its outside, and the loop keeps its walls" failed before (no arrays), passes. The plan's "hairpin" is the final hairpin (Task 9's name); the basin hairpin gets 13.0 m.
+- Two tests measured the wall at `halfW`: "barriers keep the car on the road" and "outside an air span the walls hold a flying car" now measure against `wallAt` (the second flew onto the S-bend run-off of its oval, 14.3 m out, still inside the wall). `driver.js` "pinned" uses the wall line.
+- `npm test` 93 of 93. Exploits PASS on all three venues (run-off is still asphalt until Task 26).
