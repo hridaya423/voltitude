@@ -1131,3 +1131,19 @@ Contact sheets, before `7784bbc` and after `main` (scratchpad `sheets/`):
 - `garage.jpg`: day and night.
 
 Branch sheets: `docs/car/rear-before-after.jpg`, `docs/light-before-after.jpg`, `docs/garage-before-after.jpg`.
+
+### Phase 3 gate fixes (2026-10-29, in progress)
+
+Order: 1 auto exposure, 2 kerb launch, 3 countdown pause clock, 4 car rear by day, 5 garage, 6 perf, 7 worktree cleanup.
+
+**1. Auto exposure: done, one marginal miss.**
+- `post.js` meters the TAA output into a 32×16 log-luminance target, then adapts a 1×1 EV. Clamps: day -0.5 to +1.5 EV, night -0.25 to +0.4 EV. Off in the garage.
+- The day LUT S-curve is now a pure smoothstep. A strength above 1 overshoots white, and `pow(1 - l, 2.5)` writes NaN into the LUT, which shows as black blotches at the sun and on glints.
+- Motion blur uses a 1/60 s shutter and ignores projection changes. Before this, a slow frame or the boost FOV punch zoom-blurred the whole frame and failed the edge check at random.
+- The chase camera dollies in as the FOV widens, so the car keeps its frame width at speed. At 88+ mph the car fell to 0.22–0.23 of frame width, against a 0.24 minimum.
+- The HUD top scrim is gone. It darkened the sky by a third, which is where L98 lives. `a11y-probe` passes 87 of 87.
+- Fixes to the `shot-match` harness:
+  - The GP grid seed is pinned. It came from `Math.random` after render code had drawn a varying amount from the seeded stream, so every run raced a different field.
+  - The screenshot is taken before the car is measured.
+  - The "cropped" check uses projected vertices. The old union of mesh boxes combined a spinning wheel's inflated low y with the chassis rear z, a point no vertex occupies. Every earlier "cropped" failure was this artefact.
+- Gate, same seed: HUD on 6/6 PASS. HUD off 5/6: day straight edge 0.049 against 0.05.
