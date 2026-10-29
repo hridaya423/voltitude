@@ -82,7 +82,7 @@ export function createScrub(world, fogPatch) {
       while (want > 0) {
         if (want < 1 && rand() > want) break;
         want -= 1;
-        const lat = track.halfW[i] + 3 + Math.pow(rand(), 1.8) * kind.reach;
+        const lat = Math.max(track.wallL[i], track.wallR[i]) + 3 + Math.pow(rand(), 1.8) * kind.reach;
         const side = rand() < 0.5 ? -1 : 1;
         const x = track.P[k] + track.R[k] * lat * side + (rand() - 0.5) * 4, z = track.P[k + 2] + track.R[k + 2] * lat * side + (rand() - 0.5) * 4;
         if (clear(x, z) < 3) continue;

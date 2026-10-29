@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
 import { RAIL } from '../sim/drive.js';
 import { skyFog } from './sky.js';
-import { runs, extrude } from './road.js';
+import { runs, extrude, barriers } from './road.js';
 import { RUNWAY } from './airfield.js';
 
 const BOARD = 12.8;
 const ROWS = 8;
 const FENCE = 4.4;
+const TYRE = 0.66;
 const SPONSORS = [
   ['VOLTITUDE', '#e3263b', '#ffffff'], ['RDSTR', '#111216', '#f4f2ee'], ['HELIO CELLS', '#ffc21a', '#141414'], ['NORTHWIND', '#1069f0', '#ffffff'],
   ['KESTREL TYRES', '#17a84f', '#ffffff'], ['MERIDIAN', '#f4f2ee', '#d81f34'], ['AXIAL', '#ff6a14', '#ffffff'], ['TERRA GRID', '#08a6ab', '#ffffff'],
@@ -101,8 +102,9 @@ export function createTrackside(world, sunUniform, fogDensity, night) {
       .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= board.rgb;');
   });
   boardMat.customProgramCacheKey = () => 'trackside-board';
+  const bar = barriers(track), at = (side) => (side > 0 ? bar.R : bar.L);
   const face = (side) => {
-    const lo = (w) => [side * (w - RAIL + 0.84), 0.14], hi = (w) => [side * (w - RAIL + 0.92), 0.86];
+    const b = at(side), lo = (w, i) => [side * (b[i] - RAIL + 0.84), 0.14], hi = (w, i) => [side * (b[i] - RAIL + 0.92), 0.86];
     const g = extrude(track, list, side > 0 ? [hi, lo] : [lo, hi]);
     if (side > 0) { const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, 4000 - uv.getX(k), 1 - uv.getY(k)); }
     return g;
@@ -112,35 +114,47 @@ export function createTrackside(world, sunUniform, fogDensity, night) {
 
   const wireMat = new THREE.MeshStandardMaterial({ color: '#8d9298', roughness: 0.45, metalness: 0.7, alphaMap: wireTexture(), alphaHash: true, side: THREE.DoubleSide });
   skyFog(wireMat, sunUniform, fogDensity);
-  const wire = new THREE.Mesh(mergeGeometries([1, -1].map((side) => extrude(track, list, [(w) => [side * (w - 0.3), 1.16], (w) => [side * (w - 0.3), FENCE]]))), wireMat);
+  const wire = new THREE.Mesh(mergeGeometries([1, -1].map((side) => extrude(track, list, [(w, i) => [side * (at(side)[i] - 0.3), 1.16], (w, i) => [side * (at(side)[i] - 0.3), FENCE]]))), wireMat);
   wire.castShadow = true;
 
   const steel = new THREE.MeshStandardMaterial({ color: '#6f747b', roughness: 0.4, metalness: 0.8 });
   skyFog(steel, sunUniform, fogDensity);
-  const tube = (side, h) => extrude(track, list, [(w) => [side * (w - 0.34), h], (w) => [side * (w - 0.3), h + 0.06], (w) => [side * (w - 0.26), h]]);
+  const tube = (side, h) => extrude(track, list, [(w, i) => [side * (at(side)[i] - 0.34), h], (w, i) => [side * (at(side)[i] - 0.3), h + 0.06], (w, i) => [side * (at(side)[i] - 0.26), h]]);
   const rails = new THREE.Mesh(mergeGeometries([1, -1].flatMap((side) => [tube(side, FENCE - 0.04), tube(side, 2.6)])), steel);
 
   const step = Math.max(1, Math.round(4 / track.step)), postSites = [];
   for (const run of list) for (let i = run[0]; i <= run[run.length - 1]; i += step) for (const side of [-1, 1]) postSites.push([i, side]);
-  const posts = instanced(new THREE.BoxGeometry(0.09, FENCE - 1.16, 0.09).translate(0, (FENCE - 1.16) / 2, 0), steel, postSites, ([i, side]) => frameAt(track, i, side, track.halfW[i] - 0.3, 1.16, _m));
+  const posts = instanced(new THREE.BoxGeometry(0.09, FENCE - 1.16, 0.09).translate(0, (FENCE - 1.16) / 2, 0), steel, postSites, ([i, side]) => frameAt(track, i, side, at(side)[i] - 0.3, 1.16, _m));
 
-  const tyreSites = [], tyreStep = Math.max(1, Math.round(0.7 / track.step));
-  for (const run of list) for (let i = run[0]; i <= run[run.length - 1]; i += tyreStep) {
-    if (Math.abs(track.curv[i]) < 0.006) continue;
-    const side = -Math.sign(track.curv[i]);
-    for (let row = 0; row < 2; row++) for (let h = 0; h < 3; h++) tyreSites.push([i, side, row, h]);
+  const tyreSites = [];
+  for (const side of [-1, 1]) for (let row = 0; row < 2; row++) {
+    const tyre = side > 0 ? track.runoff.tyreR : track.runoff.tyreL, wall = side > 0 ? track.wallR : track.wallL;
+    const spot = (i) => { const o = i * 3, l = side * (wall[i] - 0.58 + row * 0.66); return [track.P[o] + track.R[o] * l, track.P[o + 1] + track.R[o + 1] * l, track.P[o + 2] + track.R[o + 2] * l]; };
+    let run = 0;
+    for (let i = 0; i < track.lap; i++) {
+      if (!tyre[i]) { run = 0; continue; }
+      const a = spot(i), b = spot(i + 1), len = Math.hypot(b[0] - a[0], b[2] - a[2]);
+      for (; run < len; run += TYRE) tyreSites.push([i, side, row, a.map((v, c) => v + (b[c] - v) * (run / len))]);
+      run -= len;
+    }
   }
-  const tyreMat = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 });
+  const tyreMat = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, vertexColors: true });
   skyFog(tyreMat, sunUniform, fogDensity);
-  const tyres = instanced(new THREE.CylinderGeometry(0.32, 0.32, 0.25, 14, 1, false), tyreMat, tyreSites, ([i, side, row, h]) => frameAt(track, i, side, track.halfW[i] + 0.45 + row * 0.66, 0.125 + h * 0.25, _m));
-  const red = new THREE.Color('#c8202e'), white = new THREE.Color('#e9e7e1'), rubber = new THREE.Color('#1b1c1f');
-  tyreSites.forEach(([i, , , h], k) => tyres.setColorAt(k, h === 1 ? (Math.floor(i / 6) % 2 ? red : white) : rubber));
+  const stack = mergeGeometries([0, 1, 2].map((h) => {
+    const g = new THREE.CylinderGeometry(0.32, 0.32, 0.24, 12, 1, h < 2).translate(0, 0.125 + h * 0.25, 0).toNonIndexed();
+    const shade = h === 1 ? 1 : 0.09;
+    g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(shade), 3));
+    return g;
+  }));
+  const tyres = instanced(stack, tyreMat, tyreSites, ([i, side, , p]) => frameAt(track, i, side, 0, 0, _m).setPosition(p[0], p[1], p[2]));
+  const red = new THREE.Color('#c8202e'), white = new THREE.Color('#e9e7e1');
+  tyreSites.forEach(([i, , row], k) => tyres.setColorAt(k, (Math.floor(i / 6) + row) % 2 ? red : white));
 
   const hutSites = [], hutStep = Math.round(260 / track.step);
   for (const run of list) for (let i = run[0] + hutStep / 2; i < run[run.length - 1]; i += hutStep) hutSites.push([Math.round(i), (Math.round(i / hutStep) % 2) * 2 - 1]);
   const hutMat = new THREE.MeshStandardMaterial({ color: '#ff7a1a', roughness: 0.6, emissive: '#ff7a1a', emissiveIntensity: night ? 0.25 : 0 });
   skyFog(hutMat, sunUniform, fogDensity);
-  const huts = instanced(new THREE.BoxGeometry(1.6, 2.3, 1.6).translate(0, 1.15, 0), hutMat, hutSites, ([i, side]) => frameAt(track, i, side, track.halfW[i] + 2.2, 0, _m));
+  const huts = instanced(new THREE.BoxGeometry(1.6, 2.3, 1.6).translate(0, 1.15, 0), hutMat, hutSites, ([i, side]) => frameAt(track, i, side, at(side)[i] + 2.2, 0, _m));
 
   group.add(boards, wire, rails, posts, tyres, huts);
   return { group };

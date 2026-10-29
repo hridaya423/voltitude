@@ -1,6 +1,6 @@
 import { buildCourse } from './course.js';
-import { buildCircuit } from './circuit.js';
-import { buildTerrain } from './terrain.js';
+import { buildCircuit, runoff } from './circuit.js';
+import { buildTerrain, shapeTerrain, grid, sampleGrid, RAISE } from './terrain.js';
 import { VENUES } from './venues.js';
 
 export function trackHash(track, venue) {
@@ -44,7 +44,12 @@ export const buildTrack = (venue) => (venue.circuit ? buildCircuit(venue.circuit
 
 export function buildWorld(heights, venue = VENUES.proving) {
   const track = buildTrack(venue);
-  const shaped = heights ? decodeHeights(heights, track, venue) : null;
+  const baked = heights ? decodeHeights(heights, track, venue) : null;
+  const shaped = baked || shapeTerrain(track, venue.terrain);
+  if (track.closed) {
+    const g = grid(venue.terrain), { P } = track;
+    Object.assign(track, runoff(track, (i) => P[i * 3 + 1] - sampleGrid(shaped, g, P[i * 3], P[i * 3 + 2]) > RAISE));
+  }
   const terrain = buildTerrain(track, shaped, venue.terrain);
-  return { venue, track, terrain, baked: !!shaped };
+  return { venue, track, terrain, baked: !!baked };
 }

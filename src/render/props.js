@@ -24,7 +24,7 @@ export function trackClearance(track) {
   return (x, z) => {
     let best = Infinity;
     const cx = Math.floor(x / S), cz = Math.floor(z / S);
-    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const i of grid.get(`${cx + a},${cz + b}`) || []) best = Math.min(best, Math.hypot(x - track.P[i * 3], z - track.P[i * 3 + 2]) - track.halfW[i]);
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const i of grid.get(`${cx + a},${cz + b}`) || []) best = Math.min(best, Math.hypot(x - track.P[i * 3], z - track.P[i * 3 + 2]) - Math.max(track.wallL[i], track.wallR[i]));
     return best;
   };
 }
@@ -79,7 +79,7 @@ export async function createBoulders(world, fogPatch) {
   };
   for (let i = 0; i < track.n; i += 2) {
     const k = i * 3;
-    const lat = track.halfW[i] + 6 + rand() * 90;
+    const lat = Math.max(track.wallL[i], track.wallR[i]) + 6 + rand() * 90;
     const side = rand() < 0.5 ? -1 : 1;
     if (rand() > 0.32) continue;
     const x = track.P[k] + track.R[k] * lat * side, z = track.P[k + 2] + track.R[k + 2] * lat * side;
@@ -94,7 +94,7 @@ export async function createBoulders(world, fogPatch) {
   for (let i = 0; i < track.n; i += 2) {
     const k = i * 3;
     for (let q = 0; q < 3; q++) {
-      const lat = track.halfW[i] + 2.5 + Math.pow(rand(), 2.4) * 70;
+      const lat = Math.max(track.wallL[i], track.wallR[i]) + 2.5 + Math.pow(rand(), 2.4) * 70;
       const side = rand() < 0.5 ? -1 : 1;
       place(track.P[k] + track.R[k] * lat * side + (rand() - 0.5) * 3, track.P[k + 2] + track.R[k + 2] * lat * side + (rand() - 0.5) * 3, 0.14 + Math.pow(rand(), 2.2) * 0.7, 0.35, small);
     }

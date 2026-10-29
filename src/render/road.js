@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
-import { RAIL } from '../sim/drive.js';
+import { RAIL, PAVED_OUT } from '../sim/drive.js';
 import { lightTick } from '../sim/race.js';
 import { skyFog } from './sky.js';
 
@@ -9,6 +9,22 @@ const SLAB = 1.1;
 const WHITE = '#e4e2dc';
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
 const _r = new THREE.Vector3(), _u = new THREE.Vector3(), _t = new THREE.Vector3();
+const TYRE_DEPTH = 1.45, TYRE_RAMP = 8, SKIRT = 2.5;
+
+export function barriers(track) {
+  const { n, lap, wallL, wallR, runoff } = track;
+  const out = { L: new Float32Array(n), R: new Float32Array(n) };
+  for (const [side, wall, tyre] of [['L', wallL, runoff.tyreL], ['R', wallR, runoff.tyreR]]) {
+    for (let i = 0; i < n; i++) {
+      let near = TYRE_RAMP;
+      for (let d = -TYRE_RAMP; d <= TYRE_RAMP; d++) if (tyre[((i + d) % lap + lap) % lap]) near = Math.min(near, Math.abs(d));
+      out[side][i] = wall[i] + TYRE_DEPTH * (1 - near / TYRE_RAMP);
+    }
+  }
+  return out;
+}
+
+export const pavedEdge = (track, i, side) => Math.min(track.halfW[i] + PAVED_OUT, side < 0 ? track.wallL[i] : track.wallR[i]);
 
 export function runs(track) {
   const out = [];
@@ -32,9 +48,9 @@ export function extrude(track, list, profile, extra) {
         const i = run[k], o = i * 3, w = halfW[i];
         const s = i * track.step;
         for (const [a, b] of [[seg, 0], [seg + 1, 1]]) {
-          const [l, h] = profile[a](w);
+          const [l, h] = profile[a](w, i);
           pos.push(P[o] + R[o] * l + U[o] * h, P[o + 1] + R[o + 1] * l + U[o + 1] * h, P[o + 2] + R[o + 2] * l + U[o + 2] * h);
-          const [l2, h2] = profile[seg + 1](w), [l1, h1] = profile[seg](w);
+          const [l2, h2] = profile[seg + 1](w, i), [l1, h1] = profile[seg](w, i);
           const dl = l2 - l1, dh = h2 - h1, len = Math.hypot(dl, dh) || 1;
           const nl = dh / len, nh = -dl / len;
           nor.push(R[o] * nl + U[o] * nh, R[o + 1] * nl + U[o + 1] * nh, R[o + 2] * nl + U[o + 2] * nh);
@@ -74,7 +90,7 @@ export function mastSites(world) {
     const o = i * 3;
     if (track.gap[i] || track.U[o + 1] < 0.97) continue;
     side = -side;
-    const off = track.halfW[i] + 7;
+    const off = (side < 0 ? track.wallL[i] : track.wallR[i]) + 7;
     const x = track.P[o] + track.R[o] * off * side, z = track.P[o + 2] + track.R[o + 2] * off * side;
     const g = terrain.height(x, z);
     if (Math.abs(g - track.P[o + 1]) > 4) continue;
@@ -136,6 +152,10 @@ function surfaceMaterial(renderer, sunUniform, fogDensity) {
           c = mix(c, vec3(0.8, 0.79, 0.74), line * 0.9);
           float runoff = smoothstep(edge - aa, edge, a);
           c = mix(c, base * 0.55, runoff);
+          float tyreR = step(1.5, vRoad.w), tyreL = step(0.5, vRoad.w - 2.0 * tyreR);
+          float band = (a - edge) / ${(PAVED_OUT + 0.9).toFixed(2)};
+          float chevron = step(0.62, fract((s - abs(band - 0.5) * 2.2) / 2.8)) * step(0.12, band) * step(band, 0.88);
+          c = mix(c, vec3(0.78, 0.77, 0.72), chevron * runoff * (lat > 0.0 ? tyreR : tyreL) * 0.85);
           float lip = step(0.5, vMark.y);
           float chev = step(0.5, fract((s + a * 0.9) / 3.0));
           c = mix(c, mix(vec3(0.05), vec3(0.85, 0.62, 0.05), chev), lip * (1.0 - runoff));
@@ -197,6 +217,48 @@ function basisAt(track, i, out) {
   return out.setFromRotationMatrix(_m);
 }
 
+function runoffMesh(track, list, bar, sunUniform, fogDensity, renderer) {
+  const parts = [];
+  for (const side of [1, -1]) {
+    const b = side > 0 ? bar.R : bar.L, gravel = side > 0 ? track.runoff.gravelR : track.runoff.gravelL;
+    const p = [(w, i) => [side * pavedEdge(track, i, side), 0], (w, i) => [side * (b[i] + 0.3), 0], (w, i) => [side * (b[i] + 0.3), -SKIRT]];
+    parts.push(extrude(track, list, side > 0 ? p.reverse() : p, (i, l) => [l, i * track.step, gravel[i], 0, 0, 0, 0]));
+  }
+  const loader = new THREE.TextureLoader(), aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const load = (f, srgb) => {
+    const t = loader.load(`assets/terrain/${f}.webp`);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = aniso;
+    t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    return t;
+  };
+  const m = new THREE.MeshStandardMaterial({ map: load('desert_sand/ground_albedo_2k', true), normalMap: load('desert_sand/ground_nrm_2k', false), roughness: 0.95, metalness: 0, envMapIntensity: 0.5 });
+  const stones = load('dry_rocks/ground_albedo_2k', true), stonesN = load('dry_rocks/ground_nrm_2k', false);
+  skyFog(m, sunUniform, fogDensity, false, (sh) => {
+    sh.uniforms.tStones = { value: stones }; sh.uniforms.tStonesN = { value: stonesN };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec4 aRoad;\nvarying vec4 vRun;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvRun = aRoad;\nvMapUv = vec2(aRoad.x, aRoad.y) / 7.0;\nvNormalMapUv = vMapUv;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec4 vRun;\nuniform sampler2D tStones;\nuniform sampler2D tStonesN;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float g = step(0.5, vRun.z);
+        float luma = dot(diffuseColor.rgb, vec3(0.33));
+        float mow = 0.9 + 0.1 * step(0.5, fract(vRun.y / 9.0));
+        vec3 turf = vec3(0.13, 0.25, 0.07) * (0.7 + 0.8 * luma) * mow;
+        vec3 grit = texture2D(tStones, vMapUv * 2.3).rgb;
+        grit = (0.75 + 0.9 * dot(grit, vec3(0.33))) * vec3(0.95, 0.82, 0.62);
+        diffuseColor.rgb = mix(turf, grit, g);`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        if (vRun.z > 0.5) normal = normalize(mix(normal, normalize(tbn * (texture2D(tStonesN, vMapUv * 2.3).xyz * 2.0 - 1.0)), 0.7));`);
+  });
+  m.customProgramCacheKey = () => 'runoff';
+  const mesh = new THREE.Mesh(mergeGeometries(parts), m);
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
 export function createRoad(world, sunUniform, fogDensity, renderer) {
   const { track, terrain } = world;
   const group = new THREE.Group();
@@ -220,7 +282,7 @@ export function createRoad(world, sunUniform, fogDensity, renderer) {
     if (track.U[j * 3 + 1] < 0.97) { lampK[j] = Math.max(lampK[j], 0.8); lampL[j] = 0; }
     else lampK[j] = Math.max(lampK[j], 0.22);
   }
-  const top = extrude(track, list, [(w) => [w, 0], (w) => [-w, 0]], (i, l) => [l, i * track.step, track.halfW[i], 0, kerb[i], lip[i], line[i], lampK[i], lampL[i]]);
+  const top = extrude(track, list, [(w, i) => [pavedEdge(track, i, 1), 0], (w, i) => [-pavedEdge(track, i, -1), 0]], (i, l) => [l, i * track.step, track.halfW[i], track.runoff.tyreL[i] + 2 * track.runoff.tyreR[i], kerb[i], lip[i], line[i], lampK[i], lampL[i]]);
   const surface = new THREE.Mesh(top, surfaceMaterial(renderer, sunUniform, fogDensity));
   surface.receiveShadow = true;
 
@@ -233,14 +295,17 @@ export function createRoad(world, sunUniform, fogDensity, renderer) {
   const railMat = panelMaterial('#f1efea', 0.38, 0.0, sunUniform, fogDensity, 'rail', 4);
   const capMat = new THREE.MeshStandardMaterial({ color: '#16171b', roughness: 0.35, metalness: 0.6 });
   skyFog(capMat, sunUniform, fogDensity);
+  const bar = barriers(track);
   const railProfile = (side) => {
-    const p = [(w) => [side * (w - RAIL + 0.85), 0], (w) => [side * (w - RAIL + 0.95), 0.95], (w) => [side * (w - 0.35), 1.08], (w) => [side * w, 0]];
+    const b = side > 0 ? bar.R : bar.L;
+    const p = [(w, i) => [side * (b[i] - RAIL + 0.85), 0], (w, i) => [side * (b[i] - RAIL + 0.95), 0.95], (w, i) => [side * (b[i] - 0.35), 1.08], (w, i) => [side * b[i], 0]];
     return side > 0 ? p.reverse() : p;
   };
   const rails = new THREE.Mesh(mergeGeometries([extrude(track, list, railProfile(1)), extrude(track, list, railProfile(-1))]), railMat);
   rails.castShadow = true; rails.receiveShadow = true;
   const capProfile = (side) => {
-    const p = [(w) => [side * (w - RAIL + 0.93), 0.9], (w) => [side * (w - RAIL + 0.96), 1.1], (w) => [side * (w - 0.3), 1.16], (w) => [side * (w - 0.3), 1.07]];
+    const b = side > 0 ? bar.R : bar.L;
+    const p = [(w, i) => [side * (b[i] - RAIL + 0.93), 0.9], (w, i) => [side * (b[i] - RAIL + 0.96), 1.1], (w, i) => [side * (b[i] - 0.3), 1.16], (w, i) => [side * (b[i] - 0.3), 1.07]];
     return side > 0 ? p.reverse() : p;
   };
   const caps = new THREE.Mesh(mergeGeometries([extrude(track, list, capProfile(1)), extrude(track, list, capProfile(-1))]), capMat);
@@ -251,6 +316,7 @@ export function createRoad(world, sunUniform, fogDensity, renderer) {
     new THREE.BoxGeometry(track.halfW[ledAt] * 2 - 3, 0.05, 0.35).translate(0, 0.03, 0).applyQuaternion(basisAt(track, ledAt, _q)).translate(track.P[ledAt * 3], track.P[ledAt * 3 + 1], track.P[ledAt * 3 + 2]),
     new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.5, 2.8), toneMapped: false }));
   group.add(surface, shell, rails, caps, startLed);
+  if (track.closed) group.add(runoffMesh(track, list, bar, sunUniform, fogDensity, renderer));
 
   const capsGeo = [];
   for (const run of list) for (const [i, dir] of [[run[0], -1], [run[run.length - 1], 1]]) {
@@ -311,7 +377,7 @@ export function createRoad(world, sunUniform, fogDensity, renderer) {
   const towerGeo = [], beamGeo2 = [], ledGeoG = [];
   const H = 10.5;
   gantries.forEach((i, k) => {
-    const w = track.halfW[i] + 0.9;
+    const w = Math.max(bar.L[i], bar.R[i]) + 0.9;
     const q = basisAt(track, i, new THREE.Quaternion());
     const o = i * 3;
     const place = (g) => { g.applyQuaternion(q); g.translate(track.P[o], track.P[o + 1], track.P[o + 2]); return g; };

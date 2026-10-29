@@ -32,7 +32,7 @@ export async function createGrandstands(world, sunUniform, fogDensity, renderer)
   const q = new THREE.Quaternion(), m = new THREE.Matrix4(), p = new THREE.Vector3(), place = new THREE.Vector3(), centre = new THREE.Vector3(), centres = [];
   for (const [i, side, len] of sites) {
     const k = i * 3;
-    const off = track.halfW[i] + 14;
+    const off = (side < 0 ? track.wallL[i] : track.wallR[i]) + 14;
     p.set(track.P[k] + track.R[k] * side * off, 0, track.P[k + 2] + track.R[k + 2] * side * off);
     let lo = Infinity;
     for (const a of [-0.5, 0, 0.5]) lo = Math.min(lo, terrain.height(p.x + track.T[k] * a * len, p.z + track.T[k + 2] * a * len));

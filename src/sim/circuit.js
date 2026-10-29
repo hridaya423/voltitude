@@ -287,7 +287,7 @@ function corners(track) {
   return out;
 }
 
-function runoff(track) {
+export function runoff(track, raised = () => false) {
   const { lap: N, n, U, loopMask, air, jumps, halfW } = track;
   const { v } = racingLine(track);
   const side = [new Float32Array(N).fill(RUN_BASE), new Float32Array(N).fill(RUN_BASE)];
@@ -303,7 +303,7 @@ function runoff(track) {
       if (top < RUN_GRAVEL) trap[j] = 1;
     }
   }
-  const special = (i) => loopMask[i] || U[i * 3 + 1] < 0.95 || air[i] || jumps.some((j) => i >= j.from && i <= j.to);
+  const special = (i) => loopMask[i] || U[i * 3 + 1] < 0.95 || air[i] || raised(i) || jumps.some((j) => i >= j.from && i <= j.to);
   const dist = new Float32Array(N).fill(Infinity);
   for (let i = 0; i < N; i++) if (special(i)) dist[i] = 0;
   for (let pass = 0; pass < 2; pass++) {

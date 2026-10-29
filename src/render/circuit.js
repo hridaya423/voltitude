@@ -61,7 +61,7 @@ export function createCircuitProps(world) {
     sites.forEach((from, k) => {
       const curv = track.curv[(from + 120) % N];
       const side = curv > 0 ? -1 : 1;
-      frame(from - d, track.halfW[((from - d) % N + N) % N] + 3.2, side, 0);
+      frame(from - d, (side < 0 ? track.wallL : track.wallR)[((from - d) % N + N) % N] + 4.7, side, 0);
       board.setMatrixAt(k, m.compose(p, q, new THREE.Vector3(1, 1, 1)));
       poles.setMatrixAt(k, m);
     });

@@ -99,7 +99,7 @@ export function createChaseCamera(camera, height) {
 export function createBroadcastCamera(camera, track, height) {
   const cams = [];
   for (let i = 40, side = 1; i < track.n - 40; i += 110, side = -side) {
-    const k = i * 3, w = track.halfW[i];
+    const k = i * 3, w = (side < 0 ? track.wallL : track.wallR)[i] - 6;
     const x = track.P[k] + track.R[k] * side * (w + 16), z = track.P[k + 2] + track.R[k + 2] * side * (w + 16);
     const y = Math.max(track.P[k + 1] + 5 + (i % 3) * 3, height(x, z) + 3);
     cams.push({ i, pos: new THREE.Vector3(x, y, z) });

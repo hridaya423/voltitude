@@ -148,7 +148,8 @@ const TYRE_MU = 1, TYRE_WRECK = 45, TYRE_SPIN = 0.5;
 
 export const GRIP = { road: 1, kerb: 1, paved: 0.9, grass: 0.55, gravel: 0.45, terrain: 0.58 };
 export const DRAG = { road: 0, kerb: 0, paved: 0, grass: 0.15 * G, gravel: 0.6 * G, terrain: 0 };
-const KERB_IN = 2.6, PAVED_IN = 0.9, PAVED_OUT = 1.1, KERB_CURV = 0.00455;
+const KERB_IN = 2.6, PAVED_IN = 0.9, KERB_CURV = 0.00455;
+export const PAVED_OUT = 1.1;
 
 export const wallAt = (track, i, side) => (side < 0 ? track.wallL[i] : track.wallR[i]);
 

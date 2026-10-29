@@ -93,7 +93,7 @@ function bankCentre(track, name) {
   }
   if (!n) return null;
   x /= n; z /= n;
-  for (let i = 0; i < track.lap; i++) r = Math.min(r || Infinity, Math.hypot(track.H[i * 3] - x, track.H[i * 3 + 2] - z) - track.halfW[i]);
+  for (let i = 0; i < track.lap; i++) r = Math.min(r || Infinity, Math.hypot(track.H[i * 3] - x, track.H[i * 3 + 2] - z) - Math.max(track.wallL[i], track.wallR[i]));
   return { x, z, r };
 }
 
@@ -125,7 +125,7 @@ export function createLaunchComplex(world, sunUniform, fogDensity, renderer, nig
     const o = crest * 3;
     const back = new THREE.Vector3(track.R[o], 0, track.R[o + 2]).normalize();
     const side = new THREE.Vector3().crossVectors(_up, back);
-    const half = 10, H = top + 26, off = track.halfW[crest] + half + 14;
+    const half = 10, H = top + 26, off = Math.max(track.wallL[crest], track.wallR[crest]) + half + 14;
     const cx = track.P[o] + back.x * off, cz = track.P[o + 2] + back.z * off;
     const g0 = terrain.height(cx, cz) - 1;
     const yaw = Math.atan2(back.x, back.z);
@@ -190,7 +190,7 @@ export function createLaunchComplex(world, sunUniform, fogDensity, renderer, nig
     const clear = (x, z, r) => {
       for (let i = 0; i < track.n; i += 3) {
         const dx = track.H[i * 3] - x, dz = track.H[i * 3 + 2] - z;
-        if (dx * dx + dz * dz < (r + track.halfW[i] + 8) ** 2) return false;
+        if (dx * dx + dz * dz < (r + Math.max(track.wallL[i], track.wallR[i]) + 8) ** 2) return false;
       }
       return Math.hypot(x - big.x, z - big.z) > r + 46;
     };
@@ -208,7 +208,7 @@ export function createLaunchComplex(world, sunUniform, fogDensity, renderer, nig
         if (track.U[i * 3 + 1] < 0.97) continue;
         for (const s of [-1, 1]) {
           const r = 9 + ((i * 7) % 5);
-          const off = track.halfW[i] + r + 16;
+          const off = Math.max(track.wallL[i], track.wallR[i]) + r + 16;
           const x = track.H[i * 3] + track.R[i * 3] * off * s, z = track.H[i * 3 + 2] + track.R[i * 3 + 2] * off * s;
           if (!clear(x, z, r) || sites.some(([a, b, c]) => Math.hypot(a - x, b - z) < c + r + 4)) continue;
           sites.push([x, z, r]);
@@ -230,7 +230,7 @@ export function createLaunchComplex(world, sunUniform, fogDensity, renderer, nig
     const ka = a * 3, kb = b * 3;
     const ax = track.P[ka], az = track.P[ka + 2], bx = track.P[kb], bz = track.P[kb + 2];
     const len = Math.hypot(bx - ax, bz - az) + 10;
-    const w = track.halfW[a] + 3;
+    const w = Math.max(track.wallL[a], track.wallR[a]) + 3;
     const base = Math.min(track.P[ka + 1], track.P[kb + 1]) - 1.2;
     _q.setFromAxisAngle(_up, Math.atan2(bx - ax, bz - az));
     const at = new THREE.Vector3((ax + bx) / 2, base, (az + bz) / 2);

@@ -56,7 +56,7 @@ function towerSite(track) {
   const end = track.sectors[k + 1]?.i ?? track.lap;
   let i = track.sectors[k].i, best = 0;
   for (let j = i; j < end; j++) if (Math.abs(track.curv[j]) > best) { best = Math.abs(track.curv[j]); i = j; }
-  const side = track.curv[i] > 0 ? -1 : 1, off = track.halfW[i] + 45, o = i * 3;
+  const side = track.curv[i] > 0 ? -1 : 1, off = Math.max(track.wallL[i], track.wallR[i]) + 45, o = i * 3;
   return { x: track.P[o] + track.R[o] * off * side, z: track.P[o + 2] + track.R[o + 2] * off * side, top: track.P[o + 1] };
 }
 
@@ -130,7 +130,7 @@ export function createAirfield(world, sunUniform, fogDensity, renderer) {
     const ax = track.P[ka], az = track.P[ka + 2], bx = track.P[kb], bz = track.P[kb + 2];
     const len = Math.hypot(bx - ax, bz - az) + 24;
     const yaw = Math.atan2(bx - ax, bz - az);
-    const R = track.halfW[a] + 9;
+    const R = Math.max(track.wallL[a], track.wallR[a]) + 9;
     const base = Math.min(track.P[ka + 1], track.P[kb + 1]) - 1.2;
     _q.setFromAxisAngle(_p.set(0, 1, 0), yaw);
     const at = new THREE.Vector3((ax + bx) / 2, base, (az + bz) / 2);

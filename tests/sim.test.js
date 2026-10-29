@@ -67,6 +67,19 @@ for (const id of Object.keys(VENUES)) {
     assert.ok(worst > 0.1, `terrain ${(-worst).toFixed(2)} m above road at sample ${at}`);
   });
 
+  if (circuit) test(`${name}: the terrain lies just under the run-off`, () => {
+    const { P, R, halfW, wallL, wallR, lap } = world.track;
+    let high = -Infinity, deep = -Infinity, hi = -1, lo = -1;
+    for (let i = 0; i < lap; i++) for (const side of [-1, 1]) {
+      const wall = side < 0 ? wallL[i] : wallR[i], k = i * 3;
+      const below = (lat) => { const l = side * lat; return P[k + 1] + R[k + 1] * l - world.terrain.height(P[k] + R[k] * l, P[k + 2] + R[k + 2] * l); };
+      for (let lat = halfW[i] + 0.5; lat < wall - 1; lat += 1) if (-below(lat) > high) { high = -below(lat); hi = i; }
+      if (wall > halfW[i] + 2 && below(wall + 1) > deep) { deep = below(wall + 1); lo = i; }
+    }
+    assert.ok(high < 0, `terrain ${high.toFixed(2)} m above the run-off at sample ${hi}`);
+    assert.ok(deep < 2, `terrain ${deep.toFixed(2)} m below the run-off behind the wall at sample ${lo}`);
+  });
+
   if (circuit) test(`${name}: the racing line laps in 60 to 90 seconds`, () => {
     const { time } = lineFor(world.track);
     assert.ok(time > 60 && time < 90, `${time.toFixed(1)} s`);

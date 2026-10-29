@@ -200,7 +200,7 @@ export function createTerrain(terrain, sunUniform, fogDensity, textures, venue, 
   const roadD = new Float32Array(N).fill(1e9);
   const reach = Math.ceil((BAND + 14) / cell);
   for (let s = 0; s < track.n; s += 2) {
-    const px = track.P[s * 3], pz = track.P[s * 3 + 2], hw = track.halfW[s];
+    const px = track.P[s * 3], pz = track.P[s * 3 + 2], hw = Math.max(track.wallL[s], track.wallR[s]);
     const ci = Math.round((px - x0) / cell), cj = Math.round((pz - z0) / cell);
     for (let j = Math.max(0, cj - reach); j <= Math.min(res - 1, cj + reach); j++) for (let i = Math.max(0, ci - reach); i <= Math.min(res - 1, ci + reach); i++) {
       const d = Math.hypot(x0 + i * cell - px, z0 + j * cell - pz) - hw;

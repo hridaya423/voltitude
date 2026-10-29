@@ -63,7 +63,14 @@ export function createFacility(world, sunUniform, fogDensity, night) {
   };
   const whites = [], darks = [], glasses = [], glows = [];
   const box = (list, w, h, d, x, y, z) => list.push(new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z));
-  {
+  const clear = (x, z, w, d) => {
+    for (let i = 0; i < track.lap; i++) {
+      const k = i * 3, dx = Math.max(Math.abs(track.P[k] - x) - w / 2, 0), dz = Math.max(Math.abs(track.P[k + 2] - z) - d / 2, 0);
+      if (Math.hypot(dx, dz) < Math.max(track.wallL[i], track.wallR[i]) + 4) return false;
+    }
+    return true;
+  };
+  if (clear(sx + 20, sz0 + 120, 34, 116)) {
     const x = sx + 22, z = sz0 + 120, y = base(x, z, 34, 110) - 0.5;
     box(whites, 30, 2, 110, x, y, z);
     box(glasses, 26, 5, 106, x, y + 2, z);
@@ -72,7 +79,7 @@ export function createFacility(world, sunUniform, fogDensity, night) {
     box(darks, 2, 0.6, 116, x - 18, y + 7.8, z);
     for (let k = -2; k <= 2; k++) box(whites, 1.2, 7, 1.2, x - 14, y, z + k * 24);
   }
-  {
+  if (clear(sx + 70, sz0 + 40, 58, 66)) {
     const x = sx + 70, z = sz0 + 40, y = base(x, z, 60, 70) - 0.5;
     box(whites, 56, 18, 64, x, y, z);
     box(darks, 46, 15, 0.6, x, y, z - 32.2);

@@ -59,6 +59,12 @@ export function grid(T) {
   return { res, cell, x0: cx - size / 2, z0: cz - size / 2, N: res * res, size };
 }
 
+export function sampleGrid(H, g, x, z) {
+  const fx = Math.max(0, Math.min(g.res - 1.001, (x - g.x0) / g.cell)), fz = Math.max(0, Math.min(g.res - 1.001, (z - g.z0) / g.cell));
+  const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, k = j * g.res + i;
+  return (H[k] * (1 - u) + H[k + 1] * u) * (1 - v) + (H[k + g.res] * (1 - u) + H[k + g.res + 1] * u) * v;
+}
+
 function sweep(track, g, every, radius, visit) {
   const { res, cell, x0, z0 } = g;
   const { n, H, halfW } = track;
@@ -193,6 +199,9 @@ export function erode(H, res, cell, drops, seed = 7) {
   return H;
 }
 
+export const RAISE = 14;
+const RUN_SINK = 0.2, ROAD_SINK = 0.6, FILL = 8;
+
 export function buildTerrain(track, shaped, T) {
   const g = grid(T);
   const { res, cell, x0, z0, N, size } = g;
@@ -205,8 +214,8 @@ export function buildTerrain(track, shaped, T) {
       if (pad > 0) H[j * res + i] += (RUNWAY_Y - H[j * res + i]) * pad;
     }
   }
-  const { P, U, R, halfW, gap, wall } = track;
-  const ceil = new Float32Array(N).fill(1e9), floor = new Float32Array(N).fill(-1e9);
+  const { P, T: TT, U, R, halfW, gap, wall, wallL, wallR } = track;
+  const ceil = new Float32Array(N).fill(1e9), floor = new Float32Array(N).fill(-1e9), pin = new Float32Array(N), pinD = new Float32Array(N).fill(Infinity);
   const low = new Float32Array(track.n);
   for (let s = 0; s < track.n; s++) {
     const k = s * 3, w = halfW[s];
@@ -214,12 +223,16 @@ export function buildTerrain(track, shaped, T) {
     low[s] = gap[s] ? P[k + 1] - 4 : Math.min(P[k + 1], P[k + 1] + U[k + 1] * 2.2) - edge - 0.35;
   }
   const [cutSlope, cutReach] = T.cut || [1.4, 70];
-  sweep(track, g, 2, (s, w) => w + cutReach, (k, d, s) => {
-    const w = halfW[s];
+  sweep(track, g, 1, (s) => Math.max(wallL[s], wallR[s]) + cutReach, (k, d, s, x, z) => {
+    const k3 = s * 3, lat = (x - P[k3]) * R[k3] + (z - P[k3 + 2]) * R[k3 + 2], w = lat < 0 ? wallL[s] : wallR[s];
     const slope = wall[s] ? 7 : cutSlope;
+    const a = Math.abs(lat), under = a <= halfW[s];
+    if (!gap[s] && U[k3 + 1] > 0.9 && w > halfW[s] && a < w + 2 * cell && Math.abs((x - P[k3]) * TT[k3] + (z - P[k3 + 2]) * TT[k3 + 2]) < 0.75 + Math.abs(track.curv[s] * lat)) {
+      if (a < pinD[k]) { pinD[k] = a; pin[k] = P[k3 + 1] + R[k3 + 1] * lat - (under ? ROAD_SINK : RUN_SINK); }
+      return;
+    }
     const c = low[s] + slope * Math.max(0, d - w - 1);
     if (c < ceil[k]) ceil[k] = c;
-    const k3 = s * 3;
     if (!gap[s] && U[k3 + 1] > 0.97 && d < w + 30) {
       const f = P[k3 + 1] - 0.3 - 0.9 * Math.max(0, d - w - 2);
       if (f > floor[k]) floor[k] = f;
@@ -240,8 +253,10 @@ export function buildTerrain(track, shaped, T) {
     }
   }
   for (let k = 0; k < N; k++) {
-    if (floor[k] > H[k] && floor[k] - H[k] < 14) H[k] = floor[k];
+    if (floor[k] > H[k] && floor[k] - H[k] < RAISE) H[k] = floor[k];
+    const fill = pin[k] - H[k];
     if (ceil[k] < H[k]) H[k] = ceil[k];
+    if (pinD[k] < Infinity && fill < FILL) H[k] = pin[k];
   }
   const height = (x, z) => {
     let fx = (x - x0) / cell, fz = (z - z0) / cell;
