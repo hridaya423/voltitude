@@ -5,7 +5,7 @@ import { resolveContacts, clearance } from './contact.js';
 import { GAIN, earn, flushGains, landingGain } from './gas.js';
 import { trackLimits, MIN_GAIN, PACE } from './limits.js';
 
-export const SIM_VERSION = 12;
+export const SIM_VERSION = 13;
 export const TIERS = Object.freeze({ easy: 0.94, pro: 0.98, elite: 1 });
 export const COUNTDOWN = 240;
 export const lightTick = (n) => -220 + 40 * (n - 1);

@@ -5,7 +5,7 @@ import { VENUES } from '../src/sim/venues.js';
 import { seaMask } from '../src/sim/terrain.js';
 import { createRace, stepRace, createInput, unpackInput, packInput, eventsFor, botInput } from '../src/sim/race.js';
 import { createRecorder, encodeRun, createGhost } from '../src/sim/ghost.js';
-import { placeCar, TUNING, wallAt } from '../src/sim/drive.js';
+import { placeCar, createCar, stepCar, TUNING, wallAt } from '../src/sim/drive.js';
 import { lineFor } from '../src/sim/driver.js';
 import { contactPair } from '../src/sim/contact.js';
 
@@ -95,6 +95,28 @@ for (const id of Object.keys(VENUES)) {
     }
     assert.ok(high < 0, `terrain ${high.toFixed(2)} m above the run-off at sample ${hi}`);
     assert.ok(deep < 2, `terrain ${deep.toFixed(2)} m below the run-off behind the wall at sample ${lo}`);
+  });
+
+  if (circuit) test(`${name}: a kerb never launches a car the road centre would keep down`, () => {
+    const { lap, halfW, curv, air, U } = world.track, line = lineFor(world.track);
+    const inp = createInput();
+    inp.throttle = 1;
+    const flies = (i, lat, v) => {
+      const c = createCar();
+      placeCar(c, world.track, (i - 30 + lap) % lap, v, lat);
+      for (let t = 0; t < 180 && Math.abs(c.lat - lat) < 2.5; t++) {
+        stepCar(c, inp, world, t, false);
+        if (c.mode === 0) return true;
+      }
+      return false;
+    };
+    const launches = [];
+    for (let i = 0; i < lap; i += 3) {
+      if (Math.abs(curv[i]) <= 0.00455 || U[i * 3 + 1] <= 0.95 || air?.[i] || air?.[(i - 30 + lap) % lap]) continue;
+      const v = line.v[i] * 1.1;
+      for (const side of [-1, 1]) if (flies(i, side * (halfW[i] - 1.75), v) && !flies(i, 0, v)) launches.push(`sample ${i} side ${side} at ${(v * 2.237).toFixed(0)} mph`);
+    }
+    assert.deepEqual(launches, []);
   });
 
   if (circuit) test(`${name}: the racing line laps in 60 to 90 seconds`, () => {

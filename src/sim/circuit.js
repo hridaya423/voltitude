@@ -170,7 +170,7 @@ export function buildCircuit(def) {
   const { S, marks } = dense(nodes);
   const nd = S.x.length;
 
-  const W = 40, BW = 120;
+  const W = 40, BW = 240;
   const yawOf = (i) => Math.atan2(S.T[i][0], S.T[i][2]);
   const signed = new Float64Array(nd);
   for (let i = 0; i < nd; i++) {
@@ -181,11 +181,20 @@ export function buildCircuit(def) {
     const k = -d / (2 * W * DENSE);
     signed[i] = S.bank[i] * D * Math.sign(k) * Math.min(1, Math.abs(k) / 0.002);
   }
+  const clear = new Float64Array(nd).fill(BW);
+  for (const dir of [1, -1]) {
+    let d = BW;
+    for (let n = 0; n < 2 * nd; n++) {
+      const i = dir > 0 ? n % nd : (2 * nd - 1 - n) % nd;
+      d = S.loop[i] ? 0 : Math.min(BW, d + 1);
+      clear[i] = Math.min(clear[i], d);
+    }
+  }
   for (let i = 0; i < nd; i++) {
     if (S.loop[i]) continue;
     let sum = 0;
-    for (let j = -BW; j <= BW; j++) sum += signed[(i + j + nd) % nd];
-    const bank = sum / (2 * BW + 1);
+    for (let j = -BW; j <= BW; j++) sum += signed[(i + j + nd) % nd] * (1 + Math.cos((Math.PI * j) / (BW + 1)));
+    const bank = (sum / (2 * BW + 2)) * smoother(clear[i] / BW);
     const U = S.U[i], R = S.R[i], c = Math.cos(bank), s = Math.sin(bank);
     S.U[i] = [U[0] * c + R[0] * s, U[1] * c + R[1] * s, U[2] * c + R[2] * s];
     S.R[i] = [R[0] * c - U[0] * s, R[1] * c - U[1] * s, R[2] * c - U[2] * s];
