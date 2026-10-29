@@ -1,1 +1,1 @@
-{"type":"module","private":true,"name":"voltitude","scripts":{"test":"node --test tests/*.test.js"}}
+{"type":"module","private":true,"name":"voltitude","scripts":{"start":"node tools/serve.mjs","test":"node --test tests/*.test.js"}}
