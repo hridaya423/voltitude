@@ -5,7 +5,7 @@ import { VENUES } from '../src/sim/venues.js';
 import { seaMask } from '../src/sim/terrain.js';
 import { createRace, stepRace, createInput, unpackInput, packInput, eventsFor, botInput } from '../src/sim/race.js';
 import { createRecorder, encodeRun, createGhost } from '../src/sim/ghost.js';
-import { placeCar, createCar, stepCar, TUNING, wallAt } from '../src/sim/drive.js';
+import { placeCar, createCar, stepCar, TUNING, wallAt, steerTo } from '../src/sim/drive.js';
 import { lineFor } from '../src/sim/driver.js';
 import { contactPair } from '../src/sim/contact.js';
 
@@ -117,6 +117,21 @@ for (const id of Object.keys(VENUES)) {
       for (const side of [-1, 1]) if (flies(i, side * (halfW[i] - 1.75), v) && !flies(i, 0, v)) launches.push(`sample ${i} side ${side} at ${(v * 2.237).toFixed(0)} mph`);
     }
     assert.deepEqual(launches, []);
+  });
+
+  if (id === 'launch') test('launch: a 90 mph car on the kerb into the wall-ride stays on the ground', () => {
+    const { halfW, curv } = world.track, inp = createInput(), off = [];
+    for (const side of [-1, 1]) {
+      const c = createCar(), lat = side * (halfW[1000] - 1.75);
+      placeCar(c, world.track, 1000, 40, lat);
+      for (let t = 0; t < 120 * 4 && c.hint < 1130; t++) {
+        inp.steer = steerTo(c, world.track, lat, 0, curv[c.hint]);
+        inp.throttle = Math.max(0, Math.min(1, (40 - c.speed) / 2));
+        stepCar(c, inp, world, t, false);
+        if (c.mode === 0 && c.hint >= 1085) { off.push(`side ${side} airborne at ${c.hint}, ${(c.speed * 2.237).toFixed(0)} mph`); break; }
+      }
+    }
+    assert.deepEqual(off, []);
   });
 
   if (circuit) test(`${name}: the racing line laps in 60 to 90 seconds`, () => {
