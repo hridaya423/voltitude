@@ -3,6 +3,7 @@ import { VENUES } from '../sim/venues.js';
 export const BOARD = { w: 2048, h: 960 };
 export const TYRE = { w: 1280, h: 800 };
 export const FLOOR = { w: 2560, h: 800 };
+export const TELE = { w: 1536, h: 512 };
 
 const C = {
   ink: '#f4f2ee', ink2: 'rgba(244,242,238,0.74)', ink3: 'rgba(244,242,238,0.5)', ink4: 'rgba(244,242,238,0.22)', hair: 'rgba(255,255,255,0.14)',
@@ -341,4 +342,45 @@ export function drawFloor(g, glow, f) {
     hits.push({ x, y: 0, w: bw, h, row: i });
   });
   return hits;
+}
+
+const CHANNELS = [['CELL TEMP', C.orange, 0.7, 1.3], ['THRUST', C.cyan, 1.9, 2.6], ['GAS', C.good, 0.35, 0.9]];
+
+export function drawTelemetry(g, data, now) {
+  const { w, h } = TELE;
+  clear(g, w, h, '#0a0d14', '#04050a');
+  put(g, 'PIT WALL', 40, 58, { size: 30, fam: DISPLAY, weight: 400, gap: 10 });
+  put(g, 'TEAM VOLTITUDE · ROCKET RANGE', 300, 56, { size: 24, color: C.ink3, gap: 6 });
+  g.fillStyle = C.redHot;
+  if (Math.floor(now * 1.5) % 2) { g.beginPath(); g.arc(w - 150, 46, 9, 0, Math.PI * 2); g.fill(); }
+  put(g, 'LIVE', w - 40, 56, { size: 26, weight: 700, color: C.redHot, align: 'right', gap: 6 });
+  g.fillStyle = C.hair; g.fillRect(40, 82, w - 80, 2);
+  data.venues.forEach((v, i) => {
+    const y = 136 + i * 62, [set, total] = v.note.split(' of ').map((n) => parseInt(n, 10));
+    put(g, v.name.toUpperCase(), 40, y, { size: 24, fam: DISPLAY, weight: 400, color: v.id === data.current ? C.ink : C.ink3, max: 300 });
+    g.fillStyle = C.ink4; g.fillRect(40, y + 14, 320, 8);
+    g.fillStyle = v.id === data.current ? C.yellow : C.ink3; g.fillRect(40, y + 14, 320 * (set / total || 0), 8);
+    put(g, `${set}/${total}`, 400, y + 8, { size: 26, weight: 700, color: C.ink2, align: 'right' });
+  });
+  data.rows.slice(0, 5).forEach((ev, i) => {
+    const y = 136 + i * 62;
+    put(g, ev.tag, 460, y, { size: 22, fam: DISPLAY, weight: 400, color: C.ink3 });
+    put(g, ev.name.toUpperCase(), 540, y, { size: 24, fam: DISPLAY, weight: 400, color: C.ink2, max: 250 });
+    put(g, ev.best || '—', 900, y, { size: 28, weight: 700, color: ev.best ? C.ink : C.ink4, align: 'right' });
+    dot(g, 930, y - 9, 10, ev.medal && ev.medal.id);
+  });
+  const x0 = 980, x1 = w - 40, gw = x1 - x0;
+  CHANNELS.forEach(([name, color, f1, f2], k) => {
+    const top = 104 + k * 132, mid = top + 66;
+    put(g, name, x0, top + 22, { size: 20, color: C.ink3, gap: 4 });
+    g.fillStyle = C.hair; g.fillRect(x0, top + 120, gw, 1);
+    g.strokeStyle = color; g.lineWidth = 3; g.beginPath();
+    for (let x = 0; x <= gw; x += 6) {
+      const t = now * 0.8 - (gw - x) / gw * 6;
+      const y = mid - 40 * (Math.sin(t * f1 + k) * 0.6 + Math.sin(t * f2 * 1.7 + k * 3) * 0.3 + Math.sin(t * 7.3 + k) * 0.1);
+      if (x) g.lineTo(x0 + x, y); else g.moveTo(x0 + x, y);
+    }
+    g.stroke();
+    g.fillStyle = color; g.beginPath(); g.arc(x1, mid - 40 * (Math.sin(now * 0.8 * f1 + k) * 0.6 + Math.sin(now * 0.8 * f2 * 1.7 + k * 3) * 0.3 + Math.sin(now * 0.8 * 7.3 + k) * 0.1), 6, 0, Math.PI * 2); g.fill();
+  });
 }
