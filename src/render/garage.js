@@ -108,7 +108,7 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
   const cyl = (key, r, h, x, y, z, seg = 18) => put(key, new THREE.CylinderGeometry(r, r, h, seg), x, y + h / 2, z);
 
   const W = 13, Z0 = -9.5, Z1 = 11.7, H = 8.8;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, Z1 - Z0).rotateX(-Math.PI / 2), std({ map: floorTex, roughness: 0.55, metalness: 0.1, envMapIntensity: night ? 1.25 : 0.45 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, Z1 - Z0).rotateX(-Math.PI / 2), std({ map: floorTex, roughness: night ? 0.55 : 0.8, metalness: 0.1, envMapIntensity: night ? 1.25 : 0.45 }));
   floor.position.set(0, 0, (Z0 + Z1) / 2);
   floor.receiveShadow = true;
   group.add(floor);
@@ -206,7 +206,7 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
   tyre.position.set(...TYRE_AT);
   tyre.rotation.y = Math.PI / 2;
   tyre.userData.zone = 'tyre';
-  const decal = new THREE.Mesh(new THREE.PlaneGeometry(...FLOOR_SIZE).rotateX(-Math.PI / 2).rotateY(Math.PI), new THREE.MeshStandardMaterial({ map: floorFace.tex, emissiveMap: glowFace.tex, emissive: '#ffffff', emissiveIntensity: 1.4, transparent: true, roughness: 0.55, metalness: 0, envMap: env, envMapIntensity: night ? 1 : 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+  const decal = new THREE.Mesh(new THREE.PlaneGeometry(...FLOOR_SIZE).rotateX(-Math.PI / 2).rotateY(Math.PI), new THREE.MeshStandardMaterial({ map: floorFace.tex, emissiveMap: glowFace.tex, emissive: '#ffffff', emissiveIntensity: 1.4, transparent: true, roughness: night ? 0.55 : 0.85, metalness: 0, envMap: env, envMapIntensity: night ? 1 : 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
   glowFace.tex.colorSpace = THREE.SRGBColorSpace;
   decal.position.set(...FLOOR_AT);
   decal.renderOrder = 1;
@@ -302,7 +302,6 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
     [spot('#b9d2ff', 700, 0.4, [4.6, 3.4, 5.8], [0, 0.7, 0]), 700],
     [spot('#f4f6ff', 150, 1.0, [0, 5.3, 0], [0, 0, 0]), 150],
     [spot('#fff1e0', 160, 0.42, [5.6, 3.2, -5.2], [0, 0.6, 0]), 160],
-    [spot('#ffb070', 140, 0.14, [0, 3.6, Z1 + 14], [0, 0.6, 0], 1.2), 140],
   ];
   const lights = [spot('#ffd9d4', 260, 1.0, [0, 5.2, 8.6], [0, 0.4, -0.5]), spot('#fff6e6', 700, 0.8, [0, 7.8, -2], [0, 0, 5.9]), spot('#ffe8d0', 460, 0.55, [-1.6, 6.8, 2.7], [-4.7, 1.2, 2.2])];
   for (const l of [studio[0][0], studio[2][0], studio[3][0], lights[0]]) { l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -0.0004; }
