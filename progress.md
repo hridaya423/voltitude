@@ -1147,3 +1147,17 @@ Order: 1 auto exposure, 2 kerb launch, 3 countdown pause clock, 4 car rear by da
   - The screenshot is taken before the car is measured.
   - The "cropped" check uses projected vertices. The old union of mesh boxes combined a spinning wheel's inflated low y with the chassis rear z, a point no vertex occupies. Every earlier "cropped" failure was this artefact.
 - Gate, same seed: HUD on 6/6 PASS. HUD off 5/6: day straight edge 0.049 against 0.05.
+
+**2. Kerb launch: done.**
+- Cause: circuit banks were a ±30 m box average of the target bank. A box average ramps linearly, with a slope break at each end, and it stepped at loop boundaries (Proving's loop exit at 1615 jumped 0° to 1° in 3 samples). On the kerb line, 8 m from the centre, each break became an impulse. At Proving 816–828 a car on the kerb at 159 mph went airborne; on the centre line at the same speed it stayed down.
+- Fix (`circuit.js`): a Hann-weighted bank average over ±60 m, which keeps the same peak roll rate, tapered to zero within 60 m of a loop.
+- Test (`sim.test.js`, all venues): a settled car drives straight along every kerb at 1.1× the racing-line speed. The test fails when the kerb line goes airborne and the centre line at the same speed does not. Red before the fix (Proving 816–828), green after. Wall-ride banks (`U.y ≤ 0.95`) are excluded, matching the track-limits rule.
+- Ruled out along the way:
+  - The sim kerb is flat paint, with no geometry.
+  - Flat-ground hard-steer pulses at 30–60 m/s never lift a wheel.
+  - Rolling banks about the inside edge raises new crests at every bank exit.
+- Still open: on Launch, a car driven straight along the low kerb of the 50° wall-ride entry (1092–1122) at about 90 mph leaves the ground, because the bank twists about 1°/m there. That is wall-ride geometry, which is frozen content.
+- `SIM_VERSION` 12 → 13. Author ghosts were regenerated: Proving 239.56 s, Airfield 227.93 s, Launch 201.32 s.
+- Also seen, not changed: a 12° wall scrape at 131 mph removes all speed in one step (`collide`, `press` 12.5 → 90 m/s of loss) without a wreck.
+
+**3. Countdown pause clock: done.** `pauseView` in `menu.js` reads `raceClock`, as the HUD clock now does too. The test (`menu.test.js`) was red with `-1:-2.-500`. `fmt` and `fmtDelta` moved to `src/time.js` so node tests can load them. Checked in the game: pausing during the lights shows `0:00.000` (scratchpad `pause-countdown.png`).
