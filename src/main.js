@@ -25,6 +25,7 @@ import { createAudio } from './audio.js';
 import { createHud, fmt, fmtDelta, medalFor, medalTimes, MEDALS } from './hud.js';
 import { createMenu, describe } from './menu.js';
 import { createGarage } from './render/garage.js';
+import { createFestival } from './render/festival.js';
 
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -101,7 +102,8 @@ const venueArt = venue.id === 'airfield' ? (await import('./render/airfield.js')
   : venue.id === 'launch' ? (await import('./render/launch.js')).createLaunchComplex(world, sunUniform, fogDensity, renderer, NIGHT) : null;
 if (venueArt) scene.add(venueArt.group);
 const stands = await createGrandstands(world, sunUniform, fogDensity, renderer);
-scene.add(facility.group, stands.group);
+const festival = createFestival(world, sunUniform, fogDensity, NIGHT, stands);
+scene.add(facility.group, stands.group, festival.group);
 const dust = createDust(terrain.height);
 scene.add(dust.points);
 const fireworks = createFireworks();
@@ -570,7 +572,7 @@ function handleEvents() {
       }
       case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, 'good'); audio.event('overtake', race.pos === 1 ? 1 : 0); } else audio.event('overtaken'); updateTower(); break;
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
-      case 'near_miss': audio.event('near_miss'); break;
+      case 'near_miss': audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
       case 'track_limits': hud.toast('TRACK LIMITS', e.penalty ? 'orange' : 'red', e.penalty ? `+${e.gain.toFixed(1)} S PENALTY` : 'LAP INVALID'); audio.event('miss'); break;
       case 'gate': gates.pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
@@ -593,7 +595,11 @@ function handleEvents() {
       case 'impact': audio.event('impact'); input.rumble(Math.min(1, e.v / 20), 0.4, 160); chase.bump(Math.min(1, e.v / 15)); break;
       case 'respawn': wreckToast?.remove(); audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
       case 'finish': {
-        if (current.circuit) { audio.event('finish'); hud.toast('FINISH', 'white'); finishAt = performance.now(); stands.cheer(1); input.rumble(0.6, 0.6, 400); break; }
+        if (current.circuit) {
+          const k = track.finish % track.lap * 3;
+          for (const side of [-1, 1]) fireworks.show(finishAtPos.set(track.P[k] + track.R[k] * side * 32, track.P[k + 1], track.P[k + 2] + track.R[k + 2] * side * 32), race.order[0] === race ? 5 : 3, 24);
+          audio.event('finish'); hud.toast('FINISH', 'white'); finishAt = performance.now(); stands.party(); input.rumble(0.6, 0.6, 400); break;
+        }
         const pb = book[current.id]?.best;
         if (!pb || race.total < pb) {
           const k = Math.min(track.n - 1, current.to + 70) * 3;
@@ -807,8 +813,10 @@ function loop(now) {
     facility.update(time);
     venueArt?.update(time, camera, NIGHT ? 1 : 0);
     stands.update(time, dt, NIGHT ? 1 : 0, camera);
-    fireworks.update(time, renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360));
-    gates.update(time, dt, renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360));
+    const px = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
+    festival.update(time, px, race);
+    fireworks.update(time, px);
+    gates.update(time, dt, px);
   }
   c.clearance = c.mode === 0 ? 6 : 0; c.contact = c.mode !== 0; c.wy = c.yawRate; c.bank = 0; c.impact = 0;
   audio.listen(camera);

@@ -47,7 +47,7 @@ export async function createGrandstands(world, sunUniform, fogDensity, renderer)
     for (let r = 0; r < ROWS; r++) {
       parts.w.push(new THREE.BoxGeometry(len, RISE, ROWS * STEP - r * STEP).translate(0, r * RISE + RISE / 2, (ROWS * STEP + r * STEP) / 2));
       for (let x = -len / 2 + 1 + (r % 2) * SEAT / 2; x < len / 2 - 1; x += SEAT) {
-        if (rand() < 0.07) continue;
+        if (rand() < 0.02) continue;
         const lx = x + (rand() - 0.5) * 0.14, lz = r * STEP + STEP * 0.5 + (rand() - 0.5) * 0.24, c = Math.floor((x + len / 2) / CHUNK);
         const chunk = `${i}:${side}:${c}`;
         centre.set(-len / 2 + (c + 0.5) * CHUNK, ROWS * RISE / 2 + 1, ROWS * STEP / 2).applyMatrix4(m);
@@ -87,6 +87,7 @@ export async function createGrandstands(world, sunUniform, fogDensity, renderer)
     cheer(v) { cheer = Math.min(1, cheer + v); },
     gasp(v) { gasp = Math.min(1, gasp + v); },
     party() { party = 1; cheer = 1; },
+    wave(at) { if (U) U.uWave.value.set(at.x, at.z, U.uTime.value); },
     update(time, dt, night, camera) {
       cheer = Math.max(0, cheer - dt * 0.35);
       gasp = Math.max(0, gasp - dt * 0.9);
@@ -94,6 +95,7 @@ export async function createGrandstands(world, sunUniform, fogDensity, renderer)
       if (!U) return;
       const k = Math.min(1, dt * 5);
       U.uTime.value = time;
+      U.uNight.value = night;
       U.uCheer.value += (cheer - U.uCheer.value) * k;
       U.uGasp.value += (gasp - U.uGasp.value) * k;
       U.uParty.value += (party - U.uParty.value) * k;

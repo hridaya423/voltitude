@@ -7,9 +7,9 @@ const WEIGHTS = [0.28, 0.24, 0.26, 0.22];
 export const ANIM = { idle: 0, fold: 1, cheer: 2, clap: 3, phone: 4, flag: 5, gasp: 6 };
 
 const COMMON = /* glsl */`
-uniform float uTime; uniform float uCheer; uniform float uGasp; uniform float uParty; uniform float uNight;
+uniform float uTime; uniform float uCheer; uniform float uGasp; uniform float uParty; uniform float uNight; uniform vec3 uWave;
 uniform float uDur[7];
-void crowdAnim(vec4 s, out int a0, out int a1, out float w, out float u0, out float u1) {
+void crowdAnim(vec4 s, vec2 at, out int a0, out int a1, out float w, out float u0, out float u1) {
   float pPhone = 0.08 + 0.22 * uNight;
   float r = s.y;
   a0 = r < pPhone ? 4 : r < pPhone + 0.12 ? 3 : r < pPhone + 0.26 ? 1 : 0;
@@ -22,6 +22,9 @@ void crowdAnim(vec4 s, out int a0, out int a1, out float w, out float u0, out fl
   if (s.x > 0.5 && uCheer < 0.65) a1 = 3;
   if (wp > w) { a1 = 5; w = wp; }
   if (wg > w) { a1 = 6; w = wg; }
+  float wf = (uTime - uWave.z) * 22.0 - length(at - uWave.xy);
+  float wv = smoothstep(0.0, 2.5, wf) * smoothstep(9.0, 5.0, wf) * step(abs(wf - 4.5), 4.5 + 2.0 * s.z);
+  if (wv > w) { a1 = 2; w = wv; }
   float spd = 0.9 + 0.2 * fract(s.x * 7.13);
   u0 = fract(uTime * spd / uDur[a0] + s.w * 7.3);
   u1 = fract(uTime * spd / uDur[a1] + s.x * 5.1);
@@ -50,7 +53,7 @@ int a0, a1; float pw, u0, u1;
 #ifdef BAKE
 a0 = int(aPose.x + 0.5); a1 = a0; pw = 0.0; u0 = aPose.y; u1 = u0;
 #else
-crowdAnim(aSeed, a0, a1, pw, u0, u1);
+crowdAnim(aSeed, instanceMatrix[3].xz, a0, a1, pw, u0, u1);
 #endif
 vec3 vatP = mix(fetchP(a0, u0), fetchP(a1, u1), pw);
 vec3 objectNormal = normalize(mix(fetchN(a0, u0), fetchN(a1, u1), pw));
@@ -128,7 +131,7 @@ float scl = length(instanceMatrix[1].xyz);
 vec3 right = normalize(vec3(toCam.z, 0.0, -toCam.x) + vec3(1e-5, 0.0, 0.0));
 vec3 cardWorld = center + right * position.x * scl + vec3(0.0, 1.0, 0.0) * position.y * scl;
 int c0, c1; float cw, cu0, cu1;
-crowdAnim(aSeed, c0, c1, cw, cu0, cu1);
+crowdAnim(aSeed, center.xz, c0, c1, cw, cu0, cu1);
 float pose = c0 == 4 ? 3.0 : c0 == 5 ? 4.0 : 0.0;
 if (cw > 0.5) {
   if (c1 == 5) pose = 4.0;
@@ -172,7 +175,7 @@ export async function createPeople(renderer, sunUniform, fogDensity) {
   const skin = await new THREE.TextureLoader().loadAsync(new URL('skin.webp', BASE).href);
   skin.colorSpace = THREE.SRGBColorSpace;
   const uniforms = {
-    uTime: { value: 0 }, uCheer: { value: 0 }, uGasp: { value: 0 }, uParty: { value: 0 },
+    uTime: { value: 0 }, uCheer: { value: 0 }, uGasp: { value: 0 }, uParty: { value: 0 }, uNight: { value: 0 }, uWave: { value: new THREE.Vector3(0, 0, -1e3) },
     uDur: { value: meta.anims.map((a) => a.dur) }, uVatPos: { value: vatPos }, uVatNrm: { value: vatNrm }, uSkin: { value: skin },
   };
 
