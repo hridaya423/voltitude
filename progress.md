@@ -1169,3 +1169,12 @@ Order: 1 auto exposure, 2 kerb launch, 3 countdown pause clock, 4 car rear by da
 - Day sky in the environment bake is 40% desaturated (`sky.js`). Shade on the asphalt was rendering at saturation 0.3 from a warm (89, 80, 70) albedo, and day straight fell under the hue gate (1.47) after the kerb fix changed the race. Now 2.02.
 - Turntable, 8 angles: scratchpad `tt-after4/`. Before and after: `rear-tt-final.jpg` (low rear and rear three-quarter: before, matte fins, carbon fins), `plume-cmp4.jpg` (boost, day and night), `rear-cmp-final.jpg` (chase view).
 - Shot-match HUD off, day pack edge: 0.063–0.064 against 0.065 over four runs. HEAD before this task: 0.0652. The old box grid supplied the missing edges. Stronger turf stripes and asphalt normals were tried and did not move it.
+
+**5. Garage: done.**
+- Glare pool beside the car: specular from the spots on a near-mirror metal deck (roughness 0.28, metalness 0.85). The deck is now 0.5 / 0.7 with env 0.5. Key, overhead, fill and board spots cast shadows, so no light reaches the deck through the car.
+- Dark flank: the +x / camera-side quadrant had no light. A warm fill (`#fff1e0`, 160, 0.42 rad) now covers it. Checked at 8 turntable angles, day and night (scratchpad `gspin-before/`, `gspin-a4/`, sheets `gspin-before-day.jpg`, `gspin-a4-day.jpg`).
+- Venue bay glare by day: sunlight through the door off a 0.34-rough floor; the floor is 0.55 now. At night the remaining cone on that page is the sum of several spots; with all spots hidden it disappears. It is softer now but still visible.
+- Engineers: the crowd models are built for grandstand distance. The four crew now stand in the door opening (z 15–17), small figures against the outside, and are gone from the hero, settings and controls frames.
+- Night door: navy gradient over a warm horizon glow, plus stars from `night_sky.webp`, instead of the dimmed sunset JPEG.
+- Every menu page by day and night: before `garage-before/`, after `garage-final/`; sheets `garage-cmp-day.jpg` and `garage-cmp-night.jpg` (top before, bottom after).
+- Cost: garage p50 4.1 → 5.4 ms by day, 3.8 → 5.4 ms at night; draw calls 261 → 528 by day (four shadow passes). The race is untouched: the garage spots are hidden outside the garage.
