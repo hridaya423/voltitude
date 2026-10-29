@@ -947,3 +947,11 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - Tests (failed before, pass): a hop from rest peaks 4.87 m and costs 0.11 gas; hover after a hop holds altitude within 0.5 m for 2 s; a full tank in the air hovers 2.5 s; a hop lands without a landing event. "An empty tank gives no lift" passes before and after; it guards the rule.
 - Exploits: new "hop spam" (tap every 0.6 s while the bot drives) and "hover off the map" (full tank, steer off the course, hold lift). PASS on all three venues. Hop spam is slower than driving: no lap in 150 s on Proving, 90 s on Airfield, 104.9 s on Launch. It earns 2.4 gas on Proving, all from jump landings the bot re-flies after respawns.
 - `npm test` 103 of 103. Ghosts replay unchanged: with lift at 0 the step is the same.
+
+**Task 29: air control (done, one deviation).**
+- Air yaw already existed: steer targets 2.4 rad/s with a 6 rad/s² cap, against rl `AIR_YAW` 5.9 rad/s². That code is unchanged. Yaw alone does not move the landing point: full steer off the three Proving jumps lands 0–0.3 m from the no-steer point.
+- New: while the down thrusters push, steering strafes at 0.3 g along the car's horizontal right vector and drains 0.15 gas per second.
+- Deviation: while lifting, steering strafes instead of also yawing. With both, the car spins at 2.4 rad/s, the body-fixed strafe turns with it, and the landing moved under 2 m off the Proving jumps. Release Space to yaw.
+- Lab (flat, 40 m/s, 6 m up, lift held 1.5 s): full right lands 8.08 m right, full left 8.08 m left, no steer 0.00. Off the Proving jumps with lift held: 5–10 m either way.
+- Tests: "full steer while lifting moves the landing point 6 m or more sideways" fails on the Task 28 code (−0.08 m) and passes. "A flight with no input lands where it took off sideways" (lift 0 and 1.5 s, under 0.05 m) guards against drift.
+- `npm test` 105 of 105. Exploits PASS on all three venues.

@@ -40,6 +40,8 @@ export const TUNING = {
   hopCool: 0.6,
   liftG: 1.15,
   liftBurn: 0.4,
+  strafeG: 0.3,
+  strafeBurn: 0.15,
   reverseMax: 14,
   tractionG: 1.4,
   brakeG: 1.22,
@@ -475,7 +477,7 @@ export function stepCar(c, inp, world, tick, assist) {
   }
 
   if (airborne) {
-    let tp = inp.pitch * T.pitchRate, ty = inp.steer * T.yawRate, tr = inp.roll * T.rollRate;
+    let tp = inp.pitch * T.pitchRate, ty = c.lifting ? 0 : inp.steer * T.yawRate, tr = inp.roll * T.rollRate;
     if (assist && inp.roll === 0) {
       const [hx, hy, hz] = upHint(c, track);
       const ex = c.uy * hz - c.uz * hy, ey = c.uz * hx - c.ux * hz, ez = c.ux * hy - c.uy * hx;
@@ -492,6 +494,11 @@ export function stepCar(c, inp, world, tick, assist) {
       used += Math.abs(acc) / T.attitude[a];
     }
     c.gas = Math.max(0, c.gas - (used * T.attitudeBurn * DT) / 3);
+    if (c.lifting && inp.steer) {
+      const h = Math.hypot(c.rx, c.rz) || 1, a = T.strafeG * G * inp.steer;
+      F[0] += (c.rx / h) * m * a; F[2] += (c.rz / h) * m * a;
+      c.gas = Math.max(0, c.gas - T.strafeBurn * Math.abs(inp.steer) * DT);
+    }
   }
 
   c.vx += (F[0] / m) * DT; c.vy += (F[1] / m) * DT; c.vz += (F[2] / m) * DT;

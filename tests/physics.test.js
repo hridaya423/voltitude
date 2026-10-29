@@ -242,3 +242,26 @@ test('a hop lands without a landing event, so hops earn no landing gas', () => {
   assert.ok(c.mode !== 0, 'still airborne');
   assert.deepEqual(c.ev.filter((e) => e.type === 'land'), []);
 });
+
+function flight(steer, liftS) {
+  const c = createCar(), inp = createInput();
+  placeCar(c, lab.track, 300, 40, 0);
+  c.y += 6;
+  const k = 300 * 3, x0 = c.x, z0 = c.z;
+  for (let t = 0; t < 120 * 8; t++) {
+    inp.steer = steer; inp.lift = t < liftS * 120 ? 1 : 0;
+    stepCar(c, inp, lab, t, true);
+    if (t > 12 && c.air === 0) break;
+  }
+  return (c.x - x0) * lab.track.R[k] + (c.z - z0) * lab.track.R[k + 2];
+}
+
+test('full steer while lifting moves the landing point 6 m or more sideways', () => {
+  const straight = flight(0, 1.5), right = flight(1, 1.5), left = flight(-1, 1.5);
+  assert.ok(right - straight > 6, `right ${(right - straight).toFixed(2)} m`);
+  assert.ok(straight - left > 6, `left ${(straight - left).toFixed(2)} m`);
+});
+
+test('a flight with no input lands where it took off sideways', () => {
+  for (const liftS of [0, 1.5]) assert.ok(Math.abs(flight(0, liftS)) < 0.05, `lift ${liftS} s: ${flight(0, liftS).toFixed(3)} m`);
+});
