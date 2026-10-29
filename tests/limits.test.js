@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor } from '../src/sim/race.js';
-import { steerTo } from '../src/sim/drive.js';
+import { steerTo, placeCar } from '../src/sim/drive.js';
 import { lineFor } from '../src/sim/driver.js';
 import { racingLine } from '../src/sim/line.js';
 import { limitWindows, MIN_GAIN } from '../src/sim/limits.js';
@@ -82,4 +82,52 @@ test('track limits: running wide and losing time costs nothing', () => {
   assert.ok(race.breaches.length >= 2, `${race.breaches.length} wide exits past the white line`);
   for (const { window, gain } of race.breaches) assert.ok(gain < MIN_GAIN, `window ${window}: ${gain.toFixed(2)} s counted as a gain`);
   assert.equal(race.invalid.length, 0);
+});
+
+function flight(k, { wideFirst, landOff }) {
+  const w = wins[k], race = createRace(world, { event: event('pr') }), inp = createInput();
+  race.entries = [race]; race.order = [race];
+  const start = race.prog, jumpAt = (w.a + Math.round(w.len * (landOff ? 0.2 : 0.4))) % N, skip = landOff ? 20 : 50, up = landOff ? 0.5 : 3;
+  let lifted = false, flown = false;
+  while (race.prog < start + N * 1.25 && race.tick < 120 * 300) {
+    const c = race.car, into = (c.hint - w.a + N) % N;
+    if (race.phase !== 'racing') { inp.throttle = 0; inp.brake = 1; }
+    else if (landOff && flown && at[c.hint] === k) follow(c, inp, wide);
+    else follow(c, inp, legal, wideFirst && at[c.hint] === k && into < 40 ? Math.sign(legal.off[c.hint] || 1) * 6 : 0);
+    if (race.phase === 'racing' && !lifted && race.prog > start + N * 0.2 && c.hint === jumpAt) {
+      lifted = true;
+      c.x += c.ux * 3; c.y += c.uy * 3; c.z += c.uz * 3;
+    }
+    if (lifted && !flown && c.mode === 0) {
+      flown = true;
+      const to = (c.hint + skip) % N, q = to * 3, air = c.air;
+      placeCar(c, track, to, c.speed, landOff ? Math.sign(wide.off[to] || 1) * (track.halfW[to] - 0.6) : legal.off[to]);
+      c.x += track.U[q] * up; c.y += track.U[q + 1] * up; c.z += track.U[q + 2] * up;
+      c.mode = 0; c.air = air;
+    }
+    stepRace(race, inp);
+  }
+  assert.ok(flown, `window ${k}: the car never reached the take-off sample`);
+  return race.breaches.filter((b) => b.window === k);
+}
+
+test('track limits: time gained in the air is never charged, a ground breach before take-off still counts', () => {
+  let checked = 0;
+  wins.forEach((w, k) => {
+    if (w.len < 160) return;
+    const hits = flight(k, { wideFirst: true });
+    if (!hits.length) return;
+    checked++;
+    for (const { gain } of hits) assert.ok(gain < MIN_GAIN, `window ${k}: ${gain.toFixed(2)} s charged for a flight that landed inside the white lines`);
+  });
+  assert.ok(checked >= 2, `${checked} windows with a ground breach before the flight`);
+});
+
+test('track limits: landing past the white line and cutting on the ground still counts', () => {
+  let caught = 0;
+  wins.forEach((w, k) => {
+    if (w.len < 160) return;
+    if (flight(k, { landOff: true }).some((b) => b.gain >= MIN_GAIN)) caught++;
+  });
+  assert.ok(caught >= 2, `${caught} windows penalised after an off-track landing`);
 });

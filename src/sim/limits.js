@@ -39,6 +39,7 @@ export function limitWindows(track) {
 }
 
 export function outside(c, track) {
+  if (c.mode === 2) return true;
   if (c.mode !== 1) return false;
   const edge = track.halfW[c.hint] - LIM_BAND;
   let side = 0;
@@ -61,7 +62,7 @@ function drive(track, line, s) {
   if (s.inp.brake) s.inp.throttle = 0;
 }
 
-function stepShadow(world, s, len) {
+function stepShadow(world, s) {
   const { track } = world, c = s.car, N = track.lap;
   drive(track, lineFor(track), s);
   stepCar(c, s.inp, world, s.t, true);
@@ -71,12 +72,33 @@ function stepShadow(world, s, len) {
   if (d > N / 2) d -= N; else if (d < -N / 2) d += N;
   s.last = c.hint;
   s.prog += Math.max(0, d);
+  while (s.mark < Math.min(s.prog, s.len)) s.at[++s.mark] = s.t;
   if (c.wrecked) s.failed = true;
-  else if (s.prog >= len) s.done = true;
 }
 
-function shadowOf(car) {
-  return { car: structuredClone(car), inp: { throttle: 0, brake: 0, steer: 0, pitch: 0, roll: 0, boost: 0, lift: 0, reset: 0 }, t: 0, prog: 0, last: car.hint, done: false, failed: false };
+function shadowOf(car, len) {
+  return { car: structuredClone(car), inp: { throttle: 0, brake: 0, steer: 0, pitch: 0, roll: 0, boost: 0, lift: 0, reset: 0 }, t: 0, prog: 0, last: car.hint, len, at: new Int32Array(len + 1), mark: 0, failed: false };
+}
+
+function open(race, e, st, lockstep, len, whole) {
+  const c = e.car;
+  st.seg = true; st.whole = whole; st.from = c.hint; st.len = len; st.t0 = race.raceTick; st.breach = outside(c, race.world.track); st.respawns = e.respawns;
+  if (lockstep) st.shadow = shadowOf(c, len); else { st.snap = structuredClone(c); st.shadow = null; }
+}
+
+function close(race, e, st, lockstep, p, whole) {
+  st.seg = false;
+  if (st.respawns !== e.respawns || (!st.breach && !(lockstep && whole))) return null;
+  const s = st.shadow || shadowOf(st.snap, st.len);
+  p = Math.min(p, st.len);
+  while (s.mark < p && !s.failed && s.t < CATCH_UP) stepShadow(race.world, s);
+  if (s.mark < p) return null;
+  const actual = race.raceTick - st.t0;
+  if (!st.breach) {
+    e.pace += 0.3 * (Math.max(0.8, Math.min(1.25, s.at[p] / actual)) - e.pace);
+    return null;
+  }
+  return { window: st.w0, gain: (s.at[p] / e.pace - actual) / 120 };
 }
 
 export function trackLimits(race, e, lockstep) {
@@ -87,26 +109,23 @@ export function trackLimits(race, e, lockstep) {
   if (st.w >= 0) {
     const w = wins[st.w];
     if (k === st.w) {
+      if (!st.seg) {
+        if (c.mode !== 0) open(race, e, st, lockstep, (w.b - c.hint + N) % N, false);
+        return null;
+      }
+      if (c.mode === 0) return close(race, e, st, lockstep, (c.hint - st.from + N) % N, false);
       if (outside(c, track)) st.breach = true;
-      if (lockstep && !st.shadow.done && !st.shadow.failed) stepShadow(world, st.shadow, st.len);
+      if (lockstep && st.shadow.mark < st.len && !st.shadow.failed) stepShadow(world, st.shadow);
       return null;
     }
     st.w = -1;
-    const forward = (c.hint - w.b + N) % N < ENTRY;
-    if (!forward || st.respawns !== e.respawns || (!st.breach && !lockstep)) return null;
-    const s = st.shadow || shadowOf(st.snap);
-    while (!s.done && !s.failed && s.t < CATCH_UP) stepShadow(world, s, st.len);
-    if (!s.done) return null;
-    const actual = race.raceTick - st.t0;
-    if (!st.breach) {
-      e.pace += 0.3 * (Math.max(0.8, Math.min(1.25, s.t / actual)) - e.pace);
-      return null;
-    }
-    return { window: st.w0, gain: (s.t / e.pace - actual) / 120 };
+    if (!st.seg) return null;
+    if ((c.hint - w.b + N) % N >= ENTRY) { st.seg = false; return null; }
+    return close(race, e, st, lockstep, st.len, st.whole);
   }
-  if (k >= 0 && (c.hint - wins[k].a + N) % N < ENTRY && c.mode === 1) {
-    st.w = st.w0 = k; st.len = (wins[k].b - c.hint + N) % N; st.t0 = race.raceTick; st.breach = outside(c, track); st.respawns = e.respawns;
-    if (lockstep) st.shadow = shadowOf(c); else { st.snap = structuredClone(c); st.shadow = null; }
+  if (k >= 0 && (c.hint - wins[k].a + N) % N < ENTRY) {
+    st.w = st.w0 = k; st.seg = false;
+    if (c.mode !== 0) open(race, e, st, lockstep, (wins[k].b - c.hint + N) % N, true);
   }
   return null;
 }
