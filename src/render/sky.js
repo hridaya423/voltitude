@@ -116,6 +116,7 @@ export function bakeEnvironment(renderer, skyTex, night, width = 4096) {
         vec3 ground = skyColor(vec3(d.x, 0.0, d.z)) * vec3(0.62, 0.5, 0.4) * 0.55;
         c = d.y < 0.0 ? ground : c;
         c = min(c, vec3(24.0));
+        ${night ? '' : 'c = mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 0.6);'}
         ${night ? `for (int k = 0; k < 10; k++) {
           float a = float(k) / 10.0 * 6.28318530718 + 0.2 + 0.3;
           vec2 dd = vec2(abs(atan(sin(phi - a), cos(phi - a))), abs(el - atan((16.0 + mod(float(k), 3.0) * 5.0) / 60.0)));
