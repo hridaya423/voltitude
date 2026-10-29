@@ -150,7 +150,7 @@ def diffuser():
     u1 = S.L + 0.02
     for w in (-hw - 0.012, -hw / 2, 0.0, hw / 2, hw + 0.012):
         t = 0.012 if abs(w) > hw else 0.008
-        add('strake', prism([(u - S.L / 2, v + S.GROUND) for u, v in ((4.08, 0.135), (u1, 0.096), (u1 - 0.14, hi + 0.005), (4.3, hi + 0.005))], w - t, w + t), 'liner')
+        add('strake', prism([(u - S.L / 2, v + S.GROUND) for u, v in ((4.08, 0.135), (u1, 0.096), (u1 - 0.14, hi + 0.005), (4.3, hi + 0.005))], w - t, w + t), 'carbon')
 
 
 def wing():
