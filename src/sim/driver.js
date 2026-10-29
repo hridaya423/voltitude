@@ -61,13 +61,14 @@ function airLine(track, e, d) {
     if (d.air?.k !== k) {
       const go = !e.done && planFor(track, d, hint).want && lipSpeed(track, e.car, (sp.lip - hint + N) % N) >= AIR_SURE;
       d.air = { k, go, miss: go && d.rand() < d.p.error * (1 - (d.p.craft ?? 0.5)) };
-      if (go) e.airCommits = (e.airCommits || 0) + 1;
+      if (go) { e.airCommits = (e.airCommits || 0) + 1; d.daring -= 1; }
     }
     d.air.before = at > N / 2;
     const c = e.car, toLip = N - at;
     if (d.air.go && d.air.before && canAbort(c, toLip) && lipSpeed(track, c, toLip) < AIR_MIN) d.air.go = false;
     return d.air;
   }
+  if (d.air) d.plan = null;
   d.air = null;
   planFor(track, d, hint);
   return null;
@@ -82,9 +83,8 @@ function planFor(track, d, hint) {
   let k = 0;
   for (let j = 1; j < track.airs.length; j++) if ((track.airs[j].lip - hint + N) % N < (track.airs[k].lip - hint + N) % N) k = j;
   if (d.plan?.k !== k) {
-    d.daring += d.p.nerve ?? 0;
+    d.daring = Math.min(d.daring, 1) + (d.p.nerve ?? 0);
     d.plan = { k, want: d.daring >= 1 };
-    if (d.plan.want) d.daring -= 1;
   }
   return d.plan;
 }

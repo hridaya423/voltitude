@@ -63,6 +63,7 @@ test('rivals lap slower on Easy than on Pro, and slower on Pro than on Elite', (
   const lap = Object.fromEntries(Object.keys(TIERS).map((tier) => {
     const race = createRace(launch, { event, seed: 1, tier }), inp = createInput();
     race.entries = race.entries.slice(0, 2);
+    race.entries[1].driver.p = { ...race.entries[1].driver.p, nerve: 0 };
     while (!race.entries.every((e) => e.done) && race.tick < 120 * 400) { botInput(race, inp, 0.97); stepRace(race, inp); race.events.length = 0; }
     return [tier, Math.min(...race.entries[1].laps.slice(1)) / 120];
   }));
