@@ -34,11 +34,12 @@ export function createChaseCamera(camera, height) {
       if (c.wrecked) dir.addScaledVector(UP, -dir.dot(UP)).normalize().applyAxisAngle(UP, dt * WRECK_ORBIT);
       else dir.lerp(tmp, 1 - Math.exp(-dt * (grounded ? 7 : 3))).normalize();
       hover += ((c.lifting && !grounded ? 1 : 0) - hover) * (1 - Math.exp(-dt * 2));
-      const wantBack = 7.5 + Math.min(speed, 140) * 0.004 + (c.boosting ? 0.4 : 0) + 1.5 * hover;
+      const zoom = Math.tan(Math.PI / 9) / Math.tan(fov * Math.PI / 360);
+      const wantBack = (7.5 + 1.5 * hover) * zoom;
       back += (wantBack - back) * (1 - Math.exp(-dt * 3));
       const ahead = Math.max(9, Math.min(speed, 120) * 0.18);
       const bias = grounded ? Math.max(-0.14, Math.min(0.14, c.yawRate * 0.15)) * ahead : 0;
-      want.copy(p).addScaledVector(dir, -back).addScaledVector(upS, 1.8 + 0.15 * Math.min(1, Math.max(0, speed - 40) / 40) + (grounded ? 0 : 0.6) + hover);
+      want.copy(p).addScaledVector(dir, -back).addScaledVector(upS, (1.8 + (grounded ? 0 : 0.6) + hover) * zoom);
       wantLook.copy(p).addScaledVector(dir, ahead).addScaledVector(upS, 0.25);
       if (bias) wantLook.x += c.rx * bias, wantLook.y += c.ry * bias, wantLook.z += c.rz * bias;
       want.sub(p); wantLook.sub(p);
