@@ -113,7 +113,7 @@ scene.add(fireworks.points);
 const finishAtPos = new THREE.Vector3();
 const standGap = (h) => stands.sites.reduce((m, i) => Math.min(m, Math.abs(i - h)), Infinity);
 const cheerNear = (v, kind = 'stunt') => { if (standGap(race.car.hint) < 260) { if (kind === 'gasp') stands.gasp(0.8); else stands.cheer(v); if (v >= 0.5) audio.cheer(kind); } };
-let said = new Set(), raceCount = 0, gasLowAt = -1e9, boostWas = false;
+let said = new Set(), raceCount = 0, gasLowAt = -1e9, boostWas = false, liftWas = false, kerbAt = -1;
 const sayOnce = (id) => { if (!said.has(id)) { said.add(id); audio.radio(id); } };
 
 progress(0.35, 'Lighting the sky…');
@@ -823,6 +823,9 @@ function loop(now) {
   c.kerb = c.mode !== 0 && Math.abs(c.lat) > world.track.halfW[c.hint] - 1.7;
   if (mode === 'race' && c.boosting && !boostWas) { chase.punch(1); input.rumble(0.15, 0.6, 200); }
   boostWas = c.boosting;
+  if (mode === 'race' && c.kerb && c.speed > 4 && time - kerbAt > 0.08) { kerbAt = time; input.rumble(0, Math.min(0.4, c.speed / 90), 100); }
+  if (mode === 'race' && c.lifting && !liftWas) input.rumble(0.1, 0.45, 180);
+  liftWas = c.lifting;
   audio.update(c, running);
   if (mode === 'race') {
     hints();

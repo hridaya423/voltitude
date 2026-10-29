@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 const $ = (id) => document.getElementById(id);
 const TOWER_ROW = 27;
-const GAIN_LABEL = { near_miss: '+# NEAR MISS', clean: '+# CLEAN', perfect: '+# PERFECT', trick: '+# TRICK', gate: '+# GATE', air: '+AIR', wall: '+WALL', draft: '+DRAFT' };
+const GAIN_LABEL = { near_miss: '+# CLOSE', clean: '+# CLEAN', perfect: '+# PERFECT', trick: '+# TRICK', gate: '+# GATE', air: '+AIR', wall: '+WALL', draft: '+DRAFT' };
 
 export function fmt(ticks) {
   const ms = Math.round(ticks * 1000 / 120);

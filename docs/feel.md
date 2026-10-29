@@ -114,3 +114,26 @@ One change at a time. Each change has a 3 s before-and-after clip from the same 
   - before: 0 0 0 0 −0.01 … (the normal speed-driven drift only)
   - after: the landing frame sits 2.4° tighter, then recovers +0.34 +0.62 +0.86 … +1.9 by 0.6 s
 - Clip frames (`t22/perfect-ab.jpg`, before top, after bottom): the car fills more of the frame on contact in the after row, with a small roll from the shake. Clips: `t22/perfect-before.mp4`, `t22/perfect-after.mp4`.
+
+### 3. Steer: kerbs rumble
+
+- Change: while the car is on the kerb band (`c.kerb`, the flag the kerb audio already uses), the weak motor pulses every 80 ms at `min(0.4, speed / 90)` for 100 ms. Off below 4 m/s.
+- Why: kerbs had sound but nothing in the hands. Riding a kerb is how a driver finds the edge of the track, and Task 31 made the white line the limit.
+- Evidence: a rumble clip can't be seen, so `input.rumble` calls were logged over the same keyboard drive (Proving TT, full throttle, steering taps onto the right kerb, then Space). Before: 0 kerb pulses in 90 kerb frames. After: 18 pulses at 0.36–0.40. Scratchpad `drivelog.mjs`.
+- Found on the way: a hard steer onto the kerb at speed throws the car airborne over the kerb lip (mode 0 in the band), so neither the kerb sound nor the rumble plays then. Left as it is: that is the physics of the kerb profile, not the feedback.
+
+### 4. Fly: lift start rumbles
+
+- Change: one pulse on the frame lift engages (0.1 strong, 0.45 weak, 180 ms). It pairs with the `burst_long` sound already there.
+- Evidence: same drive. Before: no call at lift start. After: one call with `lifting` true.
+
+### 5. Near misses read CLOSE
+
+- Change: the near-miss gas gain reads "+12 CLOSE" instead of "+12 NEAR MISS", as the design asks ("a clear CLOSE for near misses"). The label uses the shared toast plate from Task 21.
+- Checked: `tools/a11y-probe.mjs` measures "+12 CLOSE" at 14 px and 13.4:1 or better on all three runs. The probe passes, 0 of 91.
+
+## Not changed
+
+- **Time scale.** See the audit: a hit-pause would read as a dropped frame and freeze the field.
+- **Takeoff.** The camera already lifts 0.6 m and switches to velocity heading at the lip, and the wind layers rise. The clips show the takeoff reads without more.
+- **Steer camera.** The look-ahead bias and 7/s heading follow were not touched. No clip showed lag or overshoot that a change would fix.
