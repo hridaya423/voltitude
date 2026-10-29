@@ -6,7 +6,7 @@ import { loadWorld } from './load-world.mjs';
 const out = process.argv[2] || '/tmp/runoff';
 const port = process.env.PORT || 8790;
 const session = process.env.SESSION || 'day';
-const CORNERS = (process.env.ONLY ? [['launch', 2512, 'gravel']] : [['proving', 228, 'T1'], ['proving', 2658, 'final-hairpin'], ['launch', 2512, 'gravel']]);
+const CORNERS = (process.env.ONLY ? [['launch', 2132, 'gravel']] : [['proving', 228, 'T1'], ['proving', 2658, 'final-hairpin'], ['launch', 2132, 'gravel']]);
 mkdirSync(out, { recursive: true });
 
 function apexOf(track, from) {

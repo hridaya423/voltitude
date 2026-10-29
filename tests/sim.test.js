@@ -122,13 +122,13 @@ for (const id of Object.keys(VENUES)) {
   if (id === 'launch') test('launch: a 90 mph car on the kerb into the wall-ride stays on the ground', () => {
     const { halfW, curv } = world.track, inp = createInput(), off = [];
     for (const side of [-1, 1]) {
-      const c = createCar(), lat = side * (halfW[1000] - 1.75);
-      placeCar(c, world.track, 1000, 40, lat);
-      for (let t = 0; t < 120 * 4 && c.hint < 1130; t++) {
+      const c = createCar(), lat = side * (halfW[620] - 1.75);
+      placeCar(c, world.track, 620, 40, lat);
+      for (let t = 0; t < 120 * 4 && c.hint < 750; t++) {
         inp.steer = steerTo(c, world.track, lat, 0, curv[c.hint]);
         inp.throttle = Math.max(0, Math.min(1, (40 - c.speed) / 2));
         stepCar(c, inp, world, t, false);
-        if (c.mode === 0 && c.hint >= 1085) { off.push(`side ${side} airborne at ${c.hint}, ${(c.speed * 2.237).toFixed(0)} mph`); break; }
+        if (c.mode === 0 && c.hint >= 705) { off.push(`side ${side} airborne at ${c.hint}, ${(c.speed * 2.237).toFixed(0)} mph`); break; }
       }
     }
     assert.deepEqual(off, []);

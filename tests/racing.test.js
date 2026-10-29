@@ -210,9 +210,9 @@ function ticksToRespawn(race, inp, limit) {
 
 test('the player under the course respawns within 2.5 s', () => {
   const race = racing(LAUNCH, LAUNCH_GP);
-  placeCar(race.car, LAUNCH.track, 1858, 0, 0);
+  placeCar(race.car, LAUNCH.track, 1478, 0, 0);
   race.car.y -= 20;
-  race.lastIdx = 1700;
+  race.lastIdx = 1320;
   const t = ticksToRespawn(race, createInput(), 120 * 5);
   assert.ok(t <= 300, `respawned after ${(t / 120).toFixed(2)} s`);
 });
@@ -228,9 +228,9 @@ test('a player held still on the road respawns at 2 s', () => {
 test('a respawn from a wall-ride sample lands on a flat sample', () => {
   const race = racing(LAUNCH, LAUNCH_GP);
   const { U } = LAUNCH.track;
-  assert.ok(U[1192 * 3 + 1] < 0.7);
-  placeCar(race.car, LAUNCH.track, 1192, 20, 0);
-  race.lastIdx = 1192; race.lastSpeed = 58; race.car.wrecked = true;
+  assert.ok(U[812 * 3 + 1] < 0.7);
+  placeCar(race.car, LAUNCH.track, 812, 20, 0);
+  race.lastIdx = 812; race.lastSpeed = 58; race.car.wrecked = true;
   assert.ok(ticksToRespawn(race, createInput(), 120) <= 71);
   const i = race.car.hint;
   assert.ok(U[i * 3 + 1] > 0.95, `respawned at ${i}, U.y ${U[i * 3 + 1].toFixed(2)}`);
@@ -242,8 +242,8 @@ test('three respawns in a row from mid-bank do not wreck', () => {
   const inp = createInput();
   const events = [];
   for (let n = 0; n < 3; n++) {
-    placeCar(race.car, LAUNCH.track, 1192, 58, 0);
-    race.lastIdx = 1192; race.lastSpeed = 58; race.car.gas = 0.3; race.car.wrecked = true;
+    placeCar(race.car, LAUNCH.track, 812, 58, 0);
+    race.lastIdx = 812; race.lastSpeed = 58; race.car.gas = 0.3; race.car.wrecked = true;
     assert.ok(ticksToRespawn(race, inp, 120) <= 71);
     for (let t = 0; t < 120 * 4; t++) {
       botInput(race, inp, 0.97);
