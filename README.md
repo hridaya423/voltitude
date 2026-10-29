@@ -72,3 +72,7 @@ The browser tools (`shot-match`, `menu-shots`, `capture-gates`, `perf`) drive sy
 - 3D engine: [three.js](https://threejs.org) (MIT).
 
 Voltitude is a fan project. It is not affiliated with or endorsed by Tesla, Inc. "Tesla" and "Roadster" are trademarks of their owner.
+
+## License
+
+Code is [MIT](LICENSE). Third-party assets keep the licences listed above.
