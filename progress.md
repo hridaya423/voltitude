@@ -1053,3 +1053,81 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
   - Clips with fewer than 150 frames were discarded and re-recorded: the delegates' renders pushed the load average to 15.
 - Found: a hard steer onto a kerb at speed throws the car airborne over the kerb lip, so the kerb sound and rumble skip it. Logged in `feel.md`; not changed.
 - `npm test` 115 of 115.
+
+**Task 16: Roadster rear rebuild (delegate, merged from `t3/car-rear-rebuild`).**
+- The tail blade floats 3.5 cm off the body. The light bar is 1.74 m and red, with its base glow raised from 1 to 2.5. The four nozzles sit in a louvred black shelf with polished lips and dark throats; the brass rings are gone. The diffuser has five strakes and a ramped ceiling.
+- Rivals now use the hi model in livery, merged per material (20 meshes), with lod1 beyond 60 m.
+- Reference stills and sources are in `docs/car/`; the sheet is `docs/car/rear-before-after.jpg`.
+- Still wrong, per the delegate:
+  - the lower body narrows under the diffuser instead of wrapping around it
+  - no fan housings in the diffuser channels
+  - grey reflections on the strakes
+  - the rear deck is unchanged
+  - the light bar is weak by day
+- `tools/car/__pycache__/*.pyc` is tracked in git and changes on every build. It was left out of the commits.
+
+**Task 18: light in real units (delegate, merged from `t3/realistic-night-lighting`).**
+- Night:
+  - The halo sprites are replaced by LED panel floodlight heads: 22 m high, 2.2 Mlm each, inverse-square falloff, evenly spaced every ~60 m.
+  - Their light is baked into one illuminance map that every `skyFog` material reads.
+  - Light shafts come from each head.
+  - Loops and banks get a flat 1,000 lux.
+- Day: sun brightness comes from the HDR's `maxLuminance` times the sun's solid angle (the 2.3× sky gain and 1.8× sun boost are gone), with per-channel distance haze.
+- Exposure is in EV: day 13.9, night 7.8. No Hillaire sky-view LUT; the measured HDR plays that role.
+- `tools/shot-match.mjs` takes `NOHUD=1`.
+- The sheet is `docs/light-before-after.jpg`.
+
+**Task 20: festival hangar garage (delegate, merged from `t3/garage-festival-hangar`).**
+- An open hangar door at golden hour: track, grandstand and rocket outside, on a backdrop from `golden_sky_4k.jpg`.
+- A turntable, plus key, rim, softbox and door lighting.
+- A telemetry wall (`src/render/garage-screens.js`) with venue progress, best times and medals from the save.
+- Four engineers built from the crowd models.
+- 1.2 s eased camera moves between pages.
+- Garage p50 +0.3–0.8 ms. The sheet is `docs/garage-before-after.jpg`.
+- Still weak:
+  - a glare pool washes the venue title by day
+  - the engineers are crude up close
+  - the softbox underside is bright on pause
+  - the night backdrop is dimmed sunset, not night
+- Base bug found: pausing during the countdown shows `-1:-2.-983` on the pause board.
+
+### Phase 3 gate (2026-10-29)
+
+The three branches merged cleanly onto `main`.
+
+| Check | Result |
+|---|---|
+| `npm test` | **PASS**, 115 of 115. |
+| Exploits (`tools/exploits.mjs`) | **PASS** on Proving, Airfield and Launch, including the new corner-cutting case. |
+| `ai-bench 20` | **PASS** on every tier (Easy, Pro, Elite) on all three venues. Proving lap ratios 1.001 / 0.973 / 0.963. Air lines are taken by every driver on Proving (2–4.5 per race); Airfield and Launch have no air lines. |
+| Shot-match, HUD on | **FAIL**, 0 of 6. Day start L98 90.8. Day pack L50 23.3, L98 72.6, cropped. Day straight hue 1.46, L50 28.7, L98 78.3. Night start L98 88.4. Night pack cropped. Night straight L98 88.1, cropped. |
+| Shot-match, `NOHUD=1` | **FAIL**, 1 of 6 (day start passes). Day pack L50 34.3, L98 84.2. Day straight L50 33.6, L98 83.5, hue 1.41, edge. Night start L98 88.1. Night straight L98 87.3. "Cropped" means a rival in contact pushed the player off frame centre; the race is not seeded. |
+| Perf (`tools/perf.mjs`, Proving GP, 60 s, base `7784bbc` against `main`, alternated) | **FAIL on both builds.** The machine was not quiet: load average 6–13, `mediaanalysisd` at 300% CPU, a system process that could not be stopped. |
+
+Perf detail:
+
+| Session | Build | p50 | p95 | Frames over 20 ms | Long tasks over 50 ms |
+|---|---|---|---|---|---|
+| Day | base | 6.2 / 6.2 ms | 13.4 / 13.2 ms | 24 / 14 | 3 / 2 |
+| Day | main | 6.9 / 6.8 ms | 15.0 / 15.0 ms | 37 / 32 | 0 / 0 |
+| Night | base | 5.0 / 4.9 ms | 10.8 / 10.8 ms | 8 / 6 | 2 / 2 |
+| Night | main | 5.5 / 5.4 ms | 11.7 / 11.9 ms | 9 / 8 | 0 / 0 |
+
+- Phase 3 costs +0.6–0.7 ms p50 by day and +0.5 ms at night.
+- Draw calls: day 479–581 → 500–743; night 316–359 → 387–388.
+- Boot: 3.9 s → 4.2 s.
+- A clean perf verdict needs a rerun on a quiet machine.
+
+Why shot-match still fails:
+- Night L98 misses by 2–3 points.
+- Day frames facing away from the sun (pack, straight) sit at L50 23–34 and L98 72–84. Day start, facing the sun, passes HUD-off.
+- One fixed EV can't serve both directions. The likely fix is eye adaptation (average log luminance with temporal smoothing) in `post.js`. It was not attempted in this phase.
+- The HUD plates (Task 21) lower L50 with the HUD on (day pack 34.3 → 23.3), because the gate measures the HUD as well.
+
+Contact sheets, before `7784bbc` and after `main` (scratchpad `sheets/`):
+- `car-rear.jpg`: chase-camera rear, day start, day straight, night start.
+- `festival.jpg`: four fixed day cameras plus one at night.
+- `night.jpg`: three night frames plus an aerial of the start.
+- `garage.jpg`: day and night.
+
+Branch sheets: `docs/car/rear-before-after.jpg`, `docs/light-before-after.jpg`, `docs/garage-before-after.jpg`.
