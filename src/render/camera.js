@@ -15,7 +15,7 @@ export function createChaseCamera(camera, height) {
     from(cam, p) { fromOff.subVectors(cam.position, p); fromFov = cam.fov; fromShift = cam.filmOffset; blend = 0; },
     bump(v) { shake = Math.min(1, shake + v * 0.6); },
     stall(s) { stall = Math.max(stall, s); },
-    punch(v) { kick = Math.min(1.5, kick + v); },
+    punch(v) { kick = Math.max(-1.5, Math.min(1.5, kick + v)); },
     update(dt, p, c, opts) {
       t += dt;
       if (blend >= 1 && camera.filmOffset !== 0) { camera.filmOffset *= Math.exp(-dt * 3); if (Math.abs(camera.filmOffset) < 0.01) camera.filmOffset = 0; camera.updateProjectionMatrix(); }

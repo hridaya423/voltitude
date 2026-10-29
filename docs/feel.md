@@ -97,3 +97,20 @@ One change at a time. Each change has a 3 s before-and-after clip from the same 
   - before: 0.16 0.47 0.75 1.0 1.24 … 3.0 at 0.6 s
   - after: 3.84 3.58 3.38 3.23 3.12 3.05 3.0 … then the same ease
 - Clip frames (scratchpad `t22/boost-ab.jpg`, before top, after bottom, 0.13 s apart from 0.1 s before ignition): the car shrinks in frame on the ignition frame in the after row. In the before row it holds and then eases. Clips: `t22/boost-before.mp4`, `t22/boost-after.mp4`.
+
+### 2. A perfect landing hits harder than a clean one
+
+- Change:
+
+  | Landing | Shake bump | FOV thump | Rumble (strong, weak, duration) |
+  |---|---|---|---|
+  | Perfect | 0.25 → 0.3 | −2.4° (`punch(-0.6)`) | (0.3, 0.5, 140 ms) → (0.45, 0.6, 160 ms) |
+  | Clean | 0.35 → 0.2 | −1.2° | (0.4, 0.3, 140 ms) → (0.3, 0.3, 140 ms) |
+  | Hard | unchanged: 0.9 and a 0.05 s stall | none | unchanged |
+
+  `punch` now takes a sign, clamped to ±1.5.
+- Why: the reward ran backwards. A clean landing shook more than a perfect one, and neither had a beat on the frame of contact. Swink's polish row should rank the outcomes the way the rules do.
+- Measured (camera FOV from the frame the PERFECT toast appears, every second frame):
+  - before: 0 0 0 0 −0.01 … (the normal speed-driven drift only)
+  - after: the landing frame sits 2.4° tighter, then recovers +0.34 +0.62 +0.86 … +1.9 by 0.6 s
+- Clip frames (`t22/perfect-ab.jpg`, before top, after bottom): the car fills more of the frame on contact in the after row, with a small roll from the shake. Clips: `t22/perfect-before.mp4`, `t22/perfect-after.mp4`.
