@@ -91,7 +91,7 @@ def cap(bm, loop, u_at, holes, mat_at):
             bm.faces.new([verts[i] for i in f]).material_index = M[mat_at(c.y)]
     for k, (h, q) in enumerate(zip(holes, polys)):
         ring = [verts[[i for i in range(len(vo)) if starts[k] + j in ov[i]][0]] for j in range(len(q))]
-        back = [bm.verts.new(to_blender(h['back'], v.co.x, v.co.z - S.GROUND)) for v in ring]
+        back = [bm.verts.new(to_blender(h['back'], v.co.x, h['ramp'] if 'ramp' in h and j > 24 else v.co.z - S.GROUND)) for j, v in enumerate(ring)]
         for j in range(len(q)):
             n = (j + 1) % len(q)
             wall = h.get('top', h['wall']) if j < 24 else h['wall']
@@ -136,8 +136,8 @@ def loft():
     lo, hi = S.FASCIA
     cap(bm, [vert[(len(rings) - 1, j, 1)] for j in range(m)] + [vert[(len(rings) - 1, j, -1)] for j in range(m - 2, 0, -1)],
         lambda w: S.L, [dict(lo=lo, hi=hi, inset=0.04, back=S.L - 0.08, wall='black', top='paint', back_mat='paint'),
-                        dict(lo=S.DIFFUSER[0], hi=S.DIFFUSER[1], w=S.DIFFUSER[2], back=S.L - 0.3, wall='black', back_mat='gap')],
-        lambda v: 'gloss' if v > hi else 'black')
+                        dict(lo=S.DIFFUSER[0], hi=S.DIFFUSER[1], w=S.DIFFUSER[2], back=S.L - 0.3, ramp=S.DIFFUSER[1] - 0.02, wall='gap', back_mat='gap')],
+        lambda v: 'gap' if v > hi else 'black')
     bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
     bmesh.ops.dissolve_degenerate(bm, edges=bm.edges[:], dist=1e-5)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
