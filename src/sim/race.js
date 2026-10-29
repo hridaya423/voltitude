@@ -16,26 +16,26 @@ const TOW = 0.2, TOW_FULL = 8, TOW_FAR = 25, TOW_LAT = 2.5, TOW_SPEED = 30;
 const HOLD = 600;
 const RESPAWN_GAS = 0.15;
 const STILL = 240, SINK = 6, AIR_RUNUP = 100;
-const IDLE = { throttle: 0, brake: 0.3, steer: 0, pitch: 0, roll: 0, boost: 0, reset: 0 };
+const IDLE = { throttle: 0, brake: 0.3, steer: 0, pitch: 0, roll: 0, boost: 0, lift: 0, reset: 0 };
 
 export function quantize(v) {
   return Math.max(-127, Math.min(127, Math.round(v * 127)));
 }
 
 export function createInput() {
-  return { throttle: 0, brake: 0, steer: 0, pitch: 0, roll: 0, boost: 0, reset: 0 };
+  return { throttle: 0, brake: 0, steer: 0, pitch: 0, roll: 0, boost: 0, lift: 0, reset: 0 };
 }
 
 export function packInput(inp, out, o) {
   out[o] = quantize(inp.throttle); out[o + 1] = quantize(inp.brake); out[o + 2] = quantize(inp.steer);
   out[o + 3] = quantize(inp.pitch); out[o + 4] = Math.sign(inp.roll) | 0;
-  out[o + 5] = (inp.boost ? 1 : 0) | (inp.reset ? 2 : 0);
+  out[o + 5] = (inp.boost ? 1 : 0) | (inp.reset ? 2 : 0) | (inp.lift ? 4 : 0);
 }
 
 export function unpackInput(buf, o, inp) {
   inp.throttle = buf[o] / 127; inp.brake = buf[o + 1] / 127; inp.steer = buf[o + 2] / 127;
   inp.pitch = buf[o + 3] / 127; inp.roll = buf[o + 4];
-  inp.boost = buf[o + 5] & 1; inp.reset = (buf[o + 5] >> 1) & 1;
+  inp.boost = buf[o + 5] & 1; inp.reset = (buf[o + 5] >> 1) & 1; inp.lift = (buf[o + 5] >> 2) & 1;
   return inp;
 }
 

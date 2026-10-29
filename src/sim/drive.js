@@ -35,6 +35,11 @@ export const TUNING = {
   rollRate: 4.6,
   attitude: [9, 6, 12],
   attitudeBurn: 0.05,
+  hopDv: 9.2,
+  hopGas: 0.11,
+  hopCool: 0.6,
+  liftG: 1.15,
+  liftBurn: 0.4,
   reverseMax: 14,
   tractionG: 1.4,
   brakeG: 1.22,
@@ -111,7 +116,7 @@ export function createCar() {
     ox: 0, oy: 0, oz: 0,
     wp: 0, wy: 0, wr: 0,
     mode: 1, hint: 0, lat: 0,
-    gas: 1, boosting: false, thr: 0, delta: 0, brk: 0,
+    gas: 1, boosting: false, thr: 0, delta: 0, brk: 0, lifting: false, liftHeld: false, hopT: 0, hopped: false,
     air: 0, flip: 0, spin: 0, barrel: 0,
     speed: 0, vf: 0, slip: 0, throttle: 0, brake: 0, steer: 0, yawRate: 0,
     wrecked: false, load: 0, fan: 0, wallT: 0, tow: 0,
@@ -134,7 +139,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
   c.mode = 1; c.hint = i; c.lat = lat;
   c.air = 0; c.flip = c.spin = c.barrel = 0;
   c.speed = speed; c.vf = speed; c.slip = 0; c.delta = 0; c.brk = 0; c.thr = 0;
-  c.wrecked = false; c.boosting = false; c.wallT = 0;
+  c.wrecked = false; c.boosting = false; c.wallT = 0; c.lifting = false; c.hopT = 0; c.hopped = false;
   for (let k2 = 0; k2 < 4; k2++) {
     const w = c.wl[k2];
     w.om = speed / w.w.R; w.hint = i; w.a = 0; w.x = w.xp = 0; w.hit = false; w.fz = 0; w.kap = 0;
@@ -444,6 +449,20 @@ export function stepCar(c, inp, world, tick, assist) {
   }
   if (c.boosting) c.gas = Math.max(0, c.gas - DT / T.burn);
 
+  const tap = !!inp.lift && !c.liftHeld;
+  c.liftHeld = !!inp.lift;
+  c.hopT = Math.max(0, c.hopT - DT);
+  c.lifting = false;
+  if (tap && !airborne && c.hopT === 0 && c.gas >= T.hopGas) {
+    c.vx += c.ux * T.hopDv; c.vy += c.uy * T.hopDv; c.vz += c.uz * T.hopDv;
+    c.gas -= T.hopGas; c.hopT = T.hopCool; c.lifting = true; c.hopped = true;
+  } else if (inp.lift && airborne && c.gas > 1e-4) {
+    const a = Math.max(0, Math.min(T.liftG * G, (G - 3 * c.vy) / Math.max(c.uy, 0.3)));
+    F[0] += c.ux * m * a; F[1] += c.uy * m * a; F[2] += c.uz * m * a;
+    c.gas = Math.max(0, c.gas - (T.liftBurn * a * DT) / G);
+    c.lifting = a > 0;
+  }
+
   c.fan = 0;
   if (roadHits > 0 && sumFz > 0) {
     const l = Math.hypot(anx, any, anz);
@@ -461,7 +480,7 @@ export function stepCar(c, inp, world, tick, assist) {
       const [hx, hy, hz] = upHint(c, track);
       const ex = c.uy * hz - c.uz * hy, ey = c.uz * hx - c.ux * hz, ez = c.ux * hy - c.uy * hx;
       tp = Math.max(-2.2, Math.min(2.2, ((ex * c.rx + ey * c.ry + ez * c.rz) + inp.pitch * 0.45) * 3));
-      if (c.air > 8) tr = Math.max(-2.2, Math.min(2.2, (ex * c.fx + ey * c.fy + ez * c.fz) * 3));
+      if (c.air > 8 || c.lifting) tr = Math.max(-2.2, Math.min(2.2, (ex * c.fx + ey * c.fy + ez * c.fz) * 3));
     }
     const rates = [c.ox * c.rx + c.oy * c.ry + c.oz * c.rz, -(c.ox * c.ux + c.oy * c.uy + c.oz * c.uz), c.ox * c.fx + c.oy * c.fy + c.oz * c.fz];
     const want = [tp, ty, tr];
@@ -500,6 +519,7 @@ export function stepCar(c, inp, world, tick, assist) {
     c.flip += wp * DT; c.spin += wy * DT; c.barrel += wr * DT;
   } else {
     c.air = 0;
+    if (c.hopT === 0) c.hopped = false;
     const l = Math.hypot(anx, any, anz);
     if (l > 0) { c.nx = anx / l; c.ny = any / l; c.nz = anz / l; }
   }
@@ -528,7 +548,7 @@ function landing(c, nx, ny, nz) {
     } else {
       const quality = align > 0.95 && vn < 16 ? 'perfect' : align > 0.8 && vn < 24 ? 'clean' : 'hard';
       if (quality === 'hard') tricks.length = 0;
-      c.ev.push({ type: 'land', quality, air: airS, tricks, v: vn });
+      if (quality === 'hard' || tricks.length || !c.hopped) c.ev.push({ type: 'land', quality, air: airS, tricks, v: vn, hop: c.hopped });
     }
   }
   c.flip = c.spin = c.barrel = 0;

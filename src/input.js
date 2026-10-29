@@ -4,6 +4,7 @@ export const ACTIONS = [
   ['left', 'Steer left'],
   ['right', 'Steer right'],
   ['boost', 'Boost (rear thrusters)'],
+  ['lift', 'Lift (down thrusters)'],
   ['rollLeft', 'Air roll left'],
   ['rollRight', 'Air roll right'],
   ['reset', 'Back to checkpoint'],
@@ -12,7 +13,7 @@ export const ACTIONS = [
 
 export const DEFAULT_KEYS = {
   throttle: ['KeyW', 'ArrowUp'], brake: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
-  boost: ['ShiftLeft'], rollLeft: ['KeyQ'], rollRight: ['KeyE'], reset: ['Backspace'], restart: ['KeyR'],
+  boost: ['ShiftLeft'], lift: ['Space'], rollLeft: ['KeyQ'], rollRight: ['KeyE'], reset: ['Backspace'], restart: ['KeyR'],
 };
 
 export function keyLabel(code) {
@@ -27,7 +28,7 @@ export function createInput(settings) {
   const pressed = new Set();
   let pad = null, padSeen = false, lastPadButtons = [];
   let steerK = 0;
-  const state = { throttle: 0, brake: 0, steer: 0, pitch: 0, roll: 0, boost: 0, reset: 0, restart: 0, device: 'keyboard' };
+  const state = { throttle: 0, brake: 0, steer: 0, pitch: 0, roll: 0, boost: 0, lift: 0, reset: 0, restart: 0, device: 'keyboard' };
   const bound = (action) => settings.keys[action] || [];
   const isDown = (action) => bound(action).some((k) => down.has(k));
 
@@ -66,7 +67,7 @@ export function createInput(settings) {
       let throttle = isDown('throttle') ? 1 : 0, brake = isDown('brake') ? 1 : 0;
       let steer = steerK, pitch = brake - throttle;
       let roll = (isDown('rollRight') ? 1 : 0) - (isDown('rollLeft') ? 1 : 0);
-      let boost = isDown('boost') ? 1 : 0, reset = isDown('reset') ? 1 : 0, restart = isDown('restart') ? 1 : 0;
+      let boost = isDown('boost') ? 1 : 0, lift = isDown('lift') ? 1 : 0, reset = isDown('reset') ? 1 : 0, restart = isDown('restart') ? 1 : 0;
       if (pad) {
         const b = (i) => (pad.buttons[i] ? pad.buttons[i].value : 0);
         const ax = dz(pad.axes[0] || 0), ay = dz(pad.axes[1] || 0);
@@ -78,11 +79,12 @@ export function createInput(settings) {
         if (Math.abs(ay) > Math.abs(pitch)) pitch = Math.sign(ay) * Math.pow(Math.abs(ay), 1.3);
         if (b(5) > 0.5) roll = 1; else if (b(4) > 0.5) roll = -1;
         boost = Math.max(boost, b(1) > 0.5 || b(2) > 0.5 ? 1 : 0);
+        lift = Math.max(lift, b(0) > 0.5 ? 1 : 0);
         reset = Math.max(reset, b(3) > 0.5 ? 1 : 0);
         restart = Math.max(restart, b(8) > 0.5 ? 1 : 0);
       }
       if (settings.invertPitch) pitch = -pitch;
-      Object.assign(state, { throttle, brake, steer, pitch, roll, boost, reset, restart });
+      Object.assign(state, { throttle, brake, steer, pitch, roll, boost, lift, reset, restart });
       return state;
     },
     endFrame() {

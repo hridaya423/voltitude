@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { flatWorld, zeroToSixty, topSpeed, braking, skidpad, wallScrape } from '../tools/physics-lab.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput } from '../src/sim/race.js';
-import { placeCar, createCar, stepCar, steerTo, TUNING } from '../src/sim/drive.js';
+import { placeCar, createCar, stepCar, steerTo, TUNING, DT } from '../src/sim/drive.js';
 import { lineFor } from '../src/sim/driver.js';
 
 const lab = flatWorld();
@@ -178,4 +178,67 @@ test('gravel stops a coasting 40 m/s car within 140 m, grass and paved run-off d
   assert.ok(gravel.dist < 140, `gravel ${gravel.dist.toFixed(0)} m`);
   assert.ok(grass.dist > 300, `grass ${grass.dist.toFixed(0)} m`);
   assert.ok(paved.dist > grass.dist, `paved ${paved.dist.toFixed(0)} m`);
+});
+
+function lift(c, ticks, press, assist = false) {
+  const inp = createInput(), ys = [];
+  for (let t = 0; t < ticks; t++) {
+    inp.lift = press(t) ? 1 : 0;
+    stepCar(c, inp, lab, t, assist);
+    ys.push(c.y);
+  }
+  return ys;
+}
+
+const rested = (gas = 1) => {
+  const c = createCar();
+  placeCar(c, lab.track, 600, 0, 0);
+  lift(c, 120, () => false);
+  c.gas = gas;
+  return c;
+};
+
+test('a hop from rest peaks 4 to 5 m up and costs 0.11 gas', () => {
+  const c = rested(), y0 = c.y;
+  const peak = Math.max(...lift(c, 240, (t) => t < 3)) - y0;
+  assert.ok(peak > 4 && peak < 5, `peak ${peak.toFixed(2)} m`);
+  assert.ok(Math.abs(1 - c.gas - 0.11) < 0.005, `gas used ${(1 - c.gas).toFixed(3)}`);
+});
+
+test('hover after a hop holds altitude within 0.5 m for 2 s', () => {
+  const c = rested(), y0 = c.y, ys = lift(c, 120 * 4, () => true, true);
+  const apex = ys.findIndex((y, t) => t > 10 && (y - ys[t - 1]) / DT < 0.5);
+  const hold = ys.slice(apex, apex + 240);
+  assert.ok(ys[apex] - y0 > 4 && hold.length === 240, `apex ${(ys[apex] - y0).toFixed(2)} m at ${apex}`);
+  const lo = Math.min(...hold) - ys[apex], hi = Math.max(...hold) - ys[apex];
+  assert.ok(lo > -0.5 && hi < 0.5, `altitude ${lo.toFixed(2)} to ${hi.toFixed(2)} m`);
+});
+
+test('a full tank gives 2.3 to 2.7 s of hover', () => {
+  const c = createCar();
+  placeCar(c, lab.track, 600, 0, 0);
+  c.y += 40;
+  let ticks = 0;
+  const inp = createInput();
+  inp.lift = 1;
+  for (let t = 0; t < 120 * 5; t++) { stepCar(c, inp, lab, t, true); if (c.lifting) ticks++; }
+  assert.ok(ticks / 120 > 2.3 && ticks / 120 < 2.7, `${(ticks / 120).toFixed(2)} s`);
+});
+
+test('an empty tank gives no lift', () => {
+  const c = rested(0), y0 = c.y;
+  const peak = Math.max(...lift(c, 240, () => true)) - y0;
+  assert.ok(peak < 0.05, `rose ${peak.toFixed(2)} m`);
+  const f = createCar();
+  placeCar(f, lab.track, 600, 0, 0);
+  f.y += 40; f.gas = 0;
+  const ys = lift(f, 120, () => true);
+  assert.ok(f.y < ys[0] - 4.5, `fell ${(ys[0] - f.y).toFixed(2)} m in 1 s`);
+});
+
+test('a hop lands without a landing event, so hops earn no landing gas', () => {
+  const c = rested();
+  lift(c, 240, (t) => t < 3);
+  assert.ok(c.mode !== 0, 'still airborne');
+  assert.deepEqual(c.ev.filter((e) => e.type === 'land'), []);
 });

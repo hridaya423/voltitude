@@ -34,7 +34,7 @@ export function flushGains(race) {
 }
 
 export function landingGain(race, e, ev) {
-  if (ev.quality === 'hard') return;
+  if (ev.quality === 'hard' || ev.hop) return;
   earn(race, e, ev.quality, GAIN[ev.quality]);
   earn(race, e, 'air', GAIN.air * ev.air);
   if (ev.tricks.length) earn(race, e, 'trick', GAIN.trick * ev.tricks.length);
