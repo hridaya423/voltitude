@@ -74,14 +74,15 @@ export async function loadCar() {
   const loader = new GLTFLoader();
   const [hi, lo] = await Promise.all(['roadster', 'roadster_lod1'].map((n) => loader.loadAsync(new URL(`../../assets/models/car/${n}.glb`, import.meta.url).href)));
   models.hi = hi.scene; models.lo = lo.scene;
-  models.lite = liteModel(hi.scene);
-  models.liteFar = liteModel(lo.scene);
+  models.lite = liteModel(hi.scene, (n) => NEAR[n] || n);
+  models.liteFar = liteModel(lo.scene, (n) => (KEEP.has(n) ? n : 'black'));
 }
 
 const WHEELS = ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr'];
 const TYRE = new Set(['tire', 'tire_text', 'brake']);
 const RIM = new Set(['rim', 'spoke', 'gunmetal']);
 const KEEP = new Set(['paint', 'glass', 'light_front', 'light_tail']);
+const NEAR = { liner: 'gap', throat: 'gap', lens: 'reflector', amber: 'reflector', trim: 'carbon' };
 
 function bake(root, bucket) {
   const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), parts = {};
@@ -105,7 +106,7 @@ function bake(root, bucket) {
   return Object.entries(parts).map(([key, { material, list }]) => { const m = new THREE.Mesh(mergeGeometries(list), material); m.name = key; return m; });
 }
 
-function liteModel(src) {
+function liteModel(src, bucket) {
   src.updateMatrixWorld(true);
   const out = new THREE.Group();
   for (const child of src.children) {
@@ -121,19 +122,7 @@ function liteModel(src) {
   const chassisRoot = new THREE.Group();
   for (const child of src.children) if (!WHEELS.includes(child.name) && child.name !== 'wing') chassisRoot.add(child.clone(true));
   chassisRoot.updateMatrixWorld(true);
-  for (const m of bake(chassisRoot, (n) => (KEEP.has(n) ? n : 'black'))) out.add(m);
-  return out;
-}
-
-function meshKey(o) {
-  let wheel = '';
-  for (let q = o.parent; q; q = q.parent) if (q.name.startsWith('wheel_')) { wheel = q.name; break; }
-  return `${wheel}/${o.name}`;
-}
-
-function geometries(root) {
-  const out = new Map();
-  root.traverse((o) => { if (o.isMesh) out.set(meshKey(o), o.geometry); });
+  for (const m of bake(chassisRoot, bucket)) out.add(m);
   return out;
 }
 
@@ -226,7 +215,9 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
   holder.add(model);
   const shadow = ghost ? null : contactShadow();
   if (shadow) holder.add(shadow);
-  if (color && mats.paint) mats.paint.color.set(color);
+  const far = lite ? buildModel(models.liteFar, { envMap, ghost }) : null;
+  if (far) { far.model.visible = false; holder.add(far.model); }
+  if (color) for (const m of [mats.paint, far?.mats.paint]) m?.color.set(color);
   const probe = !ghost && REFLECT[quality] ? createProbe(REFLECT[quality], holder, headlights ? 3 : 2) : null;
   if (probe) for (const m of Object.values(mats)) m.envMap = probe.texture;
   const wing = model.getObjectByName('wing');
@@ -250,8 +241,6 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
       chassis.add(head, head.target);
     }
   }
-  const lods = lite ? { near: geometries(model), far: geometries(models.liteFar), meshes: [], far_: false } : null;
-  if (lods) model.traverse((o) => { if (o.isMesh) lods.meshes.push([o, meshKey(o)]); });
   const fire = new Float32Array(NOZ.length);
   let spin = 0, lastSpeed = 0, aLong = 0, aLat = 0, bob = 0, brakeGlow = 0;
   return {
@@ -263,10 +252,9 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
     },
     update(dt, c, time, dist = 0) {
       const air = c.mode === 0;
-      if (lods && (dist > (lods.far_ ? 20 : 26)) !== lods.far_) {
-        lods.far_ = !lods.far_;
-        const src = lods.far_ ? lods.far : lods.near;
-        for (const [o, k] of lods.meshes) o.geometry = src.get(k) || lods.near.get(k);
+      if (far && (dist > (far.model.visible ? 55 : 60)) !== far.model.visible) {
+        far.model.visible = !far.model.visible;
+        model.visible = !far.model.visible;
       }
       if (shadow) shadow.visible = !air;
       const pitch = air ? c.wp / 3.8 : 0, roll = air ? c.wr / 4.6 : 0, yaw = air ? c.wy / 2.4 : 0;
@@ -296,7 +284,7 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
       }
       if (mats.light_tail) {
         brakeGlow += ((c.brake > 0.1 ? 1 : 0) - brakeGlow) * Math.min(1, dt * 14);
-        mats.light_tail.emissiveIntensity = 1 + 3 * brakeGlow;
+        for (const m of [mats.light_tail, far?.mats.light_tail]) if (m) m.emissiveIntensity = 2.5 + 4 * brakeGlow;
       }
       if (dt > 0) {
         const k = 1 - Math.exp(-dt * 5);
