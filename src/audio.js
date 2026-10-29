@@ -32,7 +32,7 @@ export function createAudio(settings) {
   let crowdBus = null, standPts = [], emitters = [], listenPos = { x: 0, y: 0, z: 0 }, kerbAmt = 0, wasKerb = false, scrubAmt = 0, burnAmt = 0, attAmt = 0, nextPulse = 0, lastAng = [0, 0, 0], lastKerbAt = -9;
   let radioFree = 0, radioAt = -99, crowdTarget = 0, crowdAmt = 0, crowdKick = 0;
   const lastVariant = {};
-  let now = 0, lastT = 0, canyon = 0, impactHold = 0, boostAmt = 0, wasBoost = false, boostSince = 0;
+  let now = 0, lastT = 0, canyon = 0, impactHold = 0, boostAmt = 0, wasBoost = false, boostSince = 0, liftAmt = 0, wasLift = false;
   let contactAmt = 0, scrapeAmt = 0, scrapeKick = 0, fanAmt = 0, passTimer = 0.6, passIdx = 0, streak = 0, lastCheck = -99;
   const bufs = {}, V = {}, pass = [], zw = [0, 0, 0];
 
@@ -450,9 +450,13 @@ export function createAudio(settings) {
       nextPulse = now + 0.1 + Math.random() * 0.09;
       play(pick('burst', BURSTS), 0.25 + 0.4 * smooth(1.5, 12, accel), 0.95 + Math.random() * 0.2, 0, sfxBus, Math.max(-0.8, Math.min(0.8, (dAng[2] + dAng[1]) * 8)));
     }
-    sp(V.hiss.g, on * (0.3 * ba + 0.22 * attAmt) * (0.65 + 0.35 * sn), 0.06);
-    sp(V.hiss.f, 2600 + 4000 * ba + 5000 * attAmt, 0.08);
-    sp(V.hiss.r[0], 0.9 + 0.1 * ba + 0.12 * attAmt, 0.1);
+    const lifting = active && (c.lifting || c.hopT > 0.4);
+    if (lifting && !wasLift) play('burst_long', 0.45, 0.8);
+    wasLift = lifting;
+    liftAmt += ((lifting ? 1 : 0) - liftAmt) * (1 - Math.exp(-dt * (lifting ? 14 : 4)));
+    sp(V.hiss.g, on * (0.3 * ba + 0.22 * attAmt + 0.45 * liftAmt) * (0.65 + 0.35 * sn), 0.06);
+    sp(V.hiss.f, 2600 + 4000 * ba + 5000 * attAmt + 1500 * liftAmt, 0.08);
+    sp(V.hiss.r[0], 0.9 + 0.1 * ba + 0.12 * attAmt - 0.12 * liftAmt, 0.1);
     sp(V.roar.g, on * 0.75 * ba * (1 + 0.15 * canyon), 0.07);
     sp(V.roar.f, 1800 + 8000 * ba, 0.1);
     sp(V.roar.r[0], 0.88 + 0.22 * ba, 0.12);

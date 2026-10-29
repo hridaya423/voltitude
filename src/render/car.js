@@ -276,6 +276,10 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
       fire[6] = Math.max(0, -pitch) * 0.6 + Math.max(0, -roll) * 0.6;
       fire[7] = Math.max(0, -pitch) * 0.6 + Math.max(0, roll) * 0.6;
       fire[8] = Math.max(0, -yaw) * 0.9; fire[9] = Math.max(0, yaw) * 0.9;
+      if (c.lifting || c.hopT > 0.4) {
+        for (let k = 4; k < 8; k++) fire[k] = 1;
+        if (air) { fire[8] = Math.max(fire[8], c.steer); fire[9] = Math.max(fire[9], -c.steer); }
+      }
       spin += (air ? c.speed * 0.4 : c.vf) / 0.345 * dt;
       const steer = air ? 0 : -c.steer * 0.32;
       for (let k = 0; k < 4; k++) {

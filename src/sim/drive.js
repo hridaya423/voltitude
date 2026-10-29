@@ -462,7 +462,7 @@ export function stepCar(c, inp, world, tick, assist) {
     const a = Math.max(0, Math.min(T.liftG * G, (G - 3 * c.vy) / Math.max(c.uy, 0.3)));
     F[0] += c.ux * m * a; F[1] += c.uy * m * a; F[2] += c.uz * m * a;
     c.gas = Math.max(0, c.gas - (T.liftBurn * a * DT) / G);
-    c.lifting = a > 0;
+    c.lifting = true;
   }
 
   c.fan = 0;

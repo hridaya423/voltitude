@@ -121,6 +121,9 @@ button { font: inherit; }
 .gas.full .gas-bar i { animation: gas-full 420ms var(--ease); }
 @keyframes gas-full { 0% { filter: brightness(2.2); } 100% { filter: none; } }
 .gas.low .gas-label, .gas.low .gas-pct { color: #ffb040; }
+.gas-bar u { position: absolute; top: -12px; left: 0; width: 22px; height: 6px; margin-left: -11px; background: var(--cyan); clip-path: polygon(0 0, 3px 6px, 6px 0, 8px 0, 11px 6px, 14px 0, 16px 0, 19px 6px, 22px 0); opacity: 0; transition: opacity 120ms var(--ease); }
+.gas.lift .gas-bar u { opacity: 1; }
+.gas.lift .gas-bar i { background: linear-gradient(90deg, var(--cyan), #fff); box-shadow: 0 0 14px rgba(127, 227, 255, 0.8); }
 .gas.low .gas-bar i { background: #ffb040; }
 .gas.gain .gas-bar i { animation: gas-gain 300ms var(--ease); }
 .gas.gain .gas-bar s { opacity: 1; animation: gas-gain-edge 300ms var(--ease) both; }

@@ -6,7 +6,7 @@ const WRECK_BACK = 11, WRECK_UP = 4, WRECK_ORBIT = 0.35, CLEAR = 1.5;
 export function createChaseCamera(camera, height) {
   const pos = new THREE.Vector3(), look = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), upS = new THREE.Vector3(0, 1, 0);
   const want = new THREE.Vector3(), wantLook = new THREE.Vector3(), dir = new THREE.Vector3(0, 0, 1), tmp = new THREE.Vector3(), vel = new THREE.Vector3();
-  let fov = 70, shake = 0, init = false, t = 0, blend = 1, stall = 0, back = 7, breath = 0, wasBoost = false;
+  let fov = 70, shake = 0, init = false, t = 0, blend = 1, stall = 0, back = 7, breath = 0, wasBoost = false, hover = 0;
   const offS = new THREE.Vector3(), lookS = new THREE.Vector3();
   const fromOff = new THREE.Vector3(), toOff = new THREE.Vector3(), aim = new THREE.Vector3();
   let fromFov = 70, fromShift = 0;
@@ -32,11 +32,12 @@ export function createChaseCamera(camera, height) {
       if (!init) dir.copy(tmp);
       if (c.wrecked) dir.addScaledVector(UP, -dir.dot(UP)).normalize().applyAxisAngle(UP, dt * WRECK_ORBIT);
       else dir.lerp(tmp, 1 - Math.exp(-dt * (grounded ? 7 : 3))).normalize();
-      const wantBack = 7.5 + Math.min(speed, 140) * 0.004 + (c.boosting ? 0.4 : 0);
+      hover += ((c.lifting && !grounded ? 1 : 0) - hover) * (1 - Math.exp(-dt * 2));
+      const wantBack = 7.5 + Math.min(speed, 140) * 0.004 + (c.boosting ? 0.4 : 0) + 1.5 * hover;
       back += (wantBack - back) * (1 - Math.exp(-dt * 3));
       const ahead = Math.max(9, Math.min(speed, 120) * 0.18);
       const bias = grounded ? Math.max(-0.14, Math.min(0.14, c.yawRate * 0.15)) * ahead : 0;
-      want.copy(p).addScaledVector(dir, -back).addScaledVector(upS, 1.8 + 0.15 * Math.min(1, Math.max(0, speed - 40) / 40) + (grounded ? 0 : 0.6));
+      want.copy(p).addScaledVector(dir, -back).addScaledVector(upS, 1.8 + 0.15 * Math.min(1, Math.max(0, speed - 40) / 40) + (grounded ? 0 : 0.6) + hover);
       wantLook.copy(p).addScaledVector(dir, ahead).addScaledVector(upS, 0.25);
       if (bias) wantLook.x += c.rx * bias, wantLook.y += c.ry * bias, wantLook.z += c.rz * bias;
       want.sub(p); wantLook.sub(p);

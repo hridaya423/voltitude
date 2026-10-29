@@ -243,7 +243,7 @@ export function drawTyre(g, t, time) {
     const hint = sel.label.split(' · ')[1];
     const note = t.listening ? 'Press the new key. Esc cancels.' : hint ? hint[0].toUpperCase() + hint.slice(1) : 'Enter rebinds the selected action.';
     put(g, note, 56, 752, { size: 30, weight: 500, color: C.ink2 });
-    put(g, 'Gamepad: RT drive · LT brake · stick steer and pitch · A hop · B boost · LB RB roll · Y checkpoint', 56, 788, { size: 24, weight: 500, color: C.ink3, max: w - 112 });
+    put(g, 'Gamepad: RT drive · LT brake · stick steer and pitch · A lift · B boost · LB RB roll · Y checkpoint', 56, 788, { size: 24, weight: 500, color: C.ink3, max: w - 112 });
     return hits;
   }
   const visible = 7, rowH = 84, first = Math.max(0, Math.min(t.rows.length - visible, t.index - 3));

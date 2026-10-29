@@ -4,6 +4,7 @@ import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput, nearMisses, TIERS } from '../src/sim/race.js';
 import { createCar, placeCar, TUNING, wallAt } from '../src/sim/drive.js';
 import { buildCircuit } from '../src/sim/circuit.js';
+import { lineFor } from '../src/sim/driver.js';
 import { turtle, arc } from '../tools/turtle.mjs';
 
 const world = loadWorld('proving');
@@ -365,4 +366,28 @@ test('a flight gate pays 0.25 once per lap to a car through its centre, and noth
   const miss = flyThroughGate(w, gate.r + 1);
   assert.equal(miss.earned, 0);
   assert.equal(miss.gates, 0);
+});
+
+test('a rival 20 m behind a stopped car on a straight hops over it without contact', () => {
+  const { track } = world, s0 = 2400;
+  for (let d = -150; d < 150; d++) assert.ok(Math.abs(track.curv[s0 + d]) < 0.0015 && !track.air?.[s0 + d], `bend at ${s0 + d}`);
+  const race = createRace(world, { event: GP, seed: 1 }), inp = createInput();
+  while (race.phase !== 'racing') { stepRace(race, inp); race.events.length = 0; }
+  for (let t = 0; t < 300; t++) { stepRace(race, inp); race.events.length = 0; }
+  const off = (i) => lineFor(track).off[i], rival = race.entries[1];
+  race.entries.slice(2).forEach((e, k) => { const j = (s0 + 900 + k * 120) % track.lap; placeCar(e.car, track, j, 30, off(j)); e.prog = race.prog + 900 + k * 120; });
+  placeCar(race.car, track, s0, 0, off(s0));
+  placeCar(rival.car, track, s0 - 20, 45, off(s0 - 20));
+  rival.car.gas = 1;
+  let air = 0, contacts = 0;
+  for (let t = 0; t < 360; t++) {
+    Object.assign(inp, createInput(), { brake: 1 });
+    stepRace(race, inp);
+    contacts += race.events.filter((e) => e.type === 'contact').length;
+    race.events.length = 0;
+    if (rival.car.mode === 0) air++;
+  }
+  assert.ok(air > 60, `airborne ${(air / 120).toFixed(2)} s`);
+  assert.equal(contacts, 0);
+  assert.ok(rival.car.hint > s0 + 50, `rival at ${rival.car.hint}`);
 });

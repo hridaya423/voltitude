@@ -37,9 +37,9 @@ export function createHud(world, settings) {
   const els = {
     hud: $('hud'), clock: $('clock'), tower: $('tower'), sectors: $('sectors'), delta: $('delta'), card: $('card'), cps: $('cps'), target: $('target'),
     cpLabel: $('cpLabel'), lights: $('lights'), toasts: $('toasts'), hint: $('hint'), marker: $('marker'), markerDist: $('markerDist'),
-    speed: $('speed'), unit: $('unit'), gas: $('gas'), gasFill: $('gasFill'), gasPct: $('gasPct'), gasEdge: $('gasEdge'), gasGains: $('gasGains'), map: $('map'), state: $('state'),
+    speed: $('speed'), unit: $('unit'), gas: $('gas'), gasFill: $('gasFill'), gasPct: $('gasPct'), gasEdge: $('gasEdge'), gasLift: $('gasLift'), gasGains: $('gasGains'), map: $('map'), state: $('state'),
   };
-  const { track } = world;
+  const { track, terrain } = world;
   const NS = 'http://www.w3.org/2000/svg';
   let mapFn = null, meDot = null, ghostDot = null, cpDot = null, rivalDots = [];
   const v = new THREE.Vector3();
@@ -173,10 +173,14 @@ export function createHud(world, settings) {
       setText(els.gasPct, `${Math.round(c.gas * 100)}`);
       toggle(els.gas, 'burn', c.boosting);
       toggle(els.gas, 'low', c.gas < 0.17);
-      els.gasEdge.style.left = `${(c.gas * 100).toFixed(1)}%`;
+      els.gasEdge.style.left = els.gasLift.style.left = `${(c.gas * 100).toFixed(1)}%`;
+      toggle(els.gas, 'lift', c.lifting);
       if (c.gas >= 1 && lastGas < 1) { els.gas.classList.remove('full'); void els.gas.offsetWidth; els.gas.classList.add('full'); }
       lastGas = c.gas;
-      const st = c.mode === 0 ? 'AIR' : c.uy < 0.3 ? (c.uy < -0.5 ? 'INVERTED' : 'WALL') : '';
+      const k = c.hint * 3, onRoad = Math.abs(c.lat) < (c.lat < 0 ? track.wallL : track.wallR)[c.hint] + 2;
+      const alt = c.y - Math.max(terrain.height(c.x, c.z), onRoad ? track.H[k + 1] : -Infinity);
+      const altText = alt > 3 ? (settings.units === 'kmh' ? ` ${Math.round(alt)} M` : ` ${Math.round(alt * 3.281)} FT`) : '';
+      const st = c.mode === 0 ? `AIR${altText}` : c.uy < 0.3 ? (c.uy < -0.5 ? 'INVERTED' : 'WALL') : '';
       setText(els.state, st);
       toggle(els.state, 'on', !!st && race.phase === 'racing');
       deltaTimer -= dt;

@@ -498,9 +498,15 @@ const HINTS = {
   proving: ['gp', 'tt', 'pr'].map((ev) => ({ ev, at: 2150, use: 'air', html: () => `In the air: ${key('throttle')}${key('brake')} tilt the nose. Land on your wheels` })),
   airfield: ['gp', 'tt', 'pr'].map((ev) => ({ ev, at: 150, use: 'boost', html: () => `Hold ${key('boost')} to fire the rear thrusters` })),
 }[venue.id] || [];
-let hintAt = 0;
+let hintAt = 0, hoverHint = false;
 function hints() {
   if (!race || race.phase !== 'racing') return;
+  if (!hoverHint && race.car.mode === 0 && race.car.air > 36 && (save.hints.lift || 0) < 3) {
+    hoverHint = true;
+    save.hints.lift = (save.hints.lift || 0) + 1;
+    persist();
+    hud.hint(`Hold ${key('lift')} to hover`);
+  }
   for (const h of HINTS) {
     if (h.at <= hintAt || race.car.hint < h.at || race.car.hint > h.at + 60) continue;
     if (current.id !== h.ev && current.id !== 'full') continue;

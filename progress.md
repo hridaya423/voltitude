@@ -955,3 +955,36 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - Lab (flat, 40 m/s, 6 m up, lift held 1.5 s): full right lands 8.08 m right, full left 8.08 m left, no steer 0.00. Off the Proving jumps with lift held: 5–10 m either way.
 - Tests: "full steer while lifting moves the landing point 6 m or more sideways" fails on the Task 28 code (−0.08 m) and passes. "A flight with no input lands where it took off sideways" (lift 0 and 1.5 s, under 0.05 m) guards against drift.
 - `npm test` 105 of 105. Exploits PASS on all three venues.
+
+**Task 30: flight feel, AI and HUD (done).**
+- `car.js`: the four down plumes fire while lifting and for 0.2 s after a hop. In the air, the lateral plume on the side opposite the strafe fires (the model's +x is the sim's −R, so nozzle 8 sits on the left and pushes right).
+- `audio.js`: the thrust hiss layer gains a lift term (gain +0.45, lower pitch) and a `burst_long` on ignition. Not checked by ear: the headless captures have no audio. No page errors.
+- `camera.js`: while lifting in the air, the chase camera eases 1 m up and 1.5 m back.
+- `hud.js`: three cyan down-chevrons ride the gas edge while lifting, and the bar glows as on boost. The AIR state shows height above the road or terrain over 3 m ("AIR 18 FT", "M" in km/h).
+- `main.js`: the first time airborne for 0.3 s: "Hold Space to hover", at most 3 times per save. The plan's text was "Space: hover"; the other hints are sentences ("Hold Shift to fire the rear thrusters").
+- Controls page: the lift row comes from `ACTIONS`, and the gamepad line reads "A lift".
+- Fix found by capture: `c.lifting` was false while hover pushed nothing, during the hop's climb. Steering then yawed the car about 30° before the strafe started. `c.lifting` now means "lift held in the air with gas".
+- `driver.js`: a rival closing more than 12 m/s on a wrecked or stopped car it overlaps, within 0.45 s, taps lift. Rivals with nerve 0.7 or more flare air-line landings: lift while falling faster than 10 m/s within 10 m of the road. Measured over 3 Proving GPs: AAL, REY, FER, OKY and the bot flare 1.9–2.7 s per GP; NAI, HAN and VOG never lift; no hops (no car stopped in a racer's path).
+- Test "a rival 20 m behind a stopped car on a straight hops over it without contact" fails on the old driver (never airborne, it hits the car), passes (1.5 s airborne, 3.3 m high).
+- Captures (scratchpad `lift2/`, Proving straight at 2400, 89–100 mph). Hop: a 4.0 m peak, landing at 2.6 s. Hover: Space held 2.5 s, the car holds 6.2 m, AIR 13–21 FT, the lift glyph shows, the camera rises. Strafe landing: hover plus full right, the car holds its heading, the left lateral jet fires, it lands 6.4 m right of the plain hop. Plumes (side view, from rest): four down jets under the car through the hover, off when the lift ends. Controls page: the lift row on Space, 12 rows fit.
+- Old ghosts replay unchanged (lift 0 keeps the old step). `SIM_VERSION` stays 11; author ghosts and medals were not regenerated.
+
+### Phase 2b gate (2026-10-29)
+
+| Check | Result |
+|---|---|
+| `npm test` | PASS: 106 of 106 |
+| Exploits, incl. hop spam and hover off the map | PASS on all three venues |
+| `ai-bench 20` Proving | PASS all tiers; Pro 1.012 of Elite, Elite 0.981 of the line; held 30–33; contacts 1.6–2.4 |
+| `ai-bench 20` Airfield | PASS all tiers; Pro 1.013, Elite 1.055; held 5.5–7 |
+| `ai-bench 20` Launch | PASS all tiers; Pro 1.013, Elite 1.027; held 8.4–11.3 |
+| `race-gate 20` Proving | PASS: 0 incidents, 20 orders; NAI 5, FER 4, HAN 4, AAL 3, YOU 2, OKY 1, REY 1; 30.9 passes |
+| `race-gate 20` Airfield | PASS: 0 incidents, 20 orders; REY 7, NAI 4, AAL 3, HAN 3, VOG 2, OKY 1; 5.5 passes |
+| `race-gate 20` Launch | PASS: 0 incidents, 20 orders; REY 7, NAI 4, AAL 3, HAN 3, VOG 2, YOU 1; 9.3 passes |
+| Keyboard gas with lift | Measured, see below. Earn rates unchanged |
+| Wall wrecks per keyboard GP −50% | Cannot be shown: 0 on the Phase 2 baseline, 0 now. Substitute evidence: late-braking trials, 10 wrecks → 3 (Task 26) |
+| Track limits pay for themselves | FAIL (Task 26): cutting saves up to 1.5 s per corner on Airfield. Needs a product call |
+| Captures | Run-off at 3 corners (high and chase), a hop, a 2 s hover, a strafe landing, the down plumes, the controls page |
+
+- Gas, headless keyboard rig (scratchpad `kbgp.mjs`, Proving, 6 GPs each, % of race time under 15% gas). Careful driver: baseline (ca3a9ca) 2.1%, now 3.3% with the bot's own lift use (0.2 s per GP); with a habit of holding Space through every flight over 0.25 s, 16.0% (6.9 s and 2.86 gas of lift per GP). Heavy spender (boosts on every straight with any gas): baseline 97.8%, now 98.1%, and 97.9% with the lift habit; it never has gas left to lift (0.1 s per GP). The Phase 2 report's 86.3% came from a different spender script, so the baseline here is this script's own run. Lift is a real drain for a careful driver who hovers every jump: under 15% gas goes from 3% to 16% of the race.
+- Not done: author ghosts and medals were not regenerated. Old ghosts replay unchanged because lift 0 keeps the old step, so `SIM_VERSION` stays 11. The bot now flares on air lines, so a fresh bot lap may differ slightly from the recorded author lap.
