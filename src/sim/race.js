@@ -4,7 +4,7 @@ import { createDriver, drive, lineFor } from './driver.js';
 import { resolveContacts, clearance } from './contact.js';
 import { GAIN, earn, flushGains, landingGain } from './gas.js';
 
-export const SIM_VERSION = 10;
+export const SIM_VERSION = 11;
 export const TIERS = Object.freeze({ easy: 0.94, pro: 0.98, elite: 1 });
 export const COUNTDOWN = 240;
 export const lightTick = (n) => -220 + 40 * (n - 1);

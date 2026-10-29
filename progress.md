@@ -880,4 +880,10 @@ Keyboard capture: the review rig `cap-review.mjs proving gp keys <out> human` (c
 - Open: Airfield passing. Clean racing removed the crash chaos that used to produce passes, and every car has the same straight-line speed (tiers and skill only change corner speed; the draft pays gas, not speed). Proposed product call: a modest slipstream drag reduction.
 - `npm test` 91 of 91. Exploits PASS on all three venues. Wall stops (a speed loss over 10 m/s on a wall, 6 GPs): Proving 0, Launch 1, Airfield 3. TT bot laps: Proving 84.40 / 81.96 / 76.71, Airfield 79.27 / 76.32 / 76.32, Launch 69.83 / 66.89 / 67.27, no wall stops or respawns.
 
-**Next:** Task 14 (bake terrain, medals, author ghosts, `SIM_VERSION` 10 → 11, `npm test`, `race-gate 20` per venue), then the Phase 2 gate report (gas re-measure on the keyboard rig, browser captures of both air lines and the wall-ride).
+**Task 14: regenerated data (done).**
+- `SIM_VERSION` 10 → 11 (save key `voltitude.save.v11`; old PBs and ghosts drop).
+- `node tools/bake-terrain.mjs proving`: byte-identical to the committed bake (the gates do not move the course).
+- `node tools/medals.mjs all`, author runs with 0 respawns: Proving TT 238.767 s (82.90 / 80.59 / 75.28), Airfield 227.883 s (77.92 / 74.98 / 74.98), Launch 199.633 s (68.09 / 65.72 / 65.82).
+- `npm test` 91 of 91. `race-gate 20`: Proving PASS, Launch PASS, Airfield FAIL on passes (3.6); same orders and winners as the Task 13 run; 0 resets, wrecks or DNFs on all three.
+
+**Next:** the Phase 2 gate report: gas re-measure on the keyboard rig (Phase 1: 63.9% of race time under 15% gas, target under 25%), browser captures of both air lines and the wall-ride. Open product call: Airfield passing (slipstream tow).
