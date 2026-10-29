@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMenu, SETTINGS, PAUSE, RESULT_ACTIONS } from '../src/menu.js';
+import { createMenu, pauseView, SETTINGS, PAUSE, RESULT_ACTIONS } from '../src/menu.js';
+import { loadWorld } from '../tools/load-world.mjs';
+import { createRace, createInput, stepRace, eventsFor } from '../src/sim/race.js';
 import { ACTIONS, DEFAULT_KEYS } from '../src/input.js';
 
 const EVENTS = ['Grand Prix', 'Time Trial', 'Practice'].map((name, i) => ({ id: `e${i}`, name, tag: `T${i}`, best: '', medal: null, kicker: '', brief: '', ladder: [], bestLabel: '', circuit: true }));
@@ -268,4 +270,14 @@ test('closing the menu clears the page and any capture', () => {
   assert.equal(menu.page, null);
   menu.command('confirm');
   assert.equal(menu.page, null);
+});
+
+test('pausing during the countdown shows a zero race time', () => {
+  const world = loadWorld('proving');
+  const ev = eventsFor(world.track).find((e) => e.kind === 'gp');
+  const race = createRace(world, { event: ev });
+  const inp = createInput();
+  for (let t = 0; t < 60; t++) stepRace(race, inp);
+  assert.equal(race.phase, 'countdown');
+  assert.equal(pauseView(race, ev, 'Proving Ground').lines[0].value, '0:00.000');
 });

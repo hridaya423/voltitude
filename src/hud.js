@@ -1,19 +1,10 @@
 import * as THREE from 'three';
+import { fmt, fmtDelta } from './time.js';
+import { raceClock } from './sim/race.js';
 
 const $ = (id) => document.getElementById(id);
 const TOWER_ROW = 27;
 const GAIN_LABEL = { near_miss: '+# CLOSE', clean: '+# CLEAN', perfect: '+# PERFECT', trick: '+# TRICK', gate: '+# GATE', air: '+AIR', wall: '+WALL', draft: '+DRAFT' };
-
-export function fmt(ticks) {
-  const ms = Math.round(ticks * 1000 / 120);
-  const m = Math.floor(ms / 60000), s = Math.floor(ms / 1000) % 60, r = ms % 1000;
-  return `${m}:${String(s).padStart(2, '0')}.${String(r).padStart(3, '0')}`;
-}
-
-export function fmtDelta(ticks) {
-  const s = Math.abs(ticks) / 120;
-  return `${ticks < 0 ? '−' : '+'}${s.toFixed(3)}`;
-}
 
 function setText(el, v) {
   if (el._v !== v) { el._v = v; el.textContent = v; }
@@ -162,8 +153,7 @@ export function createHud(world, settings) {
     },
     update(dt, race, camera, ghostPos, interpPos) {
       const c = race.car;
-      const clock = race.phase === 'countdown' ? 0 : race.phase === 'finished' ? race.total : race.raceTick;
-      setText(els.clock, fmt(clock));
+      setText(els.clock, fmt(raceClock(race)));
       const ev = race.event;
       setText(els.cps, ev.circuit ? (ev.laps > 9 ? `${Math.min(race.laps.length + 1, ev.laps)}` : `${Math.min(race.laps.length + 1, ev.laps)}/${ev.laps}`) : `${Math.min(race.next, ev.cps.length - 1)}/${ev.cps.length - 1}`);
       const mph = settings.units === 'kmh' ? c.speed * 3.6 : c.speed * 2.237;

@@ -22,8 +22,9 @@ import { createGates } from './render/gates.js';
 import { createChaseCamera, createBroadcastCamera } from './render/camera.js';
 import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
-import { createHud, fmt, fmtDelta, medalFor, medalTimes, MEDALS } from './hud.js';
-import { createMenu, describe } from './menu.js';
+import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
+import { fmt, fmtDelta } from './time.js';
+import { createMenu, pauseView, describe } from './menu.js';
 import { createGarage } from './render/garage.js';
 import { createFestival } from './render/festival.js';
 
@@ -224,19 +225,11 @@ function venueRows() {
   });
 }
 
-function pauseRows() {
-  const ev = current, lap = Math.min(race.laps.length + 1, ev.laps);
-  const lines = [{ label: 'Time', value: fmt(race.raceTick) }];
-  if (ev.circuit) lines.push({ label: 'Lap', value: ev.kind === 'pr' ? `${lap}` : `${lap} of ${ev.laps}` });
-  else lines.push({ label: 'Checkpoint', value: `${Math.min(race.next, ev.cps.length - 1)} of ${ev.cps.length - 1}` });
-  if (ev.kind === 'gp') lines.push({ label: 'Position', value: `P${race.pos} of ${race.entries.length}` });
-  return { title: 'PAUSED', sub: `${venue.name} · ${ev.name}`, lines };
-}
 
 const RESUME = 'voltitude.resume';
 const menu = createMenu({
   settings,
-  data: { events: eventRows, venues: venueRows, pause: pauseRows },
+  data: { events: eventRows, venues: venueRows, pause: () => pauseView(race, current, venue.name) },
   on: {
     sound(kind) { audio.start(); audio.event(kind === 'drive' ? 'slot' : kind === 'deny' ? 'miss' : 'ui'); },
     drive(i) { launch(() => startRace(EVENTS[i])); },

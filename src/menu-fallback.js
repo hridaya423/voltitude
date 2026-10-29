@@ -1,5 +1,5 @@
 import { VENUES } from './sim/venues.js';
-import { fmt } from './hud.js';
+import { fmt } from './time.js';
 import { ACTIONS, keyLabel } from './input.js';
 
 const NAMES = { gp: 'Grand Prix', tt: 'Time Trial', pr: 'Practice', full: 'Full run' };

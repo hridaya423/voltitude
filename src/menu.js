@@ -1,4 +1,6 @@
 import { ACTIONS, DEFAULT_KEYS, keyLabel } from './input.js';
+import { fmt } from './time.js';
+import { raceClock } from './sim/race.js';
 
 export const SETTINGS = [
   { key: 'assist', label: 'Landing assist', note: 'Levels the car in the air. Throttle and brake tilt the nose', type: 'toggle' },
@@ -29,6 +31,15 @@ export const RESULT_ACTIONS = [
   { id: 'replay', label: 'Replay', key: 'V' },
   { id: 'quit', label: 'Garage', key: 'Esc' },
 ];
+
+export function pauseView(race, ev, venueName) {
+  const lap = Math.min(race.laps.length + 1, ev.laps);
+  const lines = [{ label: 'Time', value: fmt(raceClock(race)) }];
+  if (ev.circuit) lines.push({ label: 'Lap', value: ev.kind === 'pr' ? `${lap}` : `${lap} of ${ev.laps}` });
+  else lines.push({ label: 'Checkpoint', value: `${Math.min(race.next, ev.cps.length - 1)} of ${ev.cps.length - 1}` });
+  if (ev.kind === 'gp') lines.push({ label: 'Position', value: `P${race.pos} of ${race.entries.length}` });
+  return { title: 'PAUSED', sub: `${venueName} · ${ev.name}`, lines };
+}
 
 export const KEY_ROWS = 6;
 const STEP = 0.1;
