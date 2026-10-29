@@ -3,8 +3,9 @@ import { ROSTER, PLAYER, rng } from './drivers.js';
 import { createDriver, drive, lineFor } from './driver.js';
 import { resolveContacts, clearance } from './contact.js';
 import { GAIN, earn, flushGains, landingGain } from './gas.js';
+import { trackLimits, MIN_GAIN, PACE } from './limits.js';
 
-export const SIM_VERSION = 11;
+export const SIM_VERSION = 12;
 export const TIERS = Object.freeze({ easy: 0.94, pro: 0.98, elite: 1 });
 export const COUNTDOWN = 240;
 export const lightTick = (n) => -220 + 40 * (n - 1);
@@ -73,6 +74,7 @@ function initEntry(e, world, event, slot) {
   return Object.assign(e, {
     car, next: 0, splits: [], lastIdx: g.i, lastSpeed: 0, cpIdx: g.i, cpSpeed: 0, used: new Set(), respawnIn: 0, lost: 0, resetHeld: false,
     wrecks: 0, respawns: 0, tricks: 0, maxSpeed: 0, airTime: 0, still: 0, earned: {}, gateLaps: [],
+    limits: { w: -1 }, pace: 1, penalty: 0, invalid: [], breaches: [],
     done: false, total: 0, laps: [], lapStart: 0, prog: track.closed && hint > track.lap / 2 ? hint - track.lap : hint, lastHint: hint,
     pos: slot + 1, grid: slot + 1,
   });
@@ -97,6 +99,7 @@ export function createRace(world, { event, assist = true, seed = 1, tier = 'pro'
     ROSTER.forEach((profile, k) => {
       const e = initEntry({ world, event, index: k + 1, identity: profile }, world, event, slots[k]);
       e.driver = createDriver(profile, seed * 7919 + k * 104729, TIERS[tier]);
+      e.pace = e.driver.pace / PACE;
       race.entries.push(e);
     });
     race.order = race.entries.slice().sort((a, b) => a.grid - b.grid);
@@ -140,7 +143,7 @@ function progress(race, e) {
 
 function finishEntry(race, e) {
   e.done = true;
-  e.total = race.raceTick;
+  e.total = race.raceTick + Math.round(e.penalty * 120);
   e.finishPos = ++race.finished;
   if (e === race) { race.phase = 'finished'; emit(race, 'finish', { t: e.total }); }
 }
@@ -189,6 +192,17 @@ function stepEntry(race, e, inp) {
   if (e.respawnIn && --e.respawnIn === 0) respawn(race, e);
   else if (e.lost > 60 || e.still > STILL) respawn(race, e);
 
+  if (track.closed && race.phase === 'racing') {
+    const breach = trackLimits(race, e, e === race);
+    if (breach) e.breaches.push(breach);
+    if (breach?.gain >= MIN_GAIN) {
+      const gp = race.event.kind === 'gp';
+      if (gp) e.penalty += breach.gain;
+      else if (!e.invalid.includes(e.laps.length)) e.invalid.push(e.laps.length);
+      if (e === race) emit(race, 'track_limits', { gain: breach.gain, penalty: gp });
+    }
+  }
+
   const cp = race.event.cps[e.next];
   const q = cp * 3;
   const d0 = (px - track.H[q]) * track.T[q] + (py - track.H[q + 1]) * track.T[q + 1] + (pz - track.H[q + 2]) * track.T[q + 2];
@@ -203,7 +217,7 @@ function stepEntry(race, e, inp) {
       const t = race.raceTick - e.lapStart;
       e.laps.push(t);
       e.lapStart = race.raceTick;
-      if (e === race) emit(race, 'lap', { lap: e.laps.length, t });
+      if (e === race) emit(race, 'lap', { lap: e.laps.length, t, invalid: e.invalid.includes(e.laps.length - 1) });
     }
     if (e.next >= race.event.cps.length) finishEntry(race, e);
     else if (e === race) emit(race, 'check', { index: e.splits.length - 1, t: race.raceTick });
@@ -294,7 +308,7 @@ function streaks(race) {
 function rank(race) {
   const order = race.order, entries = race.entries;
   if (entries.length === 1) return;
-  order.sort((a, b) => (a.done !== b.done ? (a.done ? -1 : 1) : a.done ? a.finishPos - b.finishPos : b.prog - a.prog) || a.index - b.index);
+  order.sort((a, b) => (a.done !== b.done ? (a.done ? -1 : 1) : a.done ? a.total - b.total || a.finishPos - b.finishPos : b.prog - a.prog) || a.index - b.index);
   order.forEach((e, k) => { e.pos = k + 1; });
   for (let i = 0; i < entries.length; i++) {
     for (let j = i + 1; j < entries.length; j++) {

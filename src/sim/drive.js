@@ -105,7 +105,7 @@ const K_AIR = 1 - Math.exp(-12 * DT);
 
 function createWheels() {
   return WHEELS.map((w) => ({
-    om: 0, hint: 0, a: 0, x: 0, xp: 0, hit: false, fz: 0, kap: 0, road: false, kind: 'road',
+    om: 0, hint: 0, a: 0, x: 0, xp: 0, hit: false, fz: 0, kap: 0, road: false, kind: 'road', lat: 0,
     nx: 0, ny: 1, nz: 0, px: 0, py: 0, pz: 0, mu: 1, w,
   }));
 }
@@ -340,6 +340,7 @@ export function stepCar(c, inp, world, tick, assist) {
     w.hit = d < LD + P.R && d > -0.8;
     w.road = s.road;
     w.kind = s.kind;
+    w.lat = s.lat;
     if (!w.hit) { w.fz = 0; w.xp = 0; w.x = 0; continue; }
     w.x = LD - (d - P.R);
     w.px = mx - c.ux * d; w.py = my - c.uy * d; w.pz = mz - c.uz * d;

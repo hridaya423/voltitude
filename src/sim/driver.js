@@ -9,7 +9,7 @@ const SPACE = 3.2, WIDTH = 3, NEAR = 20, FOLLOW = 7, FOLLOW_DECEL = 7, TUCK = 10
 const PASS_NEAR = 10, PASS_FAR = 25, PASS_OFF = 3.6, ATTACK_GAP = 12, PLAYER_LATE = 6;
 const CLOSE_T = 0.5, SETTLE = 60, SHIFT_V = 2.5, SHIFT_ACC = 4, BIAS_EDGE = 1.2, PREVIEW = 0.3, OFF_LINE = 2, OFF_GRIP = 0.81;
 const DEFEND_GAP = 0.6, DEFEND_T = 120, DEFEND_REST = 480;
-const HOP_CLOSING = 12, HOP_T = 0.45, FLARE_VY = -10, FLARE_H = 10, FLARE_NERVE = 0.7;
+const HOP_CLOSING = 12, HOP_T = 0.45, FLARE_VY = -10, FLARE_H = 10, FLARE_NERVE = 0.7, FLARE_GAS = 0.45;
 const AIR_DECIDE = 200, AIR_TOP = 85, AIR_RESERVE = 0.08, AIR_MIN = 62, AIR_SURE = 66, AIR_STRAIGHT = 0.012, AIR_ACCEL = 0.8, LAUNCH = 40, LIFT = 15, AIR_SAVE = 0.6, BLOCK_GAP = 60, BLOCK_CLOSING = 5;
 
 export function lineFor(track) {
@@ -301,7 +301,7 @@ export function drive(race, e, inp) {
     inp.steer = clamp((psi * 3) / 2.4);
     inp.pitch = air.miss ? 1 : 0;
     inp.throttle = 1; inp.brake = 0; inp.boost = 0;
-    inp.lift = air.go && (d.p.nerve ?? 0) >= FLARE_NERVE && c.vy < FLARE_VY && c.y - track.H[hint * 3 + 1] < FLARE_H ? 1 : 0;
+    inp.lift = air.go && (d.p.nerve ?? 0) >= FLARE_NERVE && c.gas > FLARE_GAS && c.vy < FLARE_VY && c.y - track.H[hint * 3 + 1] < FLARE_H ? 1 : 0;
   }
   return inp;
 }

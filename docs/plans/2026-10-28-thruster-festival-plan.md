@@ -388,6 +388,18 @@ Expose the kind on the surface result as `s.kind`: `road`, `kerb`, `paved`, `gra
 
 ## Phase 3: The slice look
 
+### Task 31: Track limits, ghosts and the hover hint (added 2026-10-29)
+
+**Track limits, Forza style (user decision).** A breach is all four wheels past the white line at a corner while the car gains time against the racing line through that corner.
+- **Races:** each breach shows a "TRACK LIMITS" toast. The time gained is added to the finish time as a penalty.
+- **Time trials:** the lap is invalid. An invalid lap does not count for medals or ghosts.
+- **Test:** a bot that cuts each corner gets a penalty equal to its gain within 0.1 s. A bot that runs wide and loses time gets none.
+- **Exploits:** add a corner-cutting case to `tools/exploits.mjs`.
+
+**Ghosts and medals.** Regenerate the author ghosts and medals, because the rivals' bot now flares its landings with lift. Bump `SIM_VERSION`.
+
+**Hover hint.** Move "Hold Space to hover" and the other hints off the car. Place them above the gas bar, or in the lower third, clear of the car's projected box.
+
 ### Task 15: Exploit script
 
 **Files:** Create `tools/exploits.mjs`. It runs headless sim input patterns against Proving:
