@@ -13,6 +13,8 @@ This design replaces the "normal racing game" direction from `2026-10-28-aaa-pas
 | Vertical slice | Proving Ground. Airfield and Launch Complex stay playable and frozen. |
 | Gas economy | The player earns gas by skill. Gas pads and regen refill are removed. |
 | Realism | The car look, sound, mass, power and top speed follow Tesla's published figures. The thruster economy does not. |
+| Run-off | F1-style run-off areas (paved strip, then grass or gravel) on corner outsides. A mistake costs time, not a wreck. Added 2026-10-29. |
+| Flight control | The four down thrusters give a hop on the ground and hover in the air. The two front lateral thrusters give yaw and strafe in the air. Added 2026-10-29. |
 
 ## Pillars
 

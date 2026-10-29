@@ -274,6 +274,118 @@ Run these after the layout settles:
 
 **Phase 2 gate:** green tests, `ai-bench` PASS, and `race-gate` with 0 resets, wrecks or DNFs on autopilot.
 
+## Phase 2b: Run-off areas and flight control
+
+The user added these on 2026-10-29: "like in f1, theres extra grass around corners … so u dont just get wrecked by the sides" and "more control in the air … hover … like in the real roadster".
+
+### Task 25: Run-off data per track sample
+
+**Files:**
+- Modify `src/sim/circuit.js` (new arrays `track.wallL`, `track.wallR`, `track.runoff`).
+- Modify `src/sim/drive.js` (barrier collision reads the arrays instead of `halfW` and `RAIL`).
+- Test: `tests/sim.test.js`.
+
+**Decisions:**
+- **Outside of a corner.** Where `|curv| > 0.006`, the side opposite the turn gets run-off, scaled by the racing-line speed at the corner entry. The run-off is 6 m below 40 m/s and 14 m above 70 m/s, linear between. It ramps in and out over 30 m.
+- **Inside of a corner:** 3 m of run-off.
+- **Straights:** 3 m.
+- **Not on special sections.** Loops, banks with `U.y < 0.95`, jumps and air spans keep today's walls.
+- **The barrier moves out.** `wallL[i]` and `wallR[i]` equal `halfW[i] + runoff`.
+
+**Test:** at the hairpin apex index the outside wall is 14 m or more from the road edge. On loop samples it equals today's value.
+
+### Task 26: Run-off surfaces
+
+**Files:**
+- Modify `src/sim/drive.js` (`surface`, and the grip and drag per surface).
+- Modify `src/sim/circuit.js` (a per-sample run-off kind).
+- Test: `tests/physics.test.js`.
+
+**Surfaces, from the white line out:**
+
+| Surface | Width | Grip | Drag |
+|---|---|---|---|
+| Kerb (existing) | | | |
+| Paved run-off | 2 m | 0.9 | none |
+| Grass | rest of the run-off | 0.55 | 0.15 g extra |
+| Gravel trap (slow corners, entry under 45 m/s) | rest of the run-off | 0.45 | 0.6 g extra |
+
+Expose the kind on the surface result as `s.kind`: `road`, `kerb`, `paved`, `grass`, `gravel` or `terrain`.
+
+**Tests:**
+- A car that runs wide at 60 m/s onto grass stays below the wreck threshold and loses 8–20 m/s before the barrier.
+- Gravel stops a 40 m/s car within its trap.
+- **Track limits pay for themselves.** For each corner, a bot that cuts the run-off line laps slower than the racing line.
+
+### Task 27: Run-off look and props
+
+**Files:**
+- `src/render/road.js`: a paved run-off band with painted chevrons on the paved part. Grass and gravel come from the terrain textures.
+- `src/render/trackside.js`: barrier, fence, boards and tyre walls move to `wallL`/`wallR`, with tyre walls at the gravel's outer edge.
+- `tools/bake-terrain.mjs`: flatten the terrain under the run-off.
+
+**Verify:**
+- Run `tools/shot-match.mjs`.
+- Capture three corners from the chase camera and from a high broadcast angle, and inspect them.
+- Compare against a real F1 corner reference, for example a gravel trap with a tyre wall behind it.
+
+### Task 28: Lift thrusters: hop and hover
+
+**Files:**
+- Modify `src/input.js`: new action `lift` ("Lift (down thrusters)"), key `Space`, gamepad A (`b(0)`). This makes the old "A hop" footnote true.
+- Modify `src/sim/drive.js`: lift force, gas drain, the `c.lifting` state.
+- Modify `src/sim/race.js`: input plumbing.
+- Test: `tests/physics.test.js`.
+
+**Physics.** The values come from `rl/js/config.js` `CAR.NOZZLES.down`, `JUMP_DV` and `HOVER_DRAIN`, rescaled to the race sim:
+- **Hop.** A tap on the ground gives +9.2 m/s along the car's up vector. It costs 0.11 gas and has a 0.6 s cooldown.
+- **Hover.** Holding the key in the air applies up to 1.15 g along the car's up vector at the four corner nozzles. A level car can hold its altitude and climb slowly. The drain is 0.4 gas per second, so a full tank gives 2.5 s of hover.
+- **Assist.** With assist on, hover auto-levels the car.
+- **Empty tank.** No gas means no lift; this is the same rule as Task 1.
+
+**Tests:**
+- A hop from rest peaks at 4–5 m.
+- Hover at full gas holds altitude within ±0.5 m for 2 s.
+- A full tank gives 2.3–2.7 s of hover.
+- An empty tank gives no lift.
+- Hop spam cannot lap faster than 0.9× the author time. Add this as a case in `tools/exploits.mjs`.
+
+### Task 29: Air control
+
+**Files:** Modify `src/sim/drive.js` (the airborne block at `drive.js:440-457`). Test in `tests/physics.test.js`.
+
+**Approach.** The two front lateral nozzles (`CAR.NOZZLES.lateral`) give real yaw authority in the air:
+- In the air, steering yaws at a rate up to `AIR_YAW`.
+- While lifting, steering also strafes at 0.3 g, so the player can line up a landing.
+- W/S pitch and Q/E roll stay as they are.
+- Air control drains `attitudeBurn` as today. Strafing drains 0.15 gas per second.
+
+**Tests:**
+- From a jump, full steer changes the landing point by 6 m or more sideways.
+- Without input, the landing point is unchanged against today's value.
+
+### Task 30: Flight feel, AI and HUD
+
+**Files:**
+- `src/render/car.js`: down-nozzle plumes fire from `c.lifting`. The `NOZ` list already includes the down and lateral nozzles.
+- `src/audio.js`: a lift hiss layer.
+- `src/render/camera.js`: while hovering, the camera rises 1 m and pulls back 1.5 m.
+- `src/hud.js`: a lift glyph on the gas bar while it is in use, and an altitude readout above 3 m.
+- `src/sim/driver.js`: AI drivers hop over a wrecked car in their path, and hover on air lines by `nerve`.
+- `src/menu.js` and the controls page: add the `lift` row.
+- `src/main.js`: a hint the first time the player is airborne: "Space: hover".
+
+**Verify:**
+- Capture a hop, a 2 s hover and a strafe landing in the browser, and inspect the frames.
+- Re-run `tools/ai-bench.mjs`, `tools/exploits.mjs` and `npm test`.
+
+**Phase 2b gate:**
+- `npm test` passes.
+- `exploits` passes, including hop spam and hover off the map.
+- `ai-bench` and `race-gate` pass.
+- The keyboard gas check is re-measured after lift exists.
+- Wall wrecks per keyboard GP fall by 50% or more against the Phase 2 gate number.
+
 ## Phase 3: The slice look
 
 ### Task 15: Exploit script
