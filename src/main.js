@@ -150,7 +150,7 @@ const hud = createHud(world, settings);
 const chase = createChaseCamera(camera, terrain.height);
 const broadcast = createBroadcastCamera(camera, track, terrain.height);
 
-const EVENTS = eventsFor(track);
+const EVENTS = eventsFor(track, venue);
 const BRIEFS = {
   proving: {
     gp: 'Three laps against seven Roadsters. Brake late into the hairpins, take the loop flat out, keep it straight over the jump.',

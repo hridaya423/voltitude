@@ -8,7 +8,7 @@ const skill = Number(process.argv[4] ?? 1);
 const verbose = process.argv.includes('-v');
 const world = loadWorld(venueId);
 if (!world.baked) console.log('warning: terrain not baked for', venueId);
-const events = eventsFor(world.track);
+const events = eventsFor(world.track, world.venue);
 for (const ev of events.filter((e) => which === 'all' || e.id === which)) {
   const race = createRace(world, { event: ev });
   const inp = createInput();

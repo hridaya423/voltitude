@@ -40,14 +40,17 @@ export function unpackInput(buf, o, inp) {
   return inp;
 }
 
-export function eventsFor(track) {
+const DARES = { lineup: 'The Lineup' };
+
+export function eventsFor(track, venue = null) {
   if (track.closed) {
     const perLap = [...track.cps, track.lap];
-    const mode = (id, card, name, kind, laps) => ({
-      id, card, name, kind, laps, from: 0, to: track.lap, gas: 1, circuit: true, perLap: perLap.length,
+    const mode = (id, name, kind, laps) => ({
+      id, name, kind, laps, from: 0, to: track.lap, gas: 1, circuit: true, perLap: perLap.length,
       cps: Array.from({ length: laps }, () => perLap).flat(),
     });
-    return [mode('gp', 1, 'Grand Prix', 'gp', 3), mode('tt', 2, 'Time Trial', 'tt', 3), mode('pr', 3, 'Practice', 'pr', 99)];
+    const list = [...(venue?.dares || []).map((id) => mode(id, DARES[id], 'dare', 99)), mode('gp', 'Grand Prix', 'gp', 3), mode('tt', 'Time Trial', 'tt', 3), mode('pr', 'Practice', 'pr', 99)];
+    return list.map((e, k) => Object.assign(e, { card: k + 1 }));
   }
   const { sectors, cps, finish } = track;
   const list = sectors.map((s, k) => {
@@ -104,6 +107,7 @@ export function createRace(world, { event, assist = true, seed = 1, tier = 'pro'
     });
     race.order = race.entries.slice().sort((a, b) => a.grid - b.grid);
   }
+  if (event.kind === 'dare') race.dare = { count: 1, score: 0, mult: 1, cleared: 0, armed: false, over: false, endAt: 0, near: [] };
   if (track.closed) lineFor(track);
   return race;
 }

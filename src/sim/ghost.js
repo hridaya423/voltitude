@@ -37,7 +37,7 @@ export function decodeInputs(run) {
 export function createGhost(world, run) {
   if (!run || run.v !== SIM_VERSION) return null;
   const inputs = decodeInputs(run);
-  const event = eventsFor(world.track).find((e) => e.id === run.event);
+  const event = eventsFor(world.track, world.venue).find((e) => e.id === run.event);
   if (!event) return null;
   const race = createRace(world, { event, assist: run.assist, seed: run.seed, tier: run.tier });
   const inp = createInput();
