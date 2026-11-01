@@ -4,6 +4,7 @@ import { createDriver, drive, lineFor } from './driver.js';
 import { resolveContacts, clearance } from './contact.js';
 import { GAIN, earn, flushGains, landingGain } from './gas.js';
 import { trackLimits, MIN_GAIN, PACE } from './limits.js';
+import { lineupBoxes, lineupHit } from './lineup.js';
 
 export const SIM_VERSION = 14;
 export const TIERS = Object.freeze({ easy: 0.94, pro: 0.98, elite: 1 });
@@ -158,7 +159,9 @@ function stepEntry(race, e, inp) {
   const px = c.x, py = c.y, pz = c.z, prevHint = c.hint;
   stepCar(c, inp, race.world, race.tick, race.assist);
   if (e.done) { c.ev.length = 0; progress(race, e); return; }
+  let touch = null;
   for (const ev of c.ev) {
+    if (ev.type === 'land' || ev.type === 'wreck') touch = ev;
     if (e === race) {
       emit(race, ev.type, ev);
       if (ev.type === 'land' && ev.tricks.length) e.tricks += ev.tricks.length;
@@ -167,6 +170,8 @@ function stepEntry(race, e, inp) {
     if (ev.type === 'wreck') e.wrecks++;
   }
   c.ev.length = 0;
+  if (e.dare && race.phase === 'racing') dareStep(race, c, touch);
+  if (e.done) return;
   if (c.mode === 0) e.airTime++;
   e.maxSpeed = Math.max(e.maxSpeed, c.speed);
   progress(race, e);
@@ -192,9 +197,11 @@ function stepEntry(race, e, inp) {
   e.still = race.raceTick > 360 && c.speed < 2 ? e.still + 1 : 0;
   const held = !track.closed || c.speed <= lineFor(track).cap[c.hint] * 1.1 + 3;
   if (c.mode === 1 && !e.lost && !c.wrecked && held && safeAt(track, c.hint)) { e.lastIdx = c.hint; e.lastSpeed = c.speed; }
-  if (c.wrecked && !e.respawnIn) e.respawnIn = 70;
-  if (e.respawnIn && --e.respawnIn === 0) respawn(race, e);
-  else if (e.lost > 60 || e.still > STILL) respawn(race, e);
+  if (!e.dare?.over) {
+    if (c.wrecked && !e.respawnIn) e.respawnIn = 70;
+    if (e.respawnIn && --e.respawnIn === 0) respawn(race, e);
+    else if (e.lost > 60 || e.still > STILL) respawn(race, e);
+  }
 
   if (track.closed && race.phase === 'racing') {
     const breach = trackLimits(race, e, e === race);
@@ -226,6 +233,41 @@ function stepEntry(race, e, inp) {
     if (e.next >= race.event.cps.length) finishEntry(race, e);
     else if (e === race) emit(race, 'check', { index: e.splits.length - 1, t: race.raceTick });
   }
+}
+
+function dareStep(race, c, touch) {
+  const d = race.dare, { track } = race.world;
+  if (d.over) { if (race.tick >= d.endAt) finishEntry(race, race); return; }
+  const boxes = lineupBoxes(track, d.count), end = boxes[boxes.length - 1].s1;
+  if (c.mode === 0 && c.hint >= track.lineup.lip && c.hint < end) d.armed = true;
+  if (c.hint >= track.lineup.lip - 30 && c.hint <= end + 5) {
+    const hit = lineupHit(c, track, boxes);
+    if (hit?.clip !== undefined) return clip(race, c, hit.clip);
+    if (hit && !d.near.includes(hit.near)) {
+      d.near.push(hit.near);
+      earn(race, race, 'near_miss', GAIN.near_miss);
+      emit(race, 'near_miss', { v: c.speed, vehicle: hit.near, gap: hit.gap });
+    }
+  }
+  if (!d.armed || c.mode === 0) return;
+  if (touch?.type === 'wreck' || c.hint < end) return clip(race, c, (boxes.find((b) => b.s1 >= c.hint) || boxes[boxes.length - 1]).k);
+  const hard = touch?.quality === 'hard', count = d.count;
+  d.mult = hard ? 1 : Math.min(3, 1 + (touch?.tricks.length || 0));
+  d.score += count * d.mult;
+  d.cleared += count;
+  d.count++;
+  d.armed = false;
+  d.near = [];
+  emit(race, 'clear', { count, mult: d.mult, hard, score: d.score });
+}
+
+function clip(race, c, k) {
+  const d = race.dare;
+  d.over = true;
+  d.endAt = race.tick + 240;
+  c.wrecked = true;
+  c.vx *= 0.2; c.vy *= 0.2; c.vz *= 0.2;
+  emit(race, 'clip', { k, score: d.score });
 }
 
 function gatePasses(race, e, px, py, pz) {

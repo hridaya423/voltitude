@@ -273,7 +273,8 @@ export function buildCircuit(def) {
   const lineMark = marks.find((mk) => mk.node.flags?.lineup);
   if (lineMark) {
     const from = toSample(lineMark.at), { at: ahead, pitch } = lineMark.node.flags.lineup;
-    lineup = { i0: jumps.find((j) => j.from === from).lip + Math.round(ahead / step), pitch };
+    const lip = jumps.find((j) => j.from === from).lip;
+    lineup = { lip, i0: lip + Math.round(ahead / step), pitch };
   }
   sectors.sort((x, y) => x.i - y.i);
   if (!sectors.length || sectors[0].i !== 0) sectors.unshift({ name: 'Start', i: 0 });

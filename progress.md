@@ -1242,3 +1242,12 @@ The user's verdict on the build: "very mediocre". The ask: use the free model ca
 - Not done: no code changed. The Sketchfab licence of the Roadster GLB is unrecorded (Task 0.3).
 
 Next: Task 0.2, then Phase 1 (The Pad and The Lineup).
+
+## Session 2026-11-01 (cont.): executing the shook plan
+
+Branch `shook`. Done, with evidence:
+- Task 0.2 and 0.3: `tools/capture.mjs`; car licence checked; tool install quirks noted in the plan.
+- Task 1.1 and 1.2: The Pad (oval, 1535 m, one kicker, `lineup` flag). Baked terrain and medals. `tests/pad.test.js` passes.
+- Task 1.3: the lineup rules in `src/sim/lineup.js` and `dareStep` in `src/sim/race.js`. A clear scores count times a multiplier (1 plus tricks, at most 3; a hard landing resets it to 1). A clip ends the dare 2 s later with no respawn. A near miss over a roof earns gas once per vehicle. `tests/dare.test.js` covers each rule; `npm test` gives 139 of 139 passes. `node tools/sim-run.mjs pad lineup 1 -v` shows the bot clearing 8 lines with 0 clips, 0 wrecks.
+
+Next: Task 1.4 (greybox lineup render), then 1.5 (dare HUD and results), 1.6 (dare feel).
