@@ -43,6 +43,72 @@ async function metrics(file) {
 }
 
 const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const FRAMES = {
+  leap: {
+    url: 'venue=pad&event=lineup&autostart&autopilot&golden&cam=0,0,0,0,0,1,34',
+    aim: () => {
+      const { race, fixedCam: F } = window.__shot, t = race.world.track;
+      const follow = () => {
+        const c = race.car, k = c.hint * 3, g = t.P[k + 1];
+        F[0] = c.x - t.T[k] * 8 + t.R[k] * 4; F[1] = g + 0.8; F[2] = c.z - t.T[k + 2] * 8 + t.R[k + 2] * 4;
+        F[3] = c.x + t.T[k] * 2; F[4] = c.y + 0.9; F[5] = c.z + t.T[k + 2] * 2; F[6] = 38;
+        requestAnimationFrame(follow);
+      };
+      follow();
+    },
+    when: () => { const { race } = window.__shot, c = race.car, t = race.world.track, k = t.lineup.lip * 3; return c.mode === 0 && c.hint > t.lineup.lip && c.y - t.P[k + 1] > 2; },
+  },
+  inverted: {
+    url: 'event=gp&autostart&autopilot&golden&cam=0,0,0,0,0,1,62',
+    aim: () => {
+      const { race, fixedCam: F } = window.__shot;
+      const follow = () => {
+        const c = race.car;
+        F[0] = c.x - c.fx * 7 + c.ux * 1.6; F[1] = c.y - c.fy * 7 + c.uy * 1.6; F[2] = c.z - c.fz * 7 + c.uz * 1.6;
+        F[3] = c.x + c.fx * 10; F[4] = c.y + c.fy * 10; F[5] = c.z + c.fz * 10; F[6] = 62;
+        F[7] = c.ux; F[8] = c.uy; F[9] = c.uz;
+        requestAnimationFrame(follow);
+      };
+      follow();
+    },
+    when: () => window.__shot.race.car.uy < -0.9,
+  },
+  grid: {
+    url: 'event=gp&autostart&golden&cam=0,0,0,0,0,1,40',
+    aim: () => {
+      const { race, fixedCam: F } = window.__shot, t = race.world.track, c = race.car;
+      const i = c.hint, st = Math.round(1 / t.step);
+      const at = (j, l, h, o) => { const k = ((j + t.lap) % t.lap) * 3; for (let a = 0; a < 3; a++) F[o + a] = t.P[k + a] + t.R[k + a] * l + t.U[k + a] * h; };
+      at(i - 9 * st, c.lat * 0.4, 1.3, 0); at(i + 120 * st, 0, 2, 3); F[6] = 40;
+    },
+    when: () => window.__shot.race.phase === 'countdown' || window.__shot.race.raceTick > -60,
+  },
+};
+if (process.env.FRAMES) {
+  for (const name of process.env.FRAMES.split(',')) {
+    const f = FRAMES[name];
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    await page.route('**/src/main.js', async (route) => {
+      const res = await route.fetch();
+      const body = (await res.text()) + '\nwindow.__shot = { get race() { return race; }, fixedCam };';
+      await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
+    });
+    await page.goto(`http://localhost:${port}/index.html?${f.url}`);
+    await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__shot?.race, null, { timeout: 240000, polling: 50 });
+    await page.addStyleTag({ content: '#hud { display: none !important; }' });
+    if (f.aim) await page.evaluate(f.aim);
+    await page.waitForTimeout(1500);
+    await page.waitForFunction(f.when, null, { timeout: 180000, polling: 'raf' });
+    for (let k = 0; k < (f.burst || 1); k++) {
+      const file = join(out, `frame-${name}${f.burst ? `-${k}` : ''}.png`);
+      await page.screenshot({ path: file });
+      console.log(name, file, JSON.stringify(await metrics(file)));
+    }
+    await page.close();
+  }
+  await browser.close();
+  process.exit(0);
+}
 const rows = [];
 for (const session of sessions) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

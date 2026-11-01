@@ -1331,4 +1331,14 @@ Phase 3:
   - Dropped: clouds at golden. With the sun that low, direct light is a small share of the sand's light. The patches did not read, and auto-exposure lifted the whole frame.
   - Not done: the car ignores cloud shadows (its materials are not `skyFog` patched).
 
-Next: Task 3.8 (signature frames; the blind clip test needs people).
+- Task 3.8: signature frames 1, 2 and 4. `FRAMES=leap,inverted,grid node tools/shot-match.mjs <out>` reproduces them at golden.
+  - The leap: The Lineup on autopilot. A camera tracks the car from a low rear three-quarter and fires when the car is 2 m above the lip.
+  - Inverted: the GP loop on autopilot. A camera rolled to the car's up vector fires at `uy < -0.9`. `fixedCam` takes an optional up vector (values 7 to 9) for this.
+  - The grid: low behind pole during the countdown.
+  - Sheet `docs/sheets/2026-11-01-signature-frames.jpg`. Metrics: leap hue 1.79, L50 80.1; inverted hue 1.37, L50 18.3; grid hue 1.98, L50 45.9. `npm test`: 144 of 144.
+  - Gaps against the design text: no cold-gas puffs in the leap (the autopilot does not lift there), no phone lights in the stand, and no test stand or tank farm on the grid skyline (those are Phase 4 venue work).
+  - Not done, needs people: the blind 30 s clip test against Forza Horizon 6.
+
+Phase 3 status: Tasks 3.1 to 3.8 are built and committed. Open human gates: the Phase 1 cold test and quiet-machine perf, the Phase 2 phone share and two-machine ghost link, and the Phase 3 blind clip test. The flora 1.5 ms budget needs the perf run.
+
+Next: Phase 4 (the range).
