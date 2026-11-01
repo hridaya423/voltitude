@@ -11,7 +11,10 @@ export async function probe(width, height, fps = 60) {
   return null;
 }
 
+const AAC = (audio) => ({ codec: 'mp4a.40.2', numberOfChannels: audio.channels, sampleRate: audio.sampleRate, bitrate: 128000 });
+
 export async function createClipEncoder({ width, height, fps = 60, audio = null }) {
+  if (audio && !(typeof AudioEncoder !== 'undefined' && (await AudioEncoder.isConfigSupported(AAC(audio)).catch(() => null))?.supported)) audio = null;
   const picked = await probe(width, height, fps);
   if (!picked) throw new Error('This browser cannot encode video');
   const { Muxer, ArrayBufferTarget } = await import('@rl/vendor/mp4-muxer-5.2.2/mp4-muxer.mjs');
@@ -25,9 +28,10 @@ export async function createClipEncoder({ width, height, fps = 60, audio = null 
   const video = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => { failure = e; } });
   video.configure(picked.config);
   const sound = audio ? new AudioEncoder({ output: (chunk, meta) => muxer.addAudioChunk(chunk, meta), error: (e) => { failure = e; } }) : null;
-  sound?.configure({ codec: 'mp4a.40.2', numberOfChannels: audio.channels, sampleRate: audio.sampleRate, bitrate: 128000 });
+  sound?.configure(AAC(audio));
   return {
     codec: picked.codec,
+    audio: !!sound,
     async addFrame(source, timestamp) {
       const frame = new VideoFrame(source, { timestamp, duration: Math.round(1e6 / fps) });
       video.encode(frame, { keyFrame: n++ % KEY_EVERY === 0 });

@@ -1281,4 +1281,8 @@ Phase 1 gate:
   - Evidence: `tests/share.test.js` round-trips a 60 s bot run on The Pad (under 8,000 characters) and replays it to the same dare state. A corrupt tail, garbage and an empty string all decode to null. In the browser, a 9 s run gave a 1,170-character link. Opened from the default venue, it reloaded onto The Pad and started The Lineup. The ghost reached the source run's first clear at tick 1120, against 1115 in the source, which is the polling gap. `npm test`: 144 of 144.
   - Not done: the plan's check across two machines. The burn-in cannot carry the link, because a link runs to thousands of characters. Task 2.4 should put the link on the results screen and in the share text.
 
-Next: Task 2.3 (offline audio for clips), then 2.4 (share sheet).
+- Task 2.3: offline clip audio in `src/clip/audio.js`. It does not use a licensed bed. The game's own procedural music engine runs in manual mode inside an `OfflineAudioContext`, suspended every 100 ms and at each cue to tick it and fire stingers: `lineup` on a clear, `bail` on a clip, `rampEnd` on a perfect landing. Sound effects come from the game's sprite (the clear chime pitched by the multiplier, the clip, the lip burst, landings), and the wind loop follows the replayed speed. A limiter and a peak cap at −2 dBFS finish the mix. Cues come from a deterministic pre-pass over the replay; `createGhost().step(sink)` now hands back events. The encoder adds AAC 128 kbit/s when the browser supports it, else the clip ships silent.
+  - Evidence: `tools/clip-test.mjs` passes with `aac,48000,2`, −13.3 LUFS and −2.0 dBTP. In the earshot timeline of the clip, the clear chime starts 41 ms before the clear, the music stinger peaks 52 ms after it at +14 dB over the bed, and the lip burst starts 70 ms after the lip. No clipping. `npm test`: 144 of 144.
+  - Judged by meters and earshot tags only. Nobody has listened to it.
+
+Next: Task 2.4 (share sheet).

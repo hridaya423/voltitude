@@ -26,8 +26,18 @@ function burnIn(g, w, h, card, k) {
   g.restore();
 }
 
-export async function renderClip({ source, width, height, fps = 60, frames, step, card, onProgress }) {
-  const enc = await createClipEncoder({ width, height, fps });
+function feedAudio(enc, buf) {
+  const n = 1024, ch = buf.numberOfChannels;
+  for (let at = 0; at < buf.length; at += n) {
+    const len = Math.min(n, buf.length - at), data = new Float32Array(len * ch);
+    for (let c = 0; c < ch; c++) data.set(buf.getChannelData(c).subarray(at, at + len), c * len);
+    enc.addAudio(new AudioData({ format: 'f32-planar', sampleRate: buf.sampleRate, numberOfChannels: ch, numberOfFrames: len, timestamp: Math.round(at * 1e6 / buf.sampleRate), data }));
+  }
+}
+
+export async function renderClip({ source, width, height, fps = 60, frames, step, card, audio = null, onProgress }) {
+  const enc = await createClipEncoder({ width, height, fps, audio: audio && { channels: audio.numberOfChannels, sampleRate: audio.sampleRate } });
+  if (enc.audio) feedAudio(enc, audio);
   const flat = document.createElement('canvas');
   flat.width = width; flat.height = height;
   const g = flat.getContext('2d');
@@ -46,5 +56,5 @@ export async function renderClip({ source, width, height, fps = 60, frames, step
     onProgress?.((i + 1) / frames);
   }
   const t2 = performance.now(), blob = await enc.finish();
-  return { blob, codec: enc.codec, renderMs: Math.round(renderMs), encodeMs: Math.round(encodeMs + performance.now() - t2) };
+  return { blob, codec: enc.codec, audio: enc.audio, renderMs: Math.round(renderMs), encodeMs: Math.round(encodeMs + performance.now() - t2) };
 }

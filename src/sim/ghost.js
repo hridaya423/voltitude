@@ -45,11 +45,12 @@ export function createGhost(world, run) {
   const frames = inputs.length / STRIDE;
   return {
     race, run,
-    step() {
+    step(sink) {
       if (i < frames) unpackInput(inputs, i * STRIDE, inp);
       else { inp.throttle = 0; inp.brake = 0; inp.boost = 0; inp.steer = 0; inp.pitch = 0; inp.roll = 0; inp.reset = 0; }
       i++;
       stepRace(race, inp);
+      sink?.push(...race.events);
       race.events.length = 0;
     },
   };

@@ -935,7 +935,20 @@ async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     const frames = Math.round(Math.min(seconds * 120, lastRun.total - from + 120) / 2);
-    return await renderClip({ source: renderer.domElement, width, height, fps, frames, card, onProgress, step: () => draw(1 / fps, 2) });
+    const pre = createGhost(world, lastRun), cues = [], speeds = [];
+    while (pre.race.phase === 'countdown' || pre.race.raceTick < from) pre.step();
+    let armed = !!pre.race.dare?.armed;
+    for (let f = 0; f < frames; f++) for (let k = 0; k < 2; k++) {
+      const sink = [], t = (f * 2 + k) / 120;
+      pre.step(sink);
+      for (const e of sink) cues.push({ ...e, t });
+      if (pre.race.dare && pre.race.dare.armed && !armed) cues.push({ type: 'lip', t });
+      armed = !!pre.race.dare?.armed;
+      if (k) speeds.push(pre.race.car.speed);
+    }
+    const { mixClip } = await import('./clip/audio.js');
+    const audio = await mixClip({ seconds: frames / fps, cues, speeds, fps }).catch((e) => { console.warn('clip audio', e); return null; });
+    return { ...(await renderClip({ source: renderer.domElement, width, height, fps, frames, card, audio, onProgress, step: () => draw(1 / fps, 2) })), cues };
   } finally {
     replay = null;
     mode = was.mode;
