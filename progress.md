@@ -1270,4 +1270,11 @@ Phase 1 gate:
 
 - Task 2.1: `src/clip/encode.js` with mp4-muxer 5.2.2 vendored at `rl/vendor/mp4-muxer-5.2.2/` (MIT, licence file included). Codec order: H.264 High, then Baseline, then VP9 in MP4. A WebM fallback is not needed, because mp4-muxer carries VP9. `tools/clip-test.mjs` passes: avc1.640028 is picked, 90 frames give a duration of 1.5 s and 2.18 MB, ffprobe reports `h264,1920,1080,90`, and a decoded frame shows the garage. Encoding took 6.1 s for 90 frames in headless Chrome on a loaded machine.
 
-Next: Task 2.2 (portrait replay render).
+- Task 2.2: portrait replay render. `src/clip/render.js` draws each frame into a 2D canvas, burns in the end card over the last 1.2 s, and feeds the encoder. `exportClip` in `src/main.js` replays the last run from N seconds before its end. It resizes the renderer to 1080x1920 at pixel ratio 1 and steps the existing frame body (now `draw(dt, ticks)`) with exactly two sim ticks per 60 fps frame, then restores everything. No second post chain was needed.
+  - Camera: the clip uses the chase camera, except on The Lineup, where a hero camera sits downrange of the line, 8 m off the centre and 4.5 m up. It zooms to hold about 18 m of width around the car. The broadcast camera's trackside positions sat behind grandstands on The Pad (first sheet), so the chase camera replaced them for clips. The broadcast camera now frames on the narrow axis, so portrait replays work.
+  - Replays drop events, so the lineup now follows `race.dare.count` during a replay. `finishDare` now saves `lastRun`.
+  - Evidence: `tests/dare.test.js` checks that a recorded dare replays to the same dare state and car position (142 of 142 pass). `node tools/clip-test.mjs /tmp/shook/clip5` passes: h264, 1080x1920, 360 frames, 6.0 s. The sheet `docs/sheets/2026-11-01-clip-lineup.jpg` shows the car airborne over the line, then the burned-in card.
+  - Export time for 6 s of clip, measured in the page: 5.4, 6.6, 8.9 and 19.1 s across four runs on a machine with a load average of 70 after a reboot. Rendering takes about 2 s. The rest is the encoder waiting on the GPU. The 20 s budget for 10 s of clip needs a check on a quiet machine.
+  - Still open: the hero shot is readable, not great. The car fills about a tenth of the frame width. Phase 3 should add a second angle and a cut on the lip.
+
+Next: Task 2.5 (ghost links), then 2.3 (audio) and 2.4 (share sheet).

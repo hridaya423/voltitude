@@ -127,3 +127,21 @@ test('a hard landing after the line keeps the count and resets the multiplier', 
   assert.equal(race.dare.count, 2);
   assert.equal(race.dare.score, 1);
 });
+
+test('a recorded dare replays to the same line and score, so a clip shows what happened', async () => {
+  const { createRecorder, encodeRun, createGhost } = await import('../src/sim/ghost.js');
+  const { botInput, packInput, unpackInput } = await import('../src/sim/race.js');
+  const race = createRace(pad, { event: LINEUP }), rec = createRecorder(), inp = createInput(), q = new Int8Array(6);
+  for (let t = 0; t < 120 * 70; t++) {
+    if (race.phase === 'racing') botInput(race, inp, 0.97);
+    packInput(inp, q, 0); unpackInput(q, 0, inp);
+    rec.push(inp);
+    stepRace(race, inp);
+    race.events.length = 0;
+  }
+  assert.ok(race.dare.cleared >= 3, `bot cleared ${race.dare.cleared}`);
+  const ghost = createGhost(pad, encodeRun(race, rec.bytes()));
+  for (let t = 0; t < 120 * 70; t++) ghost.step();
+  assert.deepEqual(ghost.race.dare, race.dare);
+  assert.equal(ghost.race.car.x, race.car.x);
+});

@@ -15,7 +15,7 @@ export function createLineup(world, fog) {
   mesh.count = 0;
   const m = new THREE.Matrix4(), basis = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
   const R = new THREE.Vector3(), U = new THREE.Vector3(), T = new THREE.Vector3(), color = new THREE.Color();
-  let boxes = [], flash = 0, flashK = -1;
+  let boxes = [], flash = 0, flashK = -1, shown = -1;
   const paint = () => {
     for (const b of boxes) mesh.setColorAt(b.k, color.set(PAINT[b.kind]).lerp(CLIP, b.k === flashK ? Math.min(1, flash * 2) : 0));
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -23,6 +23,8 @@ export function createLineup(world, fog) {
   return {
     mesh,
     set(count) {
+      if (count === shown) return;
+      shown = count;
       boxes = lineupBoxes(track, Math.min(count, MAX));
       flashK = -1;
       for (const b of boxes) {

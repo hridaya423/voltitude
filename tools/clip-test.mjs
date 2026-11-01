@@ -1,17 +1,17 @@
 import { chromium } from 'playwright-core';
-import { writeFileSync, statSync } from 'node:fs';
+import { writeFileSync, statSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
 
-const out = process.argv[2] || '/tmp/clip-test.mp4';
+const out = process.argv[2] || '/tmp/clip-test';
 const port = process.env.PORT || 8790;
-const frames = Number(process.env.FRAMES || 90);
+mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-page.on('pageerror', (e) => console.log('pageerror', e.message));
-await page.route('**/src/main.js', async (route) => {
-  const res = await route.fetch();
-  const hook = `
+
+const HOOK = `
+const b64 = (blob) => new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result.split(',')[1]); f.readAsDataURL(blob); });
 window.__clip = {
+  get race() { return race; },
   probe: () => import('./clip/encode.js').then((m) => m.probe(1920, 1080, 60)),
   async encodeTest(n) {
     const { createClipEncoder } = await import('./clip/encode.js');
@@ -24,31 +24,61 @@ window.__clip = {
       await enc.addFrame(flat, Math.round(i * 1e6 / 60));
     }
     const blob = await enc.finish();
-    return { codec: enc.codec, bytes: [...new Uint8Array(await blob.arrayBuffer())] };
+    return { codec: enc.codec, data: await b64(blob) };
+  },
+  async exportNow(seconds) {
+    lastRun = encodeRun(race, recorder.bytes());
+    lastRun.total = race.raceTick;
+    const t0 = performance.now();
+    const { blob, codec, renderMs, encodeMs } = await exportClip({ seconds, portrait: true });
+    return { codec, ms: Math.round(performance.now() - t0), renderMs, encodeMs, data: await b64(blob) };
   },
 };`;
-  const body = (await res.text()) + hook;
-  await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
-});
-await page.goto(`http://localhost:${port}/index.html?day`);
-await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__clip, null, { timeout: 180000, polling: 100 });
-console.log('probe', JSON.stringify(await page.evaluate(() => window.__clip.probe().then((p) => p && { codec: p.codec, mux: p.mux }))));
-const t0 = Date.now();
-const { codec, bytes } = await page.evaluate((n) => window.__clip.encodeTest(n), frames);
-const ms = Date.now() - t0;
-writeFileSync(out, Buffer.from(bytes));
-const duration = await page.evaluate(async (b) => {
-  const v = document.createElement('video');
-  v.src = URL.createObjectURL(new Blob([new Uint8Array(b)], { type: 'video/mp4' }));
-  await new Promise((r, j) => { v.onloadedmetadata = r; v.onerror = () => j(new Error('video failed to load')); });
-  return v.duration;
-}, bytes);
-let stream = 'ffprobe not found';
-try { stream = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name,width,height,nb_frames', '-of', 'csv=p=0', out]).toString().trim(); } catch {}
+
+async function open(query) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  page.on('pageerror', (e) => console.log('pageerror', e.message));
+  await page.route('**/src/main.js', async (route) => {
+    const res = await route.fetch();
+    const body = (await res.text()) + HOOK;
+    await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
+  });
+  await page.goto(`http://localhost:${port}/index.html?${query}`);
+  await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__clip, null, { timeout: 180000, polling: 100 });
+  return page;
+}
+
+function inspect(file, want) {
+  const info = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name,width,height,nb_frames:format=duration', '-of', 'json', file]).toString();
+  const j = JSON.parse(info), s = j.streams[0], duration = Number(j.format.duration), mb = statSync(file).size / 1048576;
+  return { codec: s.codec_name, size: `${s.width}x${s.height}`, frames: Number(s.nb_frames), duration, mb: +mb.toFixed(2), ok: Math.abs(duration - want) <= 0.05 };
+}
+
+const results = [];
+{
+  const page = await open('day');
+  console.log('probe', JSON.stringify(await page.evaluate(() => window.__clip.probe().then((p) => p && { codec: p.codec, mux: p.mux }))));
+  const { data } = await page.evaluate(() => window.__clip.encodeTest(90));
+  const file = join(out, 'title.mp4');
+  writeFileSync(file, Buffer.from(data, 'base64'));
+  const r = inspect(file, 1.5);
+  results.push({ name: 'title 90 frames', ...r, ok: r.ok && r.mb < 3 });
+  await page.close();
+}
+{
+  const page = await open('venue=pad&event=lineup&autostart&autopilot&day');
+  await page.waitForFunction(() => window.__clip.race.dare?.cleared >= 3 && window.__clip.race.car.mode === 1, null, { timeout: 180000, polling: 50 });
+  const { data, ms, renderMs, encodeMs } = await page.evaluate(() => window.__clip.exportNow(6));
+  console.log('lineup export', JSON.stringify({ ms, renderMs, encodeMs }));
+  const file = join(out, 'lineup.mp4');
+  writeFileSync(file, Buffer.from(data, 'base64'));
+  const r = inspect(file, 6);
+  for (const t of [1, 2.5, 3.6, 3.9, 4.2, 4.5, 4.8, 5.9]) execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', String(t), '-i', file, '-frames:v', '1', '-vf', 'scale=540:-1', join(out, `lineup-${t}s.jpg`)]);
+  results.push({ name: 'lineup 6 s portrait', exportMs: ms, ...r });
+  await page.close();
+}
 await browser.close();
-const mb = statSync(out).size / 1048576;
-const want = frames / 60;
-console.log(JSON.stringify({ codec, frames, encodeMs: ms, duration, mb: +mb.toFixed(2), ffprobe: stream, out }));
-const ok = Math.abs(duration - want) <= 0.05 && mb < 3;
-console.log(ok ? 'PASS' : `FAIL: duration ${duration} against ${want}, ${mb.toFixed(2)} MB`);
+console.table(results);
+const ok = results.every((r) => r.ok);
+console.log(ok ? 'PASS' : 'FAIL');
 process.exitCode = ok ? 0 : 1;

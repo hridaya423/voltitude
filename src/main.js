@@ -473,6 +473,7 @@ function finishCircuit(ev) {
 
 function finishDare(ev) {
   const d = race.dare, best = book[ev.id]?.best || 0;
+  lastRun = encodeRun(race, recorder.bytes());
   if (d.score > best) { book[ev.id] = { best: d.score }; persist(); }
   showResults(dareResults({
     card: `${venue.name} · ${ev.name}`, score: d.score, best, line: d.count, clears,
@@ -644,7 +645,8 @@ function tick() {
   for (let k = 1; k < race.entries.length; k++) snapshot(race.entries[k].car, rprev[k - 1]);
   if (mode === 'replay') {
     replay.step();
-    if (race.phase === 'finished' && ++replayEnd > 300) startReplay();
+    if (race.dare) lineup.set(race.dare.count);
+    if (!clipping && race.phase === 'finished' && ++replayEnd > 300) startReplay();
     return;
   }
   if (ghost) snapshot(ghost.race.car, gprev);
@@ -773,10 +775,11 @@ if (resumePage === 'settings') menu.command('settings');
 garage.intro();
 if (params.has('autostart')) startRace(current);
 
-let last = performance.now(), acc = 0, time = 0, garageView = null;
+let last = performance.now(), acc = 0, time = 0, garageView = null, clipping = false;
 let warmFrames = 0;
 function loop(now) {
   requestAnimationFrame(loop);
+  if (clipping) { last = now; return; }
   if (warmFrames >= 0 && ++warmFrames > 8 && (now - last < 20 || performance.now() - readyAt > 1500)) { warmFrames = -1; $('loading').classList.add('done'); }
   const ms = now - last;
   last = now;
@@ -784,9 +787,12 @@ function loop(now) {
   perf.frames.push(ms);
   if (perf.frames.length > 20000) perf.frames.shift();
   adaptResolution(ms);
+  draw(dt);
+}
+
+function draw(dt, ticks = -1) {
   renderer.info.reset();
-  input.poll(dt);
-  menuKeys();
+  if (ticks < 0) { input.poll(dt); menuKeys(); }
   const inGarage = mode === 'title' || mode === 'paused' || mode === 'results';
   if (inGarage !== garage.active) {
     garage.setActive(inGarage, scene, garageKeep);
@@ -794,10 +800,13 @@ function loop(now) {
   }
   const running = mode === 'race' || mode === 'replay';
   if (running) {
-    acc += dt;
-    let n = 0;
-    while (acc >= DT && n < 12) { tick(); acc -= DT; n++; }
-    if (n === 12) acc = 0;
+    if (ticks >= 0) { for (let n = 0; n < ticks; n++) tick(); acc = 0; }
+    else {
+      acc += dt;
+      let n = 0;
+      while (acc >= DT && n < 12) { tick(); acc -= DT; n++; }
+      if (n === 12) acc = 0;
+    }
     time += dt;
   }
   if (mode === 'race' && race.phase === 'finished' && finishAt && performance.now() - finishAt > 2200) { finishAt = 0; finish(); }
@@ -828,7 +837,8 @@ function loop(now) {
       menu.clean();
     }
     garage.update(dt, time, garageView, camera, pointer);
-  } else if (mode === 'replay') broadcast.update(dt, interp, c);
+  } else if (mode === 'replay' && clipping && !broadcast.onLine(c.hint)) chase.update(dt, interp, c, { reduced: false });
+  else if (mode === 'replay') broadcast.update(dt, interp, c);
   else if (running) chase.update(dt, interp, c, { reduced: settings.reduced });
   if (fixedCam) { camera.position.fromArray(fixedCam, 0); camera.up.set(0, 1, 0); camera.lookAt(fixedCam[3], fixedCam[4], fixedCam[5]); if (camera.fov !== fixedCam[6]) { camera.fov = fixedCam[6]; camera.filmOffset = 0; camera.updateProjectionMatrix(); } }
   if (!inGarage) {
@@ -882,6 +892,43 @@ function loop(now) {
   perf.tris = renderer.info.render.triangles;
   perf.scale.push(scale);
   if (perf.scale.length > 20000) perf.scale.shift();
-  input.endFrame();
+  if (ticks < 0) input.endFrame();
 }
 requestAnimationFrame(loop);
+
+async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
+  if (!lastRun || clipping) return null;
+  const [width, height] = portrait ? [1080, 1920] : [1920, 1080];
+  const { renderClip } = await import('./clip/render.js');
+  const fps = 60, ev = current, d = race.dare;
+  const card = d ? { title: ev.name, value: `${d.score}`, sub: `${venue.name} · line ${d.count}` } : { title: ev.name, value: fmt(lastRun.total), sub: venue.name };
+  clipping = true;
+  const was = { mode, aspect: camera.aspect };
+  try {
+    replay = createGhost(world, lastRun);
+    const from = Math.max(0, lastRun.total - seconds * 120);
+    while (replay.race.phase === 'countdown' || replay.race.raceTick < from) replay.step();
+    race = replay.race;
+    mode = 'replay';
+    snapshot(race.car, prev);
+    race.entries.forEach((e, k) => { if (k) snapshot(e.car, rprev[k - 1]); });
+    broadcast.reset();
+    chase.snap();
+    if (ghostView) ghostView.root.visible = false;
+    ghost = null;
+    renderer.setPixelRatio(1);
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    const frames = Math.round(Math.min(seconds * 120, lastRun.total - from + 120) / 2);
+    return await renderClip({ source: renderer.domElement, width, height, fps, frames, card, onProgress, step: () => draw(1 / fps, 2) });
+  } finally {
+    replay = null;
+    mode = was.mode;
+    renderer.setPixelRatio(scale);
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.aspect = was.aspect;
+    camera.updateProjectionMatrix();
+    clipping = false;
+  }
+}

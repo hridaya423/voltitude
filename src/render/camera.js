@@ -110,8 +110,15 @@ export function createBroadcastCamera(camera, track, height) {
     cams.push({ i, pos: new THREE.Vector3(x, y, z) });
   }
   const look = new THREE.Vector3(), orbit = new THREE.Vector3();
+  const L = track.lineup, hero = L && new THREE.Vector3();
+  if (L) {
+    const k = (L.i0 + 95) * 3;
+    hero.set(track.P[k] + track.R[k] * 8 + track.U[k] * 4.5, track.P[k + 1] + track.R[k + 1] * 8 + track.U[k + 1] * 4.5, track.P[k + 2] + track.R[k + 2] * 8 + track.U[k + 2] * 4.5);
+  }
+  const onLine = (h) => !!L && h > L.lip - 60 && h < L.i0 + 88;
   let cur = -1, drone = 0, t = 0, fov = 30;
   return {
+    onLine,
     reset() { cur = -1; drone = 0; },
     update(dt, p, c) {
       t += dt;
@@ -120,15 +127,17 @@ export function createBroadcastCamera(camera, track, height) {
       while (best + 1 < cams.length && cams[best].i < h - 30) best++;
       if (best !== cur) { cur = best; look.copy(p); }
       drone = c.mode === 0 && c.air > 50 ? Math.min(1, drone + dt * 1.5) : Math.max(0, drone - dt * 2);
-      const cam = cams[cur];
-      if (drone > 0.5) {
+      const cam = cams[cur], heroOn = onLine(h);
+      if (heroOn) camera.position.copy(hero);
+      else if (drone > 0.5) {
         const a = t * 0.35;
         orbit.set(p.x + Math.sin(a) * 14 - c.vx * 0.12, p.y + 5, p.z + Math.cos(a) * 14 - c.vz * 0.12);
         camera.position.copy(orbit);
       } else camera.position.copy(cam.pos);
       look.lerp(p, 1 - Math.exp(-dt * 30));
       const d = camera.position.distanceTo(p);
-      const want = Math.max(9, Math.min(55, 2 * Math.atan(6.5 / d) * 180 / Math.PI));
+      const narrow = Math.min(1, camera.aspect);
+      const want = heroOn ? Math.max(12, Math.min(60, 2 * Math.atan(9 / (d * narrow)) * 180 / Math.PI)) : Math.max(9, Math.min(narrow < 1 ? 80 : 55, 2 * Math.atan(6.5 / (d * narrow)) * 180 / Math.PI));
       fov += (want - fov) * (1 - Math.exp(-dt * 6));
       camera.up.set(0, 1, 0);
       camera.lookAt(look);
