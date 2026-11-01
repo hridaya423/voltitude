@@ -15,7 +15,7 @@ Design and decisions: `docs/plans/2026-11-01-shook-design.md`.
 - Sim work is test-first. Run `npm test` after each task. The baseline is 122 pass.
 - Render work is verified by looking. Capture with `tools/shot-match.mjs`, `tools/menu-shots.mjs`, or a script that drives the game to the moment. Inspect the frames. Green tests do not prove a visual change.
 - No code comments (AGENTS.md). Smallest diff that works. Use the existing patterns: `skyFog` for materials, `instanced` for repeats, `festivalSites` for placement, `createRecorder` and `encodeRun` for runs.
-- Tooling: `npm install --prefix tools` fails on this machine with an npm cache rename error. Install with `npm install --prefix tools --cache <fresh dir>`. The `sharp` binding fails to load under node 26, so `shot-match` metrics fail until `sharp` is rebuilt (`npm rebuild --prefix tools sharp`) or the metrics move to a PNG decoder in node. Fix this in Task 0.2 before any gate.
+- Tooling: `npm install --prefix tools` fails on this machine with an npm cache rename error. Install with `npm install --prefix tools --cache <fresh dir>`. `sharp` needs its optional `@img/sharp-libvips-darwin-arm64@1.0.4` package; install it with `--include=optional` if `require('sharp')` fails.
 - Commit after each task. Keep `progress.md` current after each task.
 - Phases 1 and 2 are fully broken down. Phases 3 to 7 list tasks, files and gates. Each of those phases gets its own step breakdown when it starts, the way Phase 5 of the festival plan did.
 - Every phase ends with the hard gates: `npm test`, `node tools/exploits.mjs <venue>` for touched venues, `node tools/perf.mjs` on a quiet machine with no frame over 20 ms and no long task over 50 ms.
@@ -39,7 +39,7 @@ Done this session. `docs/sheets/2026-11-01-baseline-race.jpg` (25 autopilot fram
 
 **Files:** Modify `assets/CREDITS.md`, `docs/car/SOURCES.md`.
 
-Find the Sketchfab page for `assets/models/car/source.glb` from `docs/car/SOURCES.md`. Record the author, the licence and the URL in both files. If the licence does not allow redistribution in a public repo or in launch material, stop and report before Phase 7.
+Done 2026-11-01. The shipped car is built by `tools/car/build.sh` in Blender; no third-party mesh ships. Nothing to record.
 
 ## Phase 1: The Pad and The Lineup
 

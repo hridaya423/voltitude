@@ -57,7 +57,7 @@ The product has to produce the clip itself. A game that goes viral is a camera. 
 | Backend | One Cloudflare Worker with D1. The Worker re-simulates every submitted run with the same deterministic sim before it accepts a time. | The sim already runs headless in node. Server-side validation is cheap and is itself a story for the launch post. |
 | Assets | Poly Haven (CC0) for props, rocks and desert plants. Blender for landmarks and the lineup vehicles. Scenario only for the 1950s pickup. Polyfork: none. | See the asset board in section 8. |
 | Phone | A phone tier ships before launch, with touch controls for the dares. | A game that cannot be opened from a TikTok link cannot go viral there. |
-| Trademarks | No Tesla marks or logos anywhere. The lineup vehicles are fictional silhouettes in festival liveries ("a robotaxi, a pickup, a semi"). The car model's licence is checked before launch. | Fan project. One takedown ends the launch. |
+| Trademarks | No Tesla marks or logos anywhere. The lineup vehicles are fictional silhouettes in festival liveries ("a robotaxi, a pickup, a semi").  | Fan project. One takedown ends the launch. |
 
 ## 4. Pillars
 
@@ -205,7 +205,7 @@ Each phase has its own gate in the plan. The launch gate is all of these:
 - **Scope.** This is a solo project with agents. The order in the plan is a priority list. Phase 1 plus Phase 2 is a shippable product on its own. Every later phase improves a shipped game.
 - **WebCodecs.** H.264 encode is in Chrome, Edge and Safari 16.4 and later, and in Firefox 130 and later. The fallback is WebM with VP9, and the last fallback is a GIF of 3 s.
 - **Phone GPUs.** The car and the post stack are desktop-sized. The phone tier is its own phase with its own gate, not a settings toggle.
-- **Asset licences.** The Roadster GLB from Sketchfab has an unrecorded licence in the repo. It is checked and recorded before any launch material goes out.
+- **Asset licences.** The shipped Roadster is built procedurally by `tools/car/` (checked 2026-11-01). The earlier Sketchfab source is no longer in the repo. Every new third-party asset is recorded in `assets/CREDITS.md` before it ships.
 
 ## 14. Open calls for the user
 
