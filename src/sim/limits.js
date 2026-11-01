@@ -27,11 +27,13 @@ export function limitWindows(track) {
     const gapIn = (c.s - prev.e + N) % N, gapOut = (next.s - c.e + N) % N;
     return { a: c.s - Math.min(PRE, gapIn / 2), b: c.e + Math.min(POST, gapOut / 2) };
   }).map((w) => ({ a: Math.round(w.a), b: Math.round(w.b) }));
-  const at = new Int16Array(N).fill(-1);
-  const list = merged.map((w, k) => {
-    const a = (w.a + N) % N, len = w.b - w.a;
+  const at = new Int16Array(N).fill(-1), f = track.finish % N;
+  const list = merged.flatMap((w) => {
+    const a = (w.a + N) % N, len = w.b - w.a, cut = (f - a + N) % N;
+    return cut > 0 && cut < len ? [{ a, len: cut }, { a: f, len: len - cut, tail: true }] : [{ a, len }];
+  }).map(({ a, len, tail = false }, k) => {
     for (let d = 0; d < len; d++) at[(a + d) % N] = k;
-    return { a, b: (a + len) % N, len };
+    return { a, b: (a + len) % N, len, tail };
   });
   L = { wins: list, at };
   cache.set(track, L);
@@ -95,7 +97,7 @@ function close(race, e, st, lockstep, p, whole) {
   if (s.mark < p) return null;
   const actual = race.raceTick - st.t0;
   if (!st.breach) {
-    e.pace += 0.3 * (Math.max(0.8, Math.min(1.25, s.at[p] / actual)) - e.pace);
+    if (!limitWindows(race.world.track).wins[st.w0].tail) e.pace += 0.3 * (Math.max(0.8, Math.min(1.25, s.at[p] / actual)) - e.pace);
     return null;
   }
   return { window: st.w0, gain: (s.at[p] / e.pace - actual) / 120 };

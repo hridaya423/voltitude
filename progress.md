@@ -1260,4 +1260,12 @@ Branch `shook`. Done, with evidence:
 
 - Task 1.6: dare feel, logged as entry 6 in `docs/feel.md`. The lip punches +1.7° on its first frame where it had nothing. A ×1 clear thumps −2.9° where it was −2.1°. A clip stops the car, because input is ignored and the car bounces back off the vehicle; it used to roll 36 m on under throttle. The music dips through a low-pass on a clip. `npm test` gives 140 of 140. The sounds were not checked by ear.
 
-Next: the Phase 1 gate (exploits on The Pad, the bot reaching line 8, perf), then Phase 2.
+Phase 1 gate:
+- `npm test`: 141 of 141 pass.
+- `node tools/exploits.mjs pad`: PASS. The exploit matrix now builds events with the venue, so it sees dares. It adds a flown Lineup run and hover runs at 20, 30 and 40 m/s. Over 120 s: flown 15, hover 1 (clips line 1), 15 and 15. Hovering never out-scores flying.
+- Exploit found and fixed: The Pad's south-turn limits window ran across the finish line. A cut there was scored after the lap counter moved on, so it hit the next lap, and on the final lap it was never scored. `limitWindows` now splits any window at the finish line. The piece after the line still scores breaches but does not train the pace estimate, because a straight teaches it that the car outruns its shadow. Before: 5 cuts caught in 3 laps, with the last corner free. After: 6 of 6, each south-turn cut 0.8 s. A new test in `tests/limits.test.js` checks that no venue's window crosses its finish.
+- The bot reaches line 9: `node tools/sim-run.mjs pad lineup 1 -v` gives 8 clears, 0 clips, 0 wrecks.
+- Blocked: the cold test needs three people, five minutes each, without instructions. The user has to run it and record the quotes here.
+- Blocked: perf. The load average was 27 now and 128 over five minutes, with other processes on several cores. `tools/perf.mjs` timed out booting. Rerun `node tools/perf.mjs "http://localhost:8790/index.html?venue=pad&event=lineup&autostart&autopilot&day" 60` and the same with `night` on a quiet machine.
+
+Next: Phase 2, starting with Task 2.5 (ghost links, testable headless) and Task 2.1 (encoder).

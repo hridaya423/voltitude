@@ -131,3 +131,13 @@ test('track limits: landing past the white line and cutting on the ground still 
   });
   assert.ok(caught >= 2, `${caught} windows penalised after an off-track landing`);
 });
+
+test('track limits: no window spans the finish line, so a last-corner cut lands on its own lap', () => {
+  for (const id of ['proving', 'airfield', 'launch', 'pad']) {
+    const t = loadWorld(id).track, f = t.finish % t.lap;
+    for (const w of limitWindows(t).wins) {
+      const into = (f - w.a + t.lap) % t.lap;
+      assert.ok(into === 0 || into >= w.len, `${id}: window ${w.a}..${w.b} crosses the finish at ${f}`);
+    }
+  }
+});
