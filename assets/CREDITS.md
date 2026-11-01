@@ -41,6 +41,7 @@ Photoscans from the Poly Haven Namaqualand collection. 1k textures, decimated wi
 | `models/desert_boulder_orange.glb` | Namaqualand Boulder 04 | Jenelle van Heerden | https://polyhaven.com/a/namaqualand_boulder_04 | CC0 |
 | `models/desert_boulder_round.glb` | Namaqualand Boulder 05 | Dario Barresi (photography), Jenelle van Heerden (modeling) | https://polyhaven.com/a/namaqualand_boulder_05 | CC0 |
 | `models/desert_boulder_brown.glb` | Namaqualand Boulder 06 | Greg Zaal (photography), Jenelle van Heerden (modeling) | https://polyhaven.com/a/namaqualand_boulder_06 | CC0 |
+| `models/flora/rooibos.glb`, `rooibos_lod1.glb` | Wild Rooibos Bush (`wild_rooibos_bush`), decimated by `tools/bake-flora.mjs` | James Ray Cock, Jenelle van Heerden | https://polyhaven.com/a/wild_rooibos_bush | CC0 |
 
 ## Crowd (`crowd/`)
 

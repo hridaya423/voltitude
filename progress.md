@@ -1318,4 +1318,10 @@ Phase 3:
   - Evidence, sheet `docs/sheets/2026-11-01-ground.jpg`: the tightest GP corner from above (before, after), the GP grid after the field leaves, and tyre marks from a scripted boost, steer and brake on The Pad (372 segments). `npm test`: 144 of 144.
   - Changed from the plan: no 4K asphalt (the 2K set stays) and no `src/sim/line.js` change, because `racingLine` already exports offsets. The rubber line and the grid stains are subtle at golden. Signature frame 4 waits for the heat shimmer in Task 3.7.
 
-Next: Task 3.6 (flora).
+- Task 3.6: flora. The boulders and a procedural card scrub already existed. The Poly Haven Wild Rooibos Bush (CC0, credited) replaces the olive card bush; the dry grass tufts stay. `tools/bake-flora.mjs` decimates it (27.5k to 9.6k triangles for five variants, 3.6k for LOD 1) and converts textures to WebP. `src/render/flora.js` uses three variants, merged by material, instanced in 300 m cells: full detail to 45 m, LOD 1 to 260 m, then culled. 1,897 bushes on The Pad. A vertex shader sways them by instance phase.
+  - Found while looking: the bush albedo averages sRGB (32, 27, 21), about 1.5% reflectance, so the bushes read black against the sand. Back-facing cards also flipped their normals into shade. Fixes: albedo ×9, foliage normals bent toward up, no back-face flip, no card normal map, no self-shadow.
+  - Sheet `docs/sheets/2026-11-01-flora.jpg`: The Pad wide (before, after), a close view at golden, and the GP chase at 30 s.
+  - Not met: the 1.5 ms budget is unmeasured. Headless frame times sit on the 16.7 ms vsync cap. The GP chase went from about 3.6M to 4.2–4.4M triangles at the same draw call count, before LOD 0 was cut from 70 m to 45 m. No Joshua trees: the Poly Haven dead quiver trunk reads as a pole at game distance.
+  - Not fixed: scatter only checks distance from the walls, so a bush can sit inside a grandstand. The old card scrub had the same rule.
+
+Next: Task 3.7 (sun shafts, cloud shadows, heat shimmer).

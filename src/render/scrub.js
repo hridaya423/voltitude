@@ -67,7 +67,6 @@ export function createScrub(world, fogPatch) {
   const rand = rng(777);
   const clear = trackClearance(track);
   const kinds = [
-    { geo: cards(6, 1.7, 1.25), tex: foliageTexture(rng(11), ['#5a6038', '#6b7340', '#4a5230', '#7d7a46', '#3f4a2c'], 54, 118), count: 0.9, reach: 90, size: [0.7, 1.7], far: 260 },
     { geo: cards(4, 0.9, 0.7), tex: foliageTexture(rng(23), ['#b9a56a', '#cdb878', '#a8935a', '#d6c58a'], 90, 100), count: 2.2, reach: 55, size: [0.6, 1.4], far: 160 },
   ];
   const group = new THREE.Group();

@@ -10,6 +10,7 @@ import { createTerrain, shadowFocus, loadTerrainTextures } from './render/terrai
 import { createPost, exposureFor } from './render/post.js';
 import { createCascades } from './render/shadows.js';
 import { createBoulders } from './render/props.js';
+import { createFlora } from './render/flora.js';
 import { createScrub } from './render/scrub.js';
 import { chunkMesh } from './render/chunks.js';
 import { skyFog } from './render/sky.js';
@@ -103,6 +104,8 @@ await document.fonts.load('600 30px Saira').catch(() => null);
 const course = createRoad(world, sunUniform, fogDensity, renderer);
 const author = await fetch(`assets/ghosts/${venue.id}.json`).then((r) => r.json()).catch(() => ({}));
 scene.add(await createBoulders(world, (m) => skyFog(m, sunUniform, fogDensity)).catch((e) => { console.warn('boulders', e); return new THREE.Group(); }));
+const flora = await createFlora(world, (m, f) => skyFog(m, sunUniform, fogDensity, false, f)).catch((e) => { console.warn('flora', e); return { group: new THREE.Group(), update() {} }; });
+scene.add(flora.group);
 for (const m of [...course.group.children]) if (m.isMesh && !m.isInstancedMesh && m.geometry.attributes.position.count > 20000) { course.group.remove(m); course.group.add(chunkMesh(m)); }
 scene.add(createScrub(world, (m) => skyFog(m, sunUniform, fogDensity)), course.group, createTrackside(world, sunUniform, fogDensity, NIGHT).group);
 const facility = createFacility(world, sunUniform, fogDensity, NIGHT);
@@ -853,6 +856,7 @@ function draw(dt, ticks = -1) {
   const pixelScale = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
   if (!inGarage) dust.update(time, dt, interp, c, pixelScale);
   carView.vapour.update(time, pixelScale);
+  flora.update(time);
   if (!inGarage && running) skids.update(carView.root.matrixWorld, c, dt);
   if (inGarage) {
     if (menu.dirty || menu.listening) {

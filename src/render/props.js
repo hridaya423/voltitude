@@ -4,7 +4,7 @@ import { GLTFLoader } from '../../rl/vendor/three-r169/examples/jsm/loaders/GLTF
 const CELL = 140;
 const MODELS = ['desert_boulder_blocky', 'desert_boulder_brown', 'desert_boulder_orange', 'desert_boulder_round'];
 
-function rng(seed) {
+export function rng(seed) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
