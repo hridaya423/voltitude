@@ -1229,3 +1229,16 @@ Still open:
 - Shot-match moments need per-venue times for Airfield and Launch.
 - Chase-camera fly frames were captured before the final run-up change (`/tmp/vt/fly-*`); the final geometry was checked from fixed cameras and the sim.
 - Hop-and-hover cut: about 2 s a lap on Proving for about 0.9 gas. Watch it in playtests.
+
+## Session 2026-11-01: gather pass and the "shook" plan
+
+The user's verdict on the build: "very mediocre". The ask: use the free model catalogues in the skills, design something people want to play, and write a deep plan to AAA quality.
+
+- Baseline captured: `docs/sheets/2026-11-01-baseline-race.jpg` (25 autopilot frames, three venues, day and night), `docs/sheets/2026-11-01-baseline-menu.jpg`. Scorecard average 1.65 of 3. The gap is art direction, world authorship, the hero at close range, and flight being a tenth of screen time. Not the renderer.
+- Catalogues checked against their APIs: Polyfork is flat-shaded low poly (hero renders in `docs/sheets/2026-11-01-polyfork.jpg`) and does not fit a photoreal Roadster; not used. Scenario 3D Collection (CC BY 4.0) is mostly cartoon; one pickup and one drone are usable. Poly Haven (CC0) carries the props, rocks and desert plants. Landmarks come from Blender under `tools/range/`.
+- Design: `docs/plans/2026-11-01-shook-design.md`. Pitch: the Roadster reveal, but you are driving. Dares (The Lineup first, on its own oval, The Pad), a clip export with WebCodecs, ghost links, a daily board on one Cloudflare Worker that re-simulates every run, golden hour as the hero look, a phone tier before launch.
+- Plan: `docs/plans/2026-11-01-shook-plan.md`. Phases 1 and 2 are broken into test-first tasks. Phases 3 to 7 list tasks, files and gates.
+- Tooling found broken this session: `npm install --prefix tools` fails on an npm cache rename; a fresh `--cache` dir works. `sharp` does not load under node 26, so `shot-match` and `menu-shots` metrics throw. Task 0.2 of the plan fixes it. A plain capture script was used instead (in the scratchpad; the plan moves it to `tools/capture.mjs`).
+- Not done: no code changed. The Sketchfab licence of the Roadster GLB is unrecorded (Task 0.3).
+
+Next: Task 0.2, then Phase 1 (The Pad and The Lineup).
