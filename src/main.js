@@ -110,6 +110,8 @@ scene.add(dust.points);
 const fireworks = createFireworks();
 const gates = createGates(world, (m) => skyFog(m, sunUniform, fogDensity));
 scene.add(gates.group);
+const lineup = track.lineup ? (await import('./render/lineup.js')).createLineup(world, (m) => skyFog(m, sunUniform, fogDensity)) : null;
+if (lineup) scene.add(lineup.mesh);
 scene.add(fireworks.points);
 const finishAtPos = new THREE.Vector3();
 const standGap = (h) => stands.sites.reduce((m, i) => Math.min(m, Math.abs(i - h)), Infinity);
@@ -368,6 +370,7 @@ function startRace(ev = current) {
   current = ev;
   lastSeed = ev.kind === 'gp' ? 1 + Math.floor(Math.random() * 1e6) : 1;
   race = createRace(world, { event: ev, assist: settings.assist, seed: lastSeed, tier: settings.tier });
+  lineup?.set(race.dare?.count ?? 0);
   recorder = createRecorder();
   ghost = settings.ghost ? createGhost(world, ghostRun(ev)) : null;
   const ref = ev.kind === 'tt' ? lapSplits(ghostRun(ev)) : null;
@@ -567,6 +570,8 @@ function handleEvents() {
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
       case 'near_miss': audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
       case 'track_limits': hud.toast('TRACK LIMITS', e.penalty ? 'orange' : 'red', e.penalty ? `+${e.gain.toFixed(1)} S PENALTY` : 'LAP INVALID'); audio.event('miss'); break;
+      case 'clear': lineup.set(race.dare.count); break;
+      case 'clip': lineup.clip(e.k); break;
       case 'gate': gates.pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
       case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
@@ -810,6 +815,7 @@ function loop(now) {
     festival.update(time, px, race);
     fireworks.update(time, px);
     gates.update(time, dt, px);
+    lineup?.update(dt);
   }
   c.clearance = c.mode === 0 ? 6 : 0; c.contact = c.mode !== 0; c.wy = c.yawRate; c.bank = 0; c.impact = 0;
   audio.listen(camera);
