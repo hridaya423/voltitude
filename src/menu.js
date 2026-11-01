@@ -29,6 +29,7 @@ export const RESULT_ACTIONS = [
   { id: 'retry', label: 'Retry', key: 'R' },
   { id: 'next', label: 'Next', key: 'N' },
   { id: 'replay', label: 'Replay', key: 'V' },
+  { id: 'share', label: 'Share', key: 'C' },
   { id: 'quit', label: 'Garage', key: 'Esc' },
 ];
 
@@ -117,6 +118,7 @@ export function createMenu({ settings, data, on }) {
       if (id === 'retry') on.restart();
       else if (id === 'next') on.next();
       else if (id === 'replay') on.replay();
+      else if (id === 'share') on.share();
       else on.quit();
     }
   }
@@ -167,6 +169,7 @@ export function createMenu({ settings, data, on }) {
       else if (name === 'settings' && (page === 'board' || page === 'pause')) { go('settings'); touch('confirm'); }
       else if (name === 'next' && page === 'results') { if (nextOk()) on.next(); else on.sound('deny'); }
       else if (name === 'replay' && page === 'results') on.replay();
+      else if (name === 'share' && page === 'results') on.share();
     },
     point(zone, hit, click) {
       if (!s.page || s.listening) return;

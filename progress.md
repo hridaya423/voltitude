@@ -1285,4 +1285,8 @@ Phase 1 gate:
   - Evidence: `tools/clip-test.mjs` passes with `aac,48000,2`, −13.3 LUFS and −2.0 dBTP. In the earshot timeline of the clip, the clear chime starts 41 ms before the clear, the music stinger peaks 52 ms after it at +14 dB over the bed, and the lip burst starts 70 ms after the lip. No clipping. `npm test`: 144 of 144.
   - Judged by meters and earshot tags only. Nobody has listened to it.
 
-Next: Task 2.4 (share sheet).
+- Task 2.4: the results board has a Share action (key C). It opens a sheet with Portrait 9:16 and Landscape 16:9, a progress bar, and then Share (when `navigator.canShare` accepts the file), Save video and Copy ghost link. The share text carries the ghost link, so the link travels with the clip. While the sheet is open, board clicks and keys are ignored, and Escape closes it. Result actions shrink their type when five share the row.
+  - Evidence: a scripted run in headless Chrome. The car clipped line 1, C opened the sheet, Portrait produced a 10 s clip in 9.4 s (14.6 MB, h264 1080x1920 plus AAC). Save downloaded `voltitude-lineup-0.mp4`, the link reached the clipboard (253 characters for this short run), and Escape returned to results. Sheet `docs/sheets/2026-11-01-share-sheet.jpg`. `npm test`: 144 of 144.
+  - Not done, needs a person: the Phase 2 gate. Three people export on their own phones, play the clip in the gallery and upload it to one app. A ghost link raced on a second machine. An export timed on the user's laptop when it is quiet.
+
+Next: Phase 3 (the look).

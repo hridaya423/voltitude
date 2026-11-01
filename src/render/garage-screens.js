@@ -194,12 +194,12 @@ function results(g, b) {
 }
 
 function resultActions(g, b, hits) {
-  const tw = 470, gap = 20, y = 864;
+  const gap = 20, y = 864, tw = Math.min(470, (BOARD.w - 128 - gap * (b.actions.length - 1)) / b.actions.length);
   b.actions.forEach((r, i) => {
     const x = 64 + i * (tw + gap), sel = i === b.index;
     g.globalAlpha = r.off ? 0.3 : 1;
     if (sel) { g.fillStyle = C.red; rrect(g, x, y, tw, 72, 14); g.fill(); } else { g.strokeStyle = C.hair; g.lineWidth = 3; rrect(g, x, y, tw, 72, 14); g.stroke(); }
-    put(g, r.label.toUpperCase(), x + 32, y + 49, { size: 34, fam: DISPLAY, weight: 400, color: sel ? '#fff' : C.ink2, gap: 4 });
+    put(g, r.label.toUpperCase(), x + 28, y + 48, { size: tw < 470 ? 28 : 34, fam: DISPLAY, weight: 400, color: sel ? '#fff' : C.ink2, gap: tw < 470 ? 2 : 4 });
     if (r.key) chip(g, r.key, x + tw - 26, y + 52, 44, { color: sel ? '#fff' : C.ink3 });
     g.globalAlpha = 1;
     if (!r.off) hits.push({ x, y, w: tw, h: 72, row: i });

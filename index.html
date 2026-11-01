@@ -52,6 +52,16 @@
   </div>
 </div>
 
+ <section id="share" class="share" hidden role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+  <h2 id="shareTitle">Share clip</h2>
+  <p class="share-lede">The last ten seconds, with the score burned in.</p>
+  <div class="share-row" id="sharePick"><button data-fmt="portrait">Portrait 9:16</button><button data-fmt="landscape">Landscape 16:9</button></div>
+  <div class="share-bar" aria-hidden="true"><i id="shareFill"></i></div>
+  <p class="share-note" id="shareNote" role="status" aria-live="polite"></p>
+  <div class="share-row" id="shareDone" hidden><button id="shareSend">Share</button><button id="shareSave">Save video</button><button id="shareLink">Copy ghost link</button></div>
+  <button class="share-close" id="shareClose">Close</button>
+</section>
+
 <div id="replayBug" class="replay-bug" aria-hidden="true" hidden><i></i>REPLAY</div>
 <div id="menuLive" class="sr" role="status" aria-live="polite"></div>
 <section id="fallback" class="fallback" hidden aria-label="Menu"></section>

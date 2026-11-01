@@ -253,6 +253,7 @@ const menu = createMenu({
     quit: () => toTitle(),
     next() { const n = EVENTS[current.card]; if (n) { menu.open('board', { index: current.card }); startRace(n); } },
     replay: () => watchReplay(),
+    share: () => openShare(),
     change(k) {
       saveSettings();
       if (k === 'volume') audio.setVolume(settings.volume);
@@ -686,7 +687,7 @@ function aimAt(e, click) {
   pointer.tx = p.x; pointer.ty = p.y;
   canvas.style.cursor = hit && (hit.row !== undefined || hit.zone !== 'board') ? 'pointer' : '';
   if (click) { audio.start(); }
-  if (hit) menu.point(hit.zone, hit, click);
+  if (hit && $('share').hidden) menu.point(hit.zone, hit, click);
 }
 canvas.addEventListener('pointermove', (e) => aimAt(e, false));
 canvas.addEventListener('click', (e) => aimAt(e, true));
@@ -719,6 +720,7 @@ function padNav() {
 function menuKeys() {
   if (menu.listening || launching) return;
   const any = (...codes) => codes.some((c) => input.wasPressed(c));
+  if (!$('share').hidden) { if (any('Escape')) closeShare(); return; }
   const pad = (...ids) => ids.some((i) => input.padPressed(i));
   const back = any('Escape') || pad(1);
   if (mode === 'race') {
@@ -736,6 +738,7 @@ function menuKeys() {
     else if (home && (input.actionPressed('restart') || pad(8))) startRace(current);
     else if (page === 'results' && (any('KeyN') || pad(3))) menu.command('next');
     else if (page === 'results' && (any('KeyV') || pad(2))) menu.command('replay');
+    else if (page === 'results' && any('KeyC')) menu.command('share');
   }
 }
 
@@ -909,6 +912,56 @@ function draw(dt, ticks = -1) {
   if (ticks < 0) input.endFrame();
 }
 requestAnimationFrame(loop);
+
+let shareFile = null;
+const shareEls = () => ({ sheet: $('share'), pick: $('sharePick'), done: $('shareDone'), fill: $('shareFill'), note: $('shareNote') });
+function openShare() {
+  const el = shareEls();
+  shareFile = null;
+  el.sheet.hidden = false; el.pick.hidden = false; el.done.hidden = true;
+  el.fill.style.transform = 'scaleX(0)';
+  el.note.textContent = lastRun ? '' : 'Finish a run first.';
+  for (const b of el.pick.querySelectorAll('button')) b.disabled = !lastRun;
+  el.pick.querySelector('button').focus();
+}
+function closeShare() { if (clipping) return; $('share').hidden = true; }
+async function makeClip(portrait) {
+  const el = shareEls(), t0 = performance.now();
+  for (const b of el.pick.querySelectorAll('button')) b.disabled = true;
+  el.note.textContent = 'Rendering the clip…';
+  try {
+    const clip = await exportClip({ seconds: 10, portrait, onProgress: (k) => { el.fill.style.transform = `scaleX(${k.toFixed(3)})`; } });
+    const score = race.dare ? race.dare.score : fmt(lastRun.total).replace(/[:.]/g, '-');
+    shareFile = new File([clip.blob], `voltitude-${current.id}-${score}.mp4`, { type: 'video/mp4' });
+    el.note.textContent = `Ready in ${((performance.now() - t0) / 1000).toFixed(1)} s · ${(clip.blob.size / 1048576).toFixed(1)} MB${clip.audio ? '' : ' · no sound in this browser'}`;
+    el.pick.hidden = true; el.done.hidden = false;
+    $('shareSend').hidden = !(navigator.canShare && navigator.canShare({ files: [shareFile] }));
+    ($('shareSend').hidden ? $('shareSave') : $('shareSend')).focus();
+  } catch (e) {
+    el.note.textContent = `This browser could not make the clip: ${e.message}`;
+    for (const b of el.pick.querySelectorAll('button')) b.disabled = false;
+  }
+}
+async function ghostUrl() {
+  const { encodeLink } = await import('./share.js');
+  return `${location.origin}${location.pathname}#g=${await encodeLink(lastRun, venue.id)}`;
+}
+$('sharePick').addEventListener('click', (e) => { const f = e.target.closest('button')?.dataset.fmt; if (f) makeClip(f === 'portrait'); });
+$('shareClose').addEventListener('click', closeShare);
+$('shareSave').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(shareFile); a.download = shareFile.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+});
+$('shareSend').addEventListener('click', async () => {
+  const url = await ghostUrl();
+  navigator.share({ files: [shareFile], title: 'Voltitude', text: `Beat my run: ${url}` }).catch(() => {});
+});
+$('shareLink').addEventListener('click', async () => {
+  const url = await ghostUrl();
+  const ok = await navigator.clipboard?.writeText(url).then(() => true, () => false);
+  shareEls().note.textContent = ok ? 'Ghost link copied. Anyone who opens it races your run.' : url;
+});
 
 async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
   if (!lastRun || clipping) return null;
