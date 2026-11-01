@@ -248,6 +248,7 @@ export function buildCircuit(def) {
     speedCap[i] = Math.abs(curv[i]) > 1e-5 ? Math.sqrt(42 / Math.abs(curv[i])) : 999;
   }
   const sectors = [], loops = [], airs = [], gates = [];
+  let lineup = null;
   const toSample = (di) => {
     let lo = 0, hi = N - 1;
     while (lo < hi) { const mid = (lo + hi) >> 1; if (at[mid] < di) lo = mid + 1; else hi = mid; }
@@ -269,6 +270,11 @@ export function buildCircuit(def) {
     if (bot[i] && S.jump[at[i]] === 2 && S.jump[at[(i + N - 1) % N]] === 1) jumps[jumps.length - 1].lip = i;
   }
   for (const a of airs) a.lip = jumps.find((j) => j.from === a.from)?.lip ?? a.from;
+  const lineMark = marks.find((mk) => mk.node.flags?.lineup);
+  if (lineMark) {
+    const from = toSample(lineMark.at), { at: ahead, pitch } = lineMark.node.flags.lineup;
+    lineup = { i0: jumps.find((j) => j.from === from).lip + Math.round(ahead / step), pitch };
+  }
   sectors.sort((x, y) => x.i - y.i);
   if (!sectors.length || sectors[0].i !== 0) sectors.unshift({ name: 'Start', i: 0 });
   const cps = sectors.slice(1).map((s) => s.i);
@@ -276,7 +282,7 @@ export function buildCircuit(def) {
   const zeros = (T2) => new T2(n);
   const track = {
     n, step, len: N, closed: true, lap: N, H, P, T, U, R, halfW, gap: zeros(Uint8Array), chasm: zeros(Float32Array), wall: zeros(Float32Array), roof,
-    bot, speedCap, curv, cps, pads: [], sectors, finish: N, loops, loopMask, jumps, airs, air, gates, length,
+    bot, speedCap, curv, cps, pads: [], sectors, finish: N, loops, loopMask, jumps, airs, air, gates, lineup, length,
   };
   return Object.assign(track, runoff(track));
 }

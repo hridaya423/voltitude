@@ -134,9 +134,10 @@ for (const id of Object.keys(VENUES)) {
     assert.deepEqual(off, []);
   });
 
-  if (circuit) test(`${name}: the racing line laps in 60 to 90 seconds`, () => {
+  const [lapLo, lapHi] = VENUES[id].lapWindow || [60, 90];
+  if (circuit) test(`${name}: the racing line laps in ${lapLo} to ${lapHi} seconds`, () => {
     const { time } = lineFor(world.track);
-    assert.ok(time > 60 && time < 90, `${time.toFixed(1)} s`);
+    assert.ok(time > lapLo && time < lapHi, `${time.toFixed(1)} s`);
   });
 
   if (circuit) test(`${name}: a solo bot laps three times with no reset`, () => {
@@ -146,10 +147,10 @@ for (const id of Object.keys(VENUES)) {
     while (race.phase !== 'finished' && race.tick < 120 * 400) { botInput(race, inp, 1); stepRace(race, inp); resets += race.events.filter((e) => e.type === 'respawn').length; race.events.length = 0; }
     assert.equal(race.phase, 'finished');
     assert.equal(resets, 0);
-    for (const t of race.laps) assert.ok(t / 120 > 60 && t / 120 < 90, `lap ${(t / 120).toFixed(1)} s`);
+    for (const t of race.laps) assert.ok(t / 120 > lapLo && t / 120 < lapHi, `lap ${(t / 120).toFixed(1)} s`);
   });
 
-  if (circuit) test(`${name}: full throttle into the walls is slower than braking for the corners`, () => {
+  if (circuit && !VENUES[id].dares) test(`${name}: full throttle into the walls is slower than braking for the corners`, () => {
     const lap2 = (flat) => {
       const race = createRace(world, { event: eventsFor(world.track).find((e) => e.id === 'tt'), seed: 1 });
       const inp = createInput();

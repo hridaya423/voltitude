@@ -7,7 +7,7 @@ export function trackHash(track, venue) {
   let h = 2166136261;
   const mix = (v) => { h = Math.imul(h ^ Math.round(v * 100), 16777619) >>> 0; };
   const { course, circuit, terrain: T } = venue;
-  if (circuit) for (const nd of circuit.nodes) for (const v of Array.isArray(nd) ? nd.slice(0, 5) : Object.values(nd.loop)) mix(v);
+  if (circuit) for (const nd of circuit.nodes) for (const v of Array.isArray(nd) ? [...nd.slice(0, 5), ...Object.values(nd[5]?.lineup || {})] : Object.values(nd.loop)) mix(v);
   else {
     for (const v of course.start) mix(v);
     for (const p of course.pieces) for (const k of ['len', 'turn', 'pitch', 'bank', 'lean', 'shift', 'w', 'wall', 'chasm']) mix(p[k] || 0);
