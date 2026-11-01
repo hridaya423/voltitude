@@ -16,6 +16,8 @@ export const skyUniforms = {
   uNight: { value: 0 },
   tFlood: { value: null },
   uFloodBox: { value: new THREE.Vector4() },
+  uCloud: { value: 0 },
+  uCloudT: { value: 0 },
 };
 
 export const SKY_GLSL = /* glsl */ `
@@ -158,8 +160,17 @@ export function skyFog(material, sunUniform, density, detail = false, extend = n
         reflectedLight.directDiffuse *= farShadow;
         reflectedLight.directSpecular *= farShadow;`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vFogWorld;\nuniform float uFogDensity;\nuniform sampler2D tFlood;\nuniform vec4 uFloodBox;\n${SKY_GLSL}`)
-      .replace('#include <aomap_fragment>', `if (uNight > 0.5) {
+      .replace('#include <common>', `#include <common>\nvarying vec3 vFogWorld;\nuniform float uFogDensity;\nuniform sampler2D tFlood;\nuniform vec4 uFloodBox;\nuniform float uCloud;\nuniform float uCloudT;\n${SKY_GLSL}
+        float cloudHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float cloudNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(cloudHash(i), cloudHash(i + vec2(1, 0)), f.x), mix(cloudHash(i + vec2(0, 1)), cloudHash(i + vec2(1, 1)), f.x), f.y); }`)
+      .replace('#include <aomap_fragment>', `if (uCloud > 0.001) {
+          vec2 cp = vFogWorld.xz / 260.0 + uCloudT * vec2(0.014, 0.005);
+          float cn = cloudNoise(cp) * 0.55 + cloudNoise(cp * 2.3 + 7.1) * 0.3 + cloudNoise(cp * 5.1 + 3.7) * 0.15;
+          float shade = 1.0 - uCloud * smoothstep(0.48, 0.64, cn);
+          reflectedLight.directDiffuse *= shade;
+          reflectedLight.directSpecular *= shade;
+        }
+        if (uNight > 0.5) {
           vec4 fl = texture2D(tFlood, (vFogWorld.xz - uFloodBox.xy) * uFloodBox.zw);
           float fe = length(fl.rgb);
           reflectedLight.directDiffuse = vec3(0.0);

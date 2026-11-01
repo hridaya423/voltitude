@@ -1324,4 +1324,11 @@ Phase 3:
   - Not met: the 1.5 ms budget is unmeasured. Headless frame times sit on the 16.7 ms vsync cap. The GP chase went from about 3.6M to 4.2–4.4M triangles at the same draw call count, before LOD 0 was cut from 70 m to 45 m. No Joshua trees: the Poly Haven dead quiver trunk reads as a pole at game distance.
   - Not fixed: scatter only checks distance from the walls, so a bush can sit inside a grandstand. The old card scrub had the same rule.
 
-Next: Task 3.7 (sun shafts, cloud shadows, heat shimmer).
+- Task 3.7: cloud shadows and heat. Shafts dropped.
+  - Cloud shadows: `skyFog` dims direct sun on every patched material (terrain, road, props, flora) with three octaves of drifting value noise in 260 m cells. One uniform, `skyUniforms.uCloud`, set to 0.55 by day and 0 otherwise. Sheet `docs/sheets/2026-11-01-cloud-shadows.jpg`: day, before on the left.
+  - Heat: the existing `uHeat` ground shimmer stays; golden now uses half strength.
+  - Dropped: screen-space sun shafts. I built them (a 32-tap march over sky depth toward the sun's screen position) and shot into the sun at The Pad and the GP. At 7.6° the sun sits on the ridge line. Pixels below it march into mountain, and pixels above it are already near-white sky, so the frames with and without shafts matched even at triple strength. The bloom veil already carries the glare. The code was removed.
+  - Dropped: clouds at golden. With the sun that low, direct light is a small share of the sand's light. The patches did not read, and auto-exposure lifted the whole frame.
+  - Not done: the car ignores cloud shadows (its materials are not `skyFog` patched).
+
+Next: Task 3.8 (signature frames; the blind clip test needs people).

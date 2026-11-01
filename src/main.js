@@ -5,7 +5,7 @@ import { createRace, stepRace, createInput as createSimInput, packInput, unpackI
 import { ROSTER } from './sim/drivers.js';
 import { autopilot } from './sim/bot.js';
 import { createRecorder, encodeRun, createGhost } from './sim/ghost.js';
-import { createSky, loadSky, bakeEnvironment, SUN_DIR } from './render/sky.js';
+import { createSky, loadSky, bakeEnvironment, SUN_DIR, skyUniforms } from './render/sky.js';
 import { createTerrain, shadowFocus, loadTerrainTextures } from './render/terrain.js';
 import { createPost, exposureFor } from './render/post.js';
 import { createCascades } from './render/shadows.js';
@@ -911,7 +911,9 @@ function draw(dt, ticks = -1) {
   else for (const l of sun.lights) l.intensity = inGarage ? 6.2 : sunIrradiance;
   const sp = Math.min(1, Math.max(0, (c.speed - 20) / 55));
   pu.uBlur.value = settings.reduced ? 0 : sp * 0.7 + (c.boosting ? 0.25 : 0);
-  pu.uHeat.value = NIGHT ? 0 : 1;
+  pu.uHeat.value = NIGHT ? 0 : SESSION === 'golden' ? 0.5 : 1;
+  skyUniforms.uCloud.value = SESSION === 'day' && !inGarage ? 0.55 : 0;
+  skyUniforms.uCloudT.value = time;
   pu.uAberration.value = settings.reduced ? 0 : (c.boosting ? 0.012 : 0) + sp * 0.004;
   pu.uTime.value = time;
   pu.uFlash.value *= Math.exp(-dt * 6);
