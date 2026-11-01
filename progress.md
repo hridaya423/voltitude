@@ -1296,4 +1296,7 @@ Phase 3:
   - Changed from the plan: golden is the default for every event, not night for the Grand Prix. A per-event default would need a reload whenever the event changes.
   - Not checked: the garage under golden. It takes the day path.
 
-Next: Task 3.2 (sky LUT and aerial perspective).
+- Task 3.2: aerial perspective. No LUT rewrite. The atmosphere reference's own tier rule says a small scene with no orbital camera takes an analytic height and distance model. `skyFog` already has one, with height falloff, per-channel extinction and inscatter from the HDRI horizon in the view direction. So sky and haze share one sun and one source by construction. The change: golden haze density rises from 0.00034 to 0.000476, giving 25%, 30% and 42% haze (R, G, B) at 1 km against the plan's target of about 30%. Day and night are unchanged. Sheet `docs/sheets/2026-11-01-golden-haze.jpg`, before on top.
+  - Not done: the plan's check at three sun elevations. The skies are baked HDRIs at fixed elevations, so only the three sessions exist.
+
+Next: Task 3.3 (the car at close range).

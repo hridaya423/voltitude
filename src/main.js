@@ -83,7 +83,7 @@ camera.layers.enable(1);
 camera.layers.enable(4);
 scene.add(camera);
 const sunUniform = { value: SUN_DIR };
-const fogDensity = { value: 0.00034 };
+const fogDensity = { value: SESSION === 'golden' ? 0.000476 : 0.00034 };
 const { sky: skyTex, info: skyInfo, sunIrradiance } = await loadSky(SESSION, renderer);
 const skyMesh = createSky(skyTex, skyInfo.maxLuminance);
 scene.add(skyMesh);
