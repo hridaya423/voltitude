@@ -1310,4 +1310,12 @@ Phase 3:
   - Not done: the refracting cone. The post chain's `uHeat` is a screen-space ground shimmer with no per-object mask, so plume refraction needs a mask pass. Deferred to Task 3.7, which owns heat shimmer.
   - Not done: the plan's 4 s portrait clip. The clip renders through the same `draw`, and replay time only moves forward, so old particles expire. No clip was rendered to prove it.
 
-Next: Task 3.5 (ground).
+- Task 3.5: the ground. The asphalt already had macro variation, tar seams, joints and skid streaks, so the work went into what the track's use leaves behind.
+  - Rubber line: `createRoad` now passes the bot's racing line (`racingLine(track).off`) into a new `aLine` attribute. The road shader darkens a band on the line, with two tyre tracks and a little gloss.
+  - Kerb wear: kerb blocks are scuffed with noise where the racing line reaches the kerb.
+  - Grid stains: dark, slightly glossy blots at the 12 grid slots. A higher gloss read as white smears against the low golden sun.
+  - Tyre marks: new `src/render/decals.js`. An instanced, multiply-blended ring buffer of 4,096 ground quads. Each wheel writes a segment on lateral slip above 3 m/s (the squeal threshold), a hard brake above 25 m/s, or a landing. Marks persist for the session.
+  - Evidence, sheet `docs/sheets/2026-11-01-ground.jpg`: the tightest GP corner from above (before, after), the GP grid after the field leaves, and tyre marks from a scripted boost, steer and brake on The Pad (372 segments). `npm test`: 144 of 144.
+  - Changed from the plan: no 4K asphalt (the 2K set stays) and no `src/sim/line.js` change, because `racingLine` already exports offsets. The rubber line and the grid stains are subtle at golden. Signature frame 4 waits for the heat shimmer in Task 3.7.
+
+Next: Task 3.6 (flora).

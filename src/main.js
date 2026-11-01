@@ -18,6 +18,7 @@ import { createTrackside } from './render/trackside.js';
 import { createFacility } from './render/facility.js';
 import { createGrandstands } from './render/crowd.js';
 import { createDust, createFireworks } from './render/fx.js';
+import { createSkids } from './render/decals.js';
 import { createGates } from './render/gates.js';
 import { createChaseCamera, createBroadcastCamera } from './render/camera.js';
 import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
@@ -113,7 +114,8 @@ const stands = await createGrandstands(world, sunUniform, fogDensity, renderer);
 const festival = createFestival(world, sunUniform, fogDensity, NIGHT, stands);
 scene.add(facility.group, stands.group, festival.group);
 const dust = createDust(terrain.height);
-scene.add(dust.points);
+const skids = createSkids();
+scene.add(dust.points, skids.mesh);
 const fireworks = createFireworks();
 const gates = createGates(world, (m) => skyFog(m, sunUniform, fogDensity));
 scene.add(gates.group);
@@ -851,6 +853,7 @@ function draw(dt, ticks = -1) {
   const pixelScale = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
   if (!inGarage) dust.update(time, dt, interp, c, pixelScale);
   carView.vapour.update(time, pixelScale);
+  if (!inGarage && running) skids.update(carView.root.matrixWorld, c, dt);
   if (inGarage) {
     if (menu.dirty || menu.listening) {
       garageView = menu.view();

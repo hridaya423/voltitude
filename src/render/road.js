@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
 import { RAIL, PAVED_OUT } from '../sim/drive.js';
-import { lightTick } from '../sim/race.js';
+import { lightTick, gridSlot } from '../sim/race.js';
+import { racingLine } from '../sim/line.js';
 import { skyFog, UNIT_LUX, FLOOD_RGB } from './sky.js';
 
 const STRIDE = 2;
@@ -70,10 +71,11 @@ export function extrude(track, list, profile, extra) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   if (extra) {
     const n = pos.length / 3, k = ex.length / n;
-    const a = new Float32Array(n * 4), b = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) { a.set(ex.slice(i * k, i * k + 4), i * 4); b.set(ex.slice(i * k + 4, i * k + 7), i * 3); }
+    const a = new Float32Array(n * 4), b = new Float32Array(n * 3), c = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) { a.set(ex.slice(i * k, i * k + 4), i * 4); b.set(ex.slice(i * k + 4, i * k + 7), i * 3); if (k > 7) c.set(ex.slice(i * k + 7, i * k + 9), i * 2); }
     g.setAttribute('aRoad', new THREE.Float32BufferAttribute(a, 4));
     g.setAttribute('aMark', new THREE.Float32BufferAttribute(b, 3));
+    if (k > 7) g.setAttribute('aLine', new THREE.Float32BufferAttribute(c, 2));
   }
   g.setIndex(idx);
   g.computeBoundingSphere();
@@ -117,7 +119,7 @@ export function panelMaterial(color, rough, metal, sunUniform, fogDensity, key, 
   return m;
 }
 
-function surfaceMaterial(renderer, sunUniform, fogDensity) {
+function surfaceMaterial(renderer, sunUniform, fogDensity, grid) {
   const loader = new THREE.TextureLoader();
   const aniso = Math.min(16, renderer.capabilities.getMaxAnisotropy());
   const load = (f, srgb) => {
@@ -130,13 +132,19 @@ function surfaceMaterial(renderer, sunUniform, fogDensity) {
   const m = new THREE.MeshStandardMaterial({ map: load('albedo', true), normalMap: load('normal', false), roughnessMap: load('arm', false), aoMap: null, roughness: 1, metalness: 0, envMapIntensity: 0.75 });
   m.normalScale.set(0.7, 0.7);
   skyFog(m, sunUniform, fogDensity, false, (sh) => {
+    sh.uniforms.uGrid = { value: grid };
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aRoad;\nattribute vec3 aMark;\nvarying vec4 vRoad;\nvarying vec3 vMark;')
-      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvRoad = aRoad;\nvMark = aMark;\nvMapUv = vec2(aRoad.x, aRoad.y) / 9.0;\nvNormalMapUv = vMapUv;\nvRoughnessMapUv = vMapUv;');
+      .replace('#include <common>', '#include <common>\nattribute vec4 aRoad;\nattribute vec3 aMark;\nattribute vec2 aLine;\nvarying vec4 vRoad;\nvarying vec3 vMark;\nvarying vec2 vLine;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvRoad = aRoad;\nvMark = aMark;\nvLine = aLine;\nvMapUv = vec2(aRoad.x, aRoad.y) / 9.0;\nvNormalMapUv = vMapUv;\nvRoughnessMapUv = vMapUv;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec4 vRoad;
         varying vec3 vMark;
+        varying vec2 vLine;
+        uniform vec2 uGrid[${grid.length}];
+        float gloss = 0.0;
+        float hsh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float nz(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(hsh(i), hsh(i + vec2(1, 0)), f.x), mix(hsh(i + vec2(0, 1)), hsh(i + vec2(1, 1)), f.x), f.y); }
         vec3 paint(vec3 base) {
           float lat = vRoad.x, s = vRoad.y, w = vRoad.z;
           float a = abs(lat);
@@ -174,9 +182,24 @@ function surfaceMaterial(renderer, sunUniform, fogDensity) {
           float streak = max(1.0 - smoothstep(0.08, 0.16, abs(lat - off - 0.8)), 1.0 - smoothstep(0.08, 0.16, abs(lat - off + 0.8)));
           float smear = 0.75 + 0.25 * sin(s * 3.1 + lat * 0.4);
           c *= 1.0 - 0.5 * streak * smear * step(0.45, zh) * smoothstep(0.0, 0.15, zf) * (1.0 - smoothstep(0.35, 0.7, zf)) * (1.0 - runoff);
+          float dl = lat - vLine.x;
+          float grain = 0.75 + 0.5 * nz(vec2(s * 0.35, lat * 2.0));
+          float rub = (0.6 * exp(-dl * dl / 2.6) + 0.45 * max(exp(-pow(dl - 0.83, 2.0) / 0.09), exp(-pow(dl + 0.83, 2.0) / 0.09))) * grain * (1.0 - runoff);
+          c *= 1.0 - 0.55 * rub;
+          gloss = rub * 0.08;
+          float scuff = kerbBand * kerbAmt * smoothstep(0.35, 0.75, abs(vLine.y)) * step(0.0, lat * vLine.y) * smoothstep(0.25, 0.6, nz(vec2(s * 1.3, lat * 4.0)));
+          c = mix(c, vec3(0.03), scuff * 0.75);
+          for (int g = 0; g < ${grid.length}; g++) {
+            vec2 q = (vec2(s, lat) - uGrid[g]) / vec2(1.4, 0.6);
+            float n = nz(vec2(s, lat) * 3.1 + float(g) * 7.3);
+            float oil = smoothstep(1.0, 0.25, length(q) + (n - 0.5) * 0.8) * (1.0 - runoff);
+            c *= 1.0 - 0.7 * oil;
+            gloss = max(gloss, oil * 0.15);
+          }
           return c;
         }`)
       .replace('#include <map_fragment>', '#include <map_fragment>\nvec3 macroA = texture2D(map, vMapUv * 0.083 + 0.31).rgb;\ndiffuseColor.rgb = paint(diffuseColor.rgb * mix(0.62, 1.05, smoothstep(0.15, 0.5, dot(macroA, vec3(0.33)))));')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor *= 1.0 - gloss;')
       .replace('#include <aomap_fragment>', `reflectedLight.indirectDiffuse += BRDF_Lambert(material.diffuseColor) * vec3(${FLOOD_RGB.join(', ')}) * ${(1000 / UNIT_LUX.night).toFixed(3)} * uNight * smoothstep(0.97, 0.9, inverseTransformDirection(normal, viewMatrix).y);
         #include <aomap_fragment>`);
   });
@@ -262,9 +285,11 @@ export function createRoad(world, sunUniform, fogDensity, renderer) {
   for (let i = 1; i < track.n; i++) if (track.gap[i] && !track.gap[i - 1]) for (let j = Math.max(0, i - 16); j < i; j++) lip[j] = 1;
   for (const { lip: at } of track.jumps ?? []) for (let j = Math.max(0, at - 16); j < at; j++) lip[j] = 1;
   for (const m of track.closed ? [track.finish, 0] : [track.sectors[0].i + 10, track.finish]) for (let j = m - 2; j <= m + 2; j++) if (j >= 0 && j < track.n) line[j] = 1;
+  const { off } = racingLine(track);
+  const grid = track.closed ? Array.from({ length: 12 }, (_, k) => { const g = gridSlot(track, k); return new THREE.Vector2(g.i * track.step - 1.2, g.lat); }) : [new THREE.Vector2(-1e4, 0)];
 
-  const top = extrude(track, list, [(w, i) => [pavedEdge(track, i, 1), 0], (w, i) => [-pavedEdge(track, i, -1), 0]], (i, l) => [l, i * track.step, track.halfW[i], track.runoff.tyreL[i] + 2 * track.runoff.tyreR[i], kerb[i], lip[i], line[i]]);
-  const surface = new THREE.Mesh(top, surfaceMaterial(renderer, sunUniform, fogDensity));
+  const top = extrude(track, list, [(w, i) => [pavedEdge(track, i, 1), 0], (w, i) => [-pavedEdge(track, i, -1), 0]], (i, l) => [l, i * track.step, track.halfW[i], track.runoff.tyreL[i] + 2 * track.runoff.tyreR[i], kerb[i], lip[i], line[i], off[i % track.lap] || 0, kerb[i] * (off[i % track.lap] || 0) / track.halfW[i]]);
+  const surface = new THREE.Mesh(top, surfaceMaterial(renderer, sunUniform, fogDensity, grid));
   surface.receiveShadow = true;
 
   const shellMat = panelMaterial(WHITE, 0.55, 0.05, sunUniform, fogDensity, 'shell', 8);
