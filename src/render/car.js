@@ -155,6 +155,32 @@ function buildModel(src, { envMap, ghost }) {
   return { model, chassis, wheels, mats };
 }
 
+function grime(m, uDust, uCar) {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uDust = uDust;
+    sh.uniforms.uCar = uCar;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vObj;\nuniform mat4 uCar;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvObj = (uCar * modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vObj;
+uniform float uDust;
+float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
+float dustAt() { float n = vn(vObj * 6.0) * 0.6 + vn(vObj * 23.0) * 0.4;
+  float low = smoothstep(0.25, -0.45, vObj.y) + smoothstep(-1.7, -2.3, vObj.z) * 0.6;
+  return clamp(uDust * (low * 1.3 + 0.15) * (0.55 + n * 0.9) - 0.1, 0.0, 0.92); }`)
+      .replace('#include <color_fragment>', '#include <color_fragment>\nfloat dust = dustAt();\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.42, 0.33, 0.24), dust);')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.95, dust);')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+vec3 cell = floor(vObj * 400.0);
+float fade = 1.0 - smoothstep(0.25, 0.7, length(fwidth(vObj * 400.0)));
+vec3 jit = vec3(h3(cell), h3(cell + 17.0), h3(cell + 41.0)) - 0.5;
+normal = normalize(normal + jit * 0.3 * step(0.72, h3(cell + 5.0)) * fade * (1.0 - dust));`)
+      .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\nmaterial.clearcoat *= 1.0 - dust * 0.85;');
+  };
+}
+
 function contactShadow() {
   const c = document.createElement('canvas');
   c.width = 128; c.height = 256;
@@ -227,10 +253,11 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
   let wingK = 0, wingBrake = 0;
   if (wing) wing.visible = false;
   let plume = null, head = null;
+  const uDust = { value: 0 }, uCar = { value: new THREE.Matrix4() };
   if (!ghost) {
     plume = createPlume(lite);
     holder.add(plume);
-    if (mats.paint) { mats.paint.envMapIntensity = 1.2; mats.paint.clearcoatRoughness = Math.max(mats.paint.clearcoatRoughness, 0.06); }
+    if (mats.paint) { mats.paint.envMapIntensity = 1.2; mats.paint.clearcoatRoughness = Math.max(mats.paint.clearcoatRoughness, 0.06); if (!lite) grime(mats.paint, uDust, uCar); }
     if (mats.glass) { mats.glass.envMapIntensity = 2.2; mats.glass.roughness = 0.04; mats.glass.metalness = 0; mats.glass.color.set('#07090c'); }
     if (headlights) {
       const key = new THREE.SpotLight('#dfe6ff', 90, 22, 0.6, 0.8, 1.6);
@@ -252,8 +279,13 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
       if (mats.glass) mats.glass.envMapIntensity = indoors ? 0.4 : 2.2;
       probe?.update(renderer, scene, viewer, plume ? [model, plume] : [model], indoors);
     },
+    wash() { uDust.value = 0; },
+    get dust() { return uDust.value; },
+    set dust(v) { uDust.value = v; },
     update(dt, c, time, dist = 0) {
       const air = c.mode === 0;
+      if (c.mode === 2) uDust.value = Math.min(1, uDust.value + dt * Math.min(1, c.speed / 30) * 0.06);
+      else if (air && c.air > 60) uDust.value = Math.min(1, uDust.value + dt * 0.004);
       if (far && (dist > (far.model.visible ? 55 : 60)) !== far.model.visible) {
         far.model.visible = !far.model.visible;
         model.visible = !far.model.visible;
@@ -309,6 +341,7 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
         u.uTime.value = time;
         if (lite) plume.visible = dist < 160 && (c.boosting || P[0] > 0.02);
       }
+      if (!lite) { holder.updateMatrixWorld(); uCar.value.copy(chassis.matrixWorld).invert(); }
     },
   };
 }

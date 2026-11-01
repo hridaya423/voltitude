@@ -1299,4 +1299,10 @@ Phase 3:
 - Task 3.2: aerial perspective. No LUT rewrite. The atmosphere reference's own tier rule says a small scene with no orbital camera takes an analytic height and distance model. `skyFog` already has one, with height falloff, per-channel extinction and inscatter from the HDRI horizon in the view direction. So sky and haze share one sun and one source by construction. The change: golden haze density rises from 0.00034 to 0.000476, giving 25%, 30% and 42% haze (R, G, B) at 1 km against the plan's target of about 30%. Day and night are unchanged. Sheet `docs/sheets/2026-11-01-golden-haze.jpg`, before on top.
   - Not done: the plan's check at three sun elevations. The skies are baked HDRIs at fixed elevations, so only the three sessions exist.
 
-Next: Task 3.3 (the car at close range).
+- Task 3.3: the car at close range. The car is procedural, so decimation does not apply, and the LODs and the cube probe already existed. The paint gains two layers in `onBeforeCompile`, keyed to chassis space in metres through a per-frame inverse matrix (the mesh has no UVs and a 2.3x node scale).
+  - Flakes: sparse 2.5 mm cells tilt the base normal under the clearcoat, so they glint in highlights only. They fade out before they alias.
+  - Dust: `uDust` grows with off-road speed and long air time, is weighted to the sills and the tail, adds noise, and dulls the clearcoat. `startRace` washes it.
+  - Sheet `docs/sheets/2026-11-01-paint-dust.jpg`: before at golden (top left), dust at full (top right), a close 3/4 with flakes, and full dust at night. The flakes read as a fine grain only at the closest framing. `npm test`: 144 of 144.
+  - Not checked: dust building up in a real off-road run. The frames set `dust` directly.
+
+Next: Task 3.4 (cold-gas plumes and downwash).

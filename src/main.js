@@ -387,6 +387,7 @@ function startRace(ev = current) {
   race = createRace(world, { event: ev, assist: settings.assist, seed: lastSeed, tier: settings.tier });
   lineup?.set(race.dare?.count ?? 0);
   recorder = createRecorder();
+  carView.wash();
   ghost = settings.ghost || linked?.run.event === ev.id ? createGhost(world, ghostRun(ev)) : null;
   const ref = ev.kind === 'tt' ? lapSplits(ghostRun(ev)) : null;
   bestLap = 0; lapRef = ref ? ref.cum : null; contactCount = 0; clears = [];
