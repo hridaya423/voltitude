@@ -132,6 +132,15 @@ One change at a time. Each change has a 3 s before-and-after clip from the same 
 - Change: the near-miss gas gain reads "+12 CLOSE" instead of "+12 NEAR MISS", as the design asks ("a clear CLOSE for near misses"). The label uses the shared toast plate from Task 21.
 - Checked: `tools/a11y-probe.mjs` measures "+12 CLOSE" at 14 px and 13.4:1 or better on all three runs. The probe passes, 0 of 91.
 
+### 6. The Lineup: clears, clips and the lip
+
+Measured on the same autopilot run of The Lineup on The Pad. The values are camera FOV minus its value on the frame the dare arms, sampled every frame (scratchpad `fov.mjs`).
+
+- **The lip.** Change: on the frame the dare arms, which is the frame the car leaves the kicker, the camera gets `punch(0.5)`. That adds 2° of FOV, decaying at 5/s, and is off under reduced motion. The frame also plays `burst_long` and `whoosh4` with a short duck, and a rumble of (0.3, 0.5, 160 ms). Before: +0.01° over 0.5 s. After: +1.7° on the first frame, +0.75° at 0.2 s and +0.17° at 0.5 s. This overrides the "Takeoff" note under "Not changed" for the kicker only. A lip into a line of vehicles is the launch the dare is about, so it gets the accent.
+- **A clear.** Change: `punch(-0.25 × mult)` and `bump(0.15 × mult)` on top of the landing thump. The rumble is (0.4, 0.6, 180 ms) and the stands cheer at `0.5 + 0.2 × mult` within 260 m. The sound is `check_a` and `check_b` pitched by the multiplier, plus `slot`, plus the music engine's own `lineup` stinger. The pitch steps are a major third and then a fifth (0, 4 and 7 semitones), not the plan's one semitone per step, because the check chime already climbs that scale on sectors. Before, for a ×1 clear with a perfect landing: −2.09° on the first frame. After: −2.92°, still −1.13° at 0.2 s.
+- **A clip.** Change: the wreck treatment, which is bump 1.2, a 0.08 s camera stall, a gasp near the stands and a (1, 0.6, 320 ms) rumble. On top of that, the music runs through a low-pass that drops to 450 Hz for 0.5 s and opens again over about 0.25 s. The sim change: the car bounces back at 15% of its speed and ignores the player's input until the dare ends. Before, a car that clipped at 20 m/s rolled on through the vehicle, and throttle carried it 36 m past the clip. After, it stops beside the vehicle (frame: scratchpad `hud2/3-clipped.png`, 3 mph). `tests/dare.test.js` checks it.
+- Not judged by ear: the new sounds and the low-pass were placed from the existing samples and were not recorded or checked with earshot this session.
+
 ## Not changed
 
 - **Time scale.** See the audit: a hit-pause would read as a dropped frame and freeze the field.

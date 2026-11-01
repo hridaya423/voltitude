@@ -266,7 +266,7 @@ function clip(race, c, k) {
   d.over = true;
   d.endAt = race.tick + 240;
   c.wrecked = true;
-  c.vx *= 0.2; c.vy *= 0.2; c.vz *= 0.2;
+  c.vx *= -0.15; c.vy *= -0.15; c.vz *= -0.15;
   emit(race, 'clip', { k, score: d.score });
 }
 
@@ -389,12 +389,12 @@ export function stepRace(race, inp) {
     }
   }
   if (race.phase === 'racing') {
-    if (inp.reset && !race.resetHeld) respawn(race, race, race.cpIdx, race.cpSpeed);
+    if (inp.reset && !race.resetHeld && !race.dare?.over) respawn(race, race, race.cpIdx, race.cpSpeed);
     race.resetHeld = !!inp.reset;
   }
   const rivals = race.entries;
   if (rivals.length > 1) for (const e of rivals) e.car.tow = towFor(race, e);
-  stepEntry(race, race, race.phase === 'racing' ? inp : IDLE);
+  stepEntry(race, race, race.phase === 'racing' && !race.dare?.over ? inp : IDLE);
   for (let k = 1; k < rivals.length; k++) {
     const e = rivals[k];
     stepEntry(race, e, drive(race, e, e.input || (e.input = createInput())));

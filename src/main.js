@@ -116,7 +116,7 @@ scene.add(fireworks.points);
 const finishAtPos = new THREE.Vector3();
 const standGap = (h) => stands.sites.reduce((m, i) => Math.min(m, Math.abs(i - h)), Infinity);
 const cheerNear = (v, kind = 'stunt') => { if (standGap(race.car.hint) < 260) { if (kind === 'gasp') stands.gasp(0.8); else stands.cheer(v); if (v >= 0.5) audio.cheer(kind); } };
-let said = new Set(), raceCount = 0, gasLowAt = -1e9, boostWas = false, liftWas = false, kerbAt = -1;
+let said = new Set(), raceCount = 0, gasLowAt = -1e9, boostWas = false, armedWas = false, liftWas = false, kerbAt = -1;
 const sayOnce = (id) => { if (!said.has(id)) { said.add(id); audio.radio(id); } };
 
 progress(0.35, 'Lighting the sky…');
@@ -592,9 +592,10 @@ function handleEvents() {
         clears.push(e);
         lineup.set(race.dare.count);
         hud.toast(`+${e.count * e.mult} CLEARED${e.mult > 1 ? ` ×${e.mult}` : ''}`, e.hard ? 'white' : 'good', `LINE ${race.dare.count} NEXT`);
+        audio.event('clear', e.mult); input.rumble(0.4, 0.6, 180); chase.punch(-0.25 * e.mult); chase.bump(0.15 * e.mult); cheerNear(0.5 + 0.2 * e.mult);
         break;
       }
-      case 'clip': lineup.clip(e.k); hud.toast('CLIPPED', 'red', `SCORE ${e.score}`); audio.event('clip'); break;
+      case 'clip': lineup.clip(e.k); hud.toast('CLIPPED', 'red', `SCORE ${e.score}`); audio.event('clip', 1); cheerNear(0.2, 'gasp'); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
       case 'gate': gates.pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
       case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
@@ -846,6 +847,8 @@ function loop(now) {
   c.kerb = c.mode !== 0 && Math.abs(c.lat) > world.track.halfW[c.hint] - 1.7;
   if (mode === 'race' && c.boosting && !boostWas) { chase.punch(1); input.rumble(0.15, 0.6, 200); }
   boostWas = c.boosting;
+  if (mode === 'race' && race.dare?.armed && !armedWas) { chase.punch(0.5); audio.event('lip'); input.rumble(0.3, 0.5, 160); }
+  armedWas = !!race.dare?.armed;
   if (mode === 'race' && c.kerb && c.speed > 4 && time - kerbAt > 0.08) { kerbAt = time; input.rumble(0, Math.min(0.4, c.speed / 90), 100); }
   if (mode === 'race' && c.lifting && !liftWas) input.rumble(0.1, 0.45, 180);
   liftWas = c.lifting;

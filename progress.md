@@ -1258,4 +1258,6 @@ Branch `shook`. Done, with evidence:
 - Seen, not caused here: on every venue headless Chrome logs one MeshStandardMaterial that fails to compile, with more than 16 texture units. Proving GP shows it with no lineup loaded. Next step: find the material, likely one that receives cascaded shadows plus an env map and sky textures.
 - Feel gap for 1.6: after a clip the car rolls through the vehicle at 20% speed, because nothing stops it.
 
-Next: Task 1.6 (dare feel).
+- Task 1.6: dare feel, logged as entry 6 in `docs/feel.md`. The lip punches +1.7° on its first frame where it had nothing. A ×1 clear thumps −2.9° where it was −2.1°. A clip stops the car, because input is ignored and the car bounces back off the vehicle; it used to roll 36 m on under throttle. The music dips through a low-pass on a clip. `npm test` gives 140 of 140. The sounds were not checked by ear.
+
+Next: the Phase 1 gate (exploits on The Pad, the bot reaching line 8, perf), then Phase 2.

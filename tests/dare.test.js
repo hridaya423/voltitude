@@ -63,10 +63,12 @@ test('a slow car hits the first vehicle, and the dare ends', () => {
   const race = dareAt(lip - 40, 20, 1);
   const events = [];
   const inp = createInput();
+  let after = null;
   let clipAt = -1;
   for (let t = 0; t < 900 && race.phase !== 'finished'; t++) {
+    inp.throttle = after ? 1 : 0;
     stepRace(race, inp);
-    for (const e of race.events) { events.push(e); if (e.type === 'clip') clipAt = t; }
+    for (const e of race.events) { events.push(e); if (e.type === 'clip') { clipAt = t; after = { hint: race.car.hint, speed: race.car.speed }; } }
     race.events.length = 0;
   }
   const clip = events.find((e) => e.type === 'clip');
@@ -75,6 +77,8 @@ test('a slow car hits the first vehicle, and the dare ends', () => {
   assert.equal(race.phase, 'finished');
   assert.ok(race.raceTick - clipAt <= 242, `finished ${race.raceTick - clipAt} ticks after the clip`);
   assert.equal(events.filter((e) => e.type === 'respawn').length, 0);
+  assert.ok(race.car.hint <= after.hint + 1, `throttle carried the car from ${after.hint} to ${race.car.hint}`);
+  assert.ok(race.car.speed < 4, `speed ${race.car.speed.toFixed(1)} after the clip`);
 });
 
 test('a car 0.4 m over the semi roof earns near-miss gas once', () => {
