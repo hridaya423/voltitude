@@ -43,6 +43,12 @@ const defaults = { tier: 'pro', assist: true, invertPitch: false, ghost: true, u
 const settings = Object.assign(structuredClone(defaults), load(STORE, {}));
 settings.keys = Object.assign(structuredClone(DEFAULT_KEYS), settings.keys);
 if (params.has('quality')) settings.quality = params.get('quality');
+const linked = location.hash.startsWith('#g=') ? await (await import('./share.js')).decodeLink(location.hash.slice(3)) : null;
+if (linked && VENUES[linked.venue] && linked.venue !== (params.get('venue') || settings.venue)) {
+  params.set('venue', linked.venue);
+  location.replace(`?${params}${location.hash}`);
+  await new Promise(() => {});
+}
 const venue = venueOf(params.get('venue') || settings.venue);
 const NIGHT = params.has('day') ? false : params.has('night') || settings.session !== 'day';
 const saveSettings = () => store(STORE, settings);
@@ -285,6 +291,7 @@ function targetFor(ev) {
 }
 
 function ghostRun(ev) {
+  if (linked?.run.event === ev.id) return linked.run;
   if (ev.circuit && ev.kind !== 'tt') return null;
   const mine = book[ev.id]?.run;
   return mine && mine.v === SIM_VERSION ? mine : author[ev.id];
@@ -378,7 +385,7 @@ function startRace(ev = current) {
   race = createRace(world, { event: ev, assist: settings.assist, seed: lastSeed, tier: settings.tier });
   lineup?.set(race.dare?.count ?? 0);
   recorder = createRecorder();
-  ghost = settings.ghost ? createGhost(world, ghostRun(ev)) : null;
+  ghost = settings.ghost || linked?.run.event === ev.id ? createGhost(world, ghostRun(ev)) : null;
   const ref = ev.kind === 'tt' ? lapSplits(ghostRun(ev)) : null;
   bestLap = 0; lapRef = ref ? ref.cum : null; contactCount = 0; clears = [];
   race.entries.forEach((e, k) => { if (k) snapshot(e.car, rprev[k - 1]); });
@@ -464,7 +471,7 @@ function finishCircuit(ev) {
   const penalty = gp && me.penalty >= 0.05 ? ` · ${me.penalty.toFixed(1)} s track limits` : '';
   showResults({
     card: `${venue.name} · ${ev.name}`, pos: gp ? me.pos : 0, field: race.entries.length, medal: medalLine(m, before),
-    time: fmt(race.total), delta, note: gp ? `${me.passes || 0} overtakes · ${contactCount} contacts${penalty}` : '',
+    time: fmt(race.total), delta, note: gp ? `${me.passes || 0} overtakes · ${contactCount} contacts${penalty}` : linked?.run.event === ev.id ? `Linked ghost ${fmt(linked.run.total)} · you ${fmtDelta(race.total - linked.run.total)}` : '',
     title: 'LAPS', rows: race.laps.map(lapRow),
     stats: [{ label: 'Top speed', value: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}` }, { label: 'Best lap', value: bestLapT ? fmt(bestLapT) : '—' }, { label: 'Resets', value: `${race.respawns}` }],
     hasNext: !!EVENTS[ev.card],
@@ -475,10 +482,16 @@ function finishDare(ev) {
   const d = race.dare, best = book[ev.id]?.best || 0;
   lastRun = encodeRun(race, recorder.bytes());
   if (d.score > best) { book[ev.id] = { best: d.score }; persist(); }
-  showResults(dareResults({
+  const result = dareResults({
     card: `${venue.name} · ${ev.name}`, score: d.score, best, line: d.count, clears,
     speed: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}`, hasNext: !!EVENTS[ev.card],
-  }), null, null);
+  });
+  if (linked?.run.event === ev.id) {
+    const g = createGhost(world, linked.run);
+    while (g.race.raceTick < linked.run.total && g.race.phase !== 'finished') g.step();
+    result.note = `Linked ghost scored ${g.race.dare.score} · ${d.score > g.race.dare.score ? 'you beat it' : d.score === g.race.dare.score ? 'a tie' : 'it beat you'}`;
+  }
+  showResults(result, null, null);
 }
 
 function finish() {
@@ -773,7 +786,8 @@ let resumePage = null;
 try { resumePage = sessionStorage.getItem(RESUME); sessionStorage.removeItem(RESUME); } catch { }
 if (resumePage === 'settings') menu.command('settings');
 garage.intro();
-if (params.has('autostart')) startRace(current);
+if (linked && EVENTS.some((e) => e.id === linked.run.event)) { current = EVENTS.find((e) => e.id === linked.run.event); menu.open('board', { index: current.card - 1 }); }
+if (params.has('autostart') || linked?.run.event === current.id) startRace(current);
 
 let last = performance.now(), acc = 0, time = 0, garageView = null, clipping = false;
 let warmFrames = 0;

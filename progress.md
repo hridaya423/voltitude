@@ -1277,4 +1277,8 @@ Phase 1 gate:
   - Export time for 6 s of clip, measured in the page: 5.4, 6.6, 8.9 and 19.1 s across four runs on a machine with a load average of 70 after a reboot. Rendering takes about 2 s. The rest is the encoder waiting on the GPU. The 20 s budget for 10 s of clip needs a check on a quiet machine.
   - Still open: the hero shot is readable, not great. The car fills about a tenth of the frame width. Phase 3 should add a second angle and a cut on the lip.
 
-Next: Task 2.5 (ghost links), then 2.3 (audio) and 2.4 (share sheet).
+- Task 2.5: ghost links. `src/share.js` stores a JSON header (sim version, event, assist, seed, tier, total, venue, frame count, FNV-1a hash of the inputs) and then the six input channels, delta-coded, in deflate-raw and base64url. Because deflate has no checksum, the hash rejects corrupt links. Opening `index.html#g=<link>` decodes it and switches venue if needed. It then opens the event and starts the race with the linked ghost, even with the ghost setting off. Results name the ghost's time, or for a dare the ghost's score and who won.
+  - Evidence: `tests/share.test.js` round-trips a 60 s bot run on The Pad (under 8,000 characters) and replays it to the same dare state. A corrupt tail, garbage and an empty string all decode to null. In the browser, a 9 s run gave a 1,170-character link. Opened from the default venue, it reloaded onto The Pad and started The Lineup. The ghost reached the source run's first clear at tick 1120, against 1115 in the source, which is the polling gap. `npm test`: 144 of 144.
+  - Not done: the plan's check across two machines. The burn-in cannot carry the link, because a link runs to thousands of characters. Task 2.4 should put the link on the results screen and in the share text.
+
+Next: Task 2.3 (offline audio for clips), then 2.4 (share sheet).
