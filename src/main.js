@@ -39,7 +39,7 @@ function store(key, v) {
   try { localStorage.setItem(key, JSON.stringify(v)); } catch { }
 }
 
-const defaults = { tier: 'pro', assist: true, invertPitch: false, ghost: true, units: 'mph', quality: 'medium', reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, rumble: true, session: 'night', volume: 0.7, music: 0.7, keys: structuredClone(DEFAULT_KEYS) };
+const defaults = { tier: 'pro', assist: true, invertPitch: false, ghost: true, units: 'mph', quality: 'medium', reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, rumble: true, session: 'golden', volume: 0.7, music: 0.7, keys: structuredClone(DEFAULT_KEYS) };
 const settings = Object.assign(structuredClone(defaults), load(STORE, {}));
 settings.keys = Object.assign(structuredClone(DEFAULT_KEYS), settings.keys);
 if (params.has('quality')) settings.quality = params.get('quality');
@@ -50,7 +50,8 @@ if (linked && VENUES[linked.venue] && linked.venue !== (params.get('venue') || s
   await new Promise(() => {});
 }
 const venue = venueOf(params.get('venue') || settings.venue);
-const NIGHT = params.has('day') ? false : params.has('night') || settings.session !== 'day';
+const SESSION = ['golden', 'day', 'night'].find((s) => params.has(s)) || settings.session;
+const NIGHT = SESSION === 'night';
 const saveSettings = () => store(STORE, settings);
 
 const progress = (k, text) => { $('loadFill').style.transform = `scaleX(${k})`; $('loadText').textContent = text; };
@@ -69,7 +70,7 @@ renderer.shadowMap.enabled = !params.has('noshadow');
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = true;
 renderer.info.autoReset = false;
-const post = createPost(renderer, { msaa: params.has('msaa') ? Number(params.get('msaa')) : 0, night: NIGHT });
+const post = createPost(renderer, { msaa: params.has('msaa') ? Number(params.get('msaa')) : 0, session: SESSION });
 const maxScale = Math.min(devicePixelRatio || 1, 2);
 let scale = Math.min(maxScale, Number(params.get('scale')) || maxScale);
 const minScale = Math.max(0.75, maxScale * 0.6);
@@ -83,10 +84,10 @@ camera.layers.enable(4);
 scene.add(camera);
 const sunUniform = { value: SUN_DIR };
 const fogDensity = { value: 0.00034 };
-const { sky: skyTex, info: skyInfo, sunIrradiance } = await loadSky(NIGHT, renderer);
+const { sky: skyTex, info: skyInfo, sunIrradiance } = await loadSky(SESSION, renderer);
 const skyMesh = createSky(skyTex, skyInfo.maxLuminance);
 scene.add(skyMesh);
-const sun = createCascades(scene, NIGHT ? '#9fb3e8' : '#ffe0bc', NIGHT ? 1.5 : 6.2, SUN_DIR, NIGHT);
+const sun = createCascades(scene, NIGHT ? '#9fb3e8' : SESSION === 'golden' ? '#ffb877' : '#ffe0bc', NIGHT ? 1.5 : 6.2, SUN_DIR, NIGHT);
 
 progress(0.15, 'Building the course…');
 await frame();
@@ -892,7 +893,7 @@ function draw(dt, ticks = -1) {
   if (mode === 'race') hud.update(dt, race, camera, ghost ? gInterp : null, interp);
   followSun(interp);
   const pu = post.uniforms;
-  pu.uExposure.value = inGarage ? (NIGHT ? 1.3 : 1.2) : exposureFor(NIGHT);
+  pu.uExposure.value = inGarage ? (NIGHT ? 1.3 : 1.2) : exposureFor(SESSION);
   post.auto.uOn.value = inGarage ? 0 : 1;
   skyMesh.material.uniforms.uGain.value = inGarage && !NIGHT ? 2.3 : 1;
   if (NIGHT) facility.floodLight(sun.lights[0], inGarage ? null : interp);

@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { UNIT_LUX } from './sky.js';
 
-export const EV100 = { day: 13.9, night: 7.8 };
-export const exposureFor = (night, s = night ? 'night' : 'day') => 0.18 * 2 ** 4.026 * UNIT_LUX[s] / (1.2 * 2 ** EV100[s]);
-export const AUTO_EV = { day: { key: 0.19, min: -0.5, max: 1.5 }, night: { key: 0.17, min: -0.25, max: 0.4 } };
+export const EV100 = { day: 13.9, golden: 13.0, night: 7.8 };
+export const exposureFor = (s) => 0.18 * 2 ** 4.026 * UNIT_LUX[s] / (1.2 * 2 ** EV100[s]);
+export const AUTO_EV = { day: { key: 0.19, min: -0.5, max: 1.5 }, golden: { key: 0.17, min: -0.6, max: 1.2 }, night: { key: 0.17, min: -0.25, max: 0.4 } };
 
 const VERT = /* glsl */ `
 varying vec2 vUv;
@@ -336,14 +336,15 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-function makeLut(night) {
+function makeLut(session) {
+  const night = session === 'night', golden = session === 'golden';
   const n = 32, data = new Uint8Array(n * n * n * 4);
   const curve = (c) => c + (night ? 0.75 : 1) * (c * c * (3 - 2 * c) - c);
   for (let b = 0; b < n; b++) for (let g = 0; g < n; g++) for (let r = 0; r < n; r++) {
     let c = [r, g, b].map((v) => curve(v / (n - 1)));
     const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
     const sh = Math.pow(1 - l, 2.5), hi = Math.pow(l, 2);
-    const tint = night ? [[-0.012, 0.004, 0.03], [0.006, 0.0, -0.004]] : [[-0.008, 0.006, 0.022], [0.026, 0.012, -0.022]];
+    const tint = night ? [[-0.012, 0.004, 0.03], [0.006, 0.0, -0.004]] : golden ? [[-0.018, 0.006, 0.034], [0.05, 0.02, -0.036]] : [[-0.008, 0.006, 0.022], [0.026, 0.012, -0.022]];
     if (night) {
       const lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
       c = c.map((v, k) => (lum + (v - lum) * 0.95) * [0.96, 0.99, 1.06][k]);
@@ -378,7 +379,7 @@ function target(w, h, opts = {}) {
   return t;
 }
 
-export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {}) {
+export function createPost(renderer, { levels = 4, msaa = 4, session = 'day' } = {}) {
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
   quad.frustumCulled = false;
   const qScene = new THREE.Scene();
@@ -388,9 +389,9 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
     tDepth: { value: null }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uVP: { value: new THREE.Matrix4() },
   };
   const fs = (fragmentShader, uniforms) => new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader, uniforms, depthTest: false, depthWrite: false });
-  const exposure = { value: exposureFor(night) };
+  const exposure = { value: exposureFor(session) };
   const tEV = { value: null };
-  const auto = AUTO_EV[night ? 'night' : 'day'];
+  const auto = AUTO_EV[session];
   const meter = fs(METER, { tSrc: { value: null }, uTexel: { value: new THREE.Vector2(0.25 / METER_W, 0.25 / METER_H) } });
   const adapt = fs(ADAPT, { tMeter: { value: null }, tPrev: { value: null }, uKey: { value: auto.key }, uMin: { value: auto.min }, uMax: { value: auto.max }, uOn: { value: 1 }, uDt: { value: 0 }, uReset: { value: 1 }, uExposure: exposure });
   const down = fs(DOWN, { tSrc: { value: null }, tEV, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 2.0 }, uKnee: { value: 1.0 }, uPrefilter: { value: true }, uExposure: exposure });
@@ -399,7 +400,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, night = false } = {
   const gtao = fs(GTAO, { tDepth: shared.tDepth, uInvProj: shared.uInvProj, uFullTexel: { value: new THREE.Vector2() }, uRadius: { value: 1.5 }, uFocal: { value: new THREE.Vector2() }, uFrame: { value: 0 }, uPower: { value: 1.4 } });
   const aoBlur = fs(AO_BLUR, { tAO: { value: null }, uTexel: { value: new THREE.Vector2() } });
   const taa = fs(TAA, { tCur: { value: null }, tHist: { value: null }, tVel: { value: null }, tAO: { value: null }, uTexel: { value: new THREE.Vector2() }, uReset: { value: 1 }, uAOAmount: { value: 0.85 } });
-  const lut = makeLut(night);
+  const lut = makeLut(session);
   const comp = fs(COMPOSITE, {
     tDepth: shared.tDepth, uInvProj: shared.uInvProj, uCamWorld: shared.uCamWorld,
     tScene: { value: null }, tBloom: { value: null }, tVel: { value: null }, tEV, tLut: { value: lut }, uBloom: { value: 0.08 }, uExposure: exposure, uTexel: { value: new THREE.Vector2() },

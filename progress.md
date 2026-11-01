@@ -1289,4 +1289,11 @@ Phase 1 gate:
   - Evidence: a scripted run in headless Chrome. The car clipped line 1, C opened the sheet, Portrait produced a 10 s clip in 9.4 s (14.6 MB, h264 1080x1920 plus AAC). Save downloaded `voltitude-lineup-0.mp4`, the link reached the clipboard (253 characters for this short run), and Escape returned to results. Sheet `docs/sheets/2026-11-01-share-sheet.jpg`. `npm test`: 144 of 144.
   - Not done, needs a person: the Phase 2 gate. Three people export on their own phones, play the clip in the gallery and upload it to one app. A ghost link raced on a second machine. An export timed on the user's laptop when it is quiet.
 
-Next: Phase 3 (the look).
+Phase 3:
+- Task 3.1: a golden hour session, now the default. It loads the baked `golden_sky` with the sun at 7.6° and azimuth 76°, north along The Pad's straight, so the jump is backlit. The sun is warm (#ffb877) and set to 3.4 directly, because the golden HDR's sun disc is clipped (maximum luminance 55 against 141,000 for day). Golden has its own exposure (EV100 13.0), auto-exposure range and warmer split-tone grade. The session setting offers Golden hour, Day and Night, and `?golden`, `?day` and `?night` override it. `main.js` keeps `NIGHT` as `SESSION === 'night'` to keep the diff small.
+  - Sheet `docs/sheets/2026-11-01-golden-hour.jpg`: day on top, golden below. Grid, a low view of the line and a wide view of The Pad.
+  - Found while looking: a contrast curve stronger than 1 in `makeLut` goes negative near zero and blacked out the sky. Golden keeps strength 1.
+  - Changed from the plan: golden is the default for every event, not night for the Grand Prix. A per-event default would need a reload whenever the event changes.
+  - Not checked: the garage under golden. It takes the day path.
+
+Next: Task 3.2 (sky LUT and aerial perspective).

@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 
-const SUN_AZ = { day: 98.5 * Math.PI / 180, night: -141.5 * Math.PI / 180 };
+const SUN_AZ = { day: 98.5 * Math.PI / 180, golden: 76 * Math.PI / 180, night: -141.5 * Math.PI / 180 };
+const GOLDEN_SUN = 3.4;
 export const SUN_DIR = new THREE.Vector3(0, 1, 0);
-export const UNIT_LUX = { day: 7300, night: 206 };
+export const UNIT_LUX = { day: 7300, golden: 7300, night: 206 };
 export const FLOOD_RGB = [1.0, 0.96, 0.9];
 const SUN_SR = 6.8e-5;
 const AP_SIGMA = [0.35 * 5.8 / 13.5 + 0.65, 1, 0.35 * 33.1 / 13.5 + 0.65];
@@ -39,8 +40,8 @@ vec3 skyColor(vec3 d) {
 
 const loadTexture = (url) => new THREE.TextureLoader().loadAsync(url);
 
-export async function loadSky(night, renderer) {
-  const name = night ? 'night' : 'day';
+export async function loadSky(name, renderer) {
+  const night = name === 'night';
   const [info, sky, fog] = await Promise.all([
     fetch(`assets/sky/${name}_sky.json`).then((r) => r.json()),
     loadTexture(`assets/sky/${name}_sky.webp`),
@@ -57,7 +58,7 @@ export async function loadSky(night, renderer) {
   skyUniforms.uSkyScale.value = night ? 0.02 : 1;
   skyUniforms.uNight.value = night ? 1 : 0;
   skyUniforms.tSkyFog.value = fog;
-  return { sky, fog, info, sunIrradiance: info.maxLuminance * SUN_SR * skyUniforms.uSkyScale.value };
+  return { sky, fog, info, sunIrradiance: name === 'golden' ? GOLDEN_SUN : info.maxLuminance * SUN_SR * skyUniforms.uSkyScale.value };
 }
 
 export function createSky(skyTex, sunRadiance, gain = 1) {
