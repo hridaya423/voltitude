@@ -537,15 +537,14 @@ export function stepCar(c, inp, world, tick, assist) {
   c.speed = Math.hypot(c.vx, c.vy, c.vz);
 }
 
+export const turns = (acc) => Math.floor((Math.abs(acc) + 0.9) / TAU);
+
 function landing(c, nx, ny, nz) {
   const align = c.ux * nx + c.uy * ny + c.uz * nz;
   const vn = -(c.vx * nx + c.vy * ny + c.vz * nz);
   const airS = c.air * DT;
   const tricks = [];
-  const count = (acc, name) => {
-    const k = Math.floor((Math.abs(acc) + 0.9) / TAU);
-    for (let i = 0; i < k; i++) tricks.push(name);
-  };
+  const count = (acc, name) => { for (let i = turns(acc); i > 0; i--) tricks.push(name); };
   count(c.flip, c.flip > 0 ? 'backflip' : 'frontflip');
   count(c.barrel, 'barrel roll');
   count(c.spin, 'spin');

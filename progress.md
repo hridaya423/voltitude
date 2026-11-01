@@ -1253,4 +1253,9 @@ Branch `shook`. Done, with evidence:
 - Task 1.4: `src/render/lineup.js`, one InstancedMesh rebuilt on `clear`, red flash on `clip`. Sheet `docs/sheets/2026-11-01-lineup-greybox.jpg` (line of 8, side and overhead): kinds read by colour, the semi stands clearly above the hatch, shadows cast. Bug found and fixed while looking: the instanced bounding sphere was computed at count 0 and culled the line.
 - Open design gap: from the chase camera the kicker crest hides the line until the lip, on every lap. The plan's "reads from 200 m" check fails. Candidate fixes for Task 1.6 or Phase 3: a gantry with the line count over the kicker, a lower landing deck, or a camera rise on the ramp.
 
-Next: Task 1.5 (dare HUD and results; the dare still shows lap toasts and sector colours), then 1.6 (dare feel).
+- Task 1.5: the dare HUD and results. The clock plate shows the score, the top-left label shows the line, and a gold ×2 or ×3 appears while a trick is pending in the air. Lap and sector events are muted in a dare. Toasts read `+n CLEARED ×m` and `CLIPPED`. The results board shows the line reached, the score, a list of clears, best, cleared and top speed, with no sector dots. The best score is saved as higher-is-better. Board rows now take their tag from the event kind (the dare had been tagged GP). Evidence: `tests/menu.test.js` adds a dare-results case, `npm test` gives 140 of 140, and the sheet `docs/sheets/2026-11-01-dare-hud.jpg` shows the air multiplier, the clip and the results. `tools/a11y-probe.mjs` now includes the pad dare: PASS on 105 elements, 0 failing.
+- Deferred to Task 2.4: the SHARE CLIP button. It ships with the clip encoder so the board never shows a dead control.
+- Seen, not caused here: on every venue headless Chrome logs one MeshStandardMaterial that fails to compile, with more than 16 texture units. Proving GP shows it with no lineup loaded. Next step: find the material, likely one that receives cascaded shadows plus an env map and sky textures.
+- Feel gap for 1.6: after a clip the car rolls through the vehicle at 20% speed, because nothing stops it.
+
+Next: Task 1.6 (dare feel).

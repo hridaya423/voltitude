@@ -162,14 +162,16 @@ function pause(g, b) {
 function results(g, b) {
   const hits = [];
   header(g, b.card.toUpperCase());
-  if (b.pos) {
-    put(g, `P${b.pos}`, 64, 380, { size: 200, fam: DISPLAY, weight: 400, color: b.pos === 1 ? '#fff' : C.ink });
-    put(g, `OF ${b.field}`, 64, 440, { size: 44, weight: 700, color: C.ink3, gap: 8 });
+  if (b.pos || b.dare) {
+    put(g, b.dare ? `${b.line}` : `P${b.pos}`, 64, 380, { size: 200, fam: DISPLAY, weight: 400, color: b.pos === 1 ? '#fff' : C.ink });
+    put(g, b.dare ? 'LINE REACHED' : `OF ${b.field}`, 64, 440, { size: 44, weight: 700, color: C.ink3, gap: 8 });
   }
   const mid = b.medal;
-  dot(g, 90, 520, 26, mid && mid.id);
-  put(g, mid ? `${mid.name.toUpperCase()}${mid.fresh ? ' MEDAL' : ''}` : 'NO MEDAL YET', 140, 536, { size: 42, fam: DISPLAY, weight: 400, color: mid ? C.ink : C.ink3, max: 560 });
-  put(g, 'TIME', 760, 180, { size: 28, color: C.ink3, gap: 8 });
+  if (!b.dare) {
+    dot(g, 90, 520, 26, mid && mid.id);
+    put(g, mid ? `${mid.name.toUpperCase()}${mid.fresh ? ' MEDAL' : ''}` : 'NO MEDAL YET', 140, 536, { size: 42, fam: DISPLAY, weight: 400, color: mid ? C.ink : C.ink3, max: 560 });
+  }
+  put(g, b.label || 'TIME', 760, 180, { size: 28, color: C.ink3, gap: 8 });
   put(g, b.time, 760, 280, { size: 76, fam: DISPLAY, weight: 400, max: 540 });
   put(g, b.delta.text, 760, 350, { size: 40, weight: 700, color: TONE[b.delta.tone] || C.ink2, max: 540 });
   wrap(g, b.note || '', 540, 34).slice(0, 4).forEach((l, i) => put(g, l, 760, 420 + i * 46, { size: 34, weight: 500, color: C.ink2 }));
@@ -177,7 +179,7 @@ function results(g, b) {
   const cols = Math.ceil(b.rows.length / 9), per = Math.ceil(b.rows.length / cols), rowH = Math.min(64, 540 / per), colW = 584 / cols;
   b.rows.forEach((r, i) => {
     const c = Math.floor(i / per), y = 236 + (i % per) * rowH, x = 1400 + c * colW, size = cols > 1 ? 30 : 36;
-    dot(g, x + 12, y + rowH * 0.42, 9, r.dot);
+    if ('dot' in r) dot(g, x + 12, y + rowH * 0.42, 9, r.dot);
     put(g, r.label, x + 34, y + rowH * 0.62, { size, weight: 500, color: C.ink2 });
     put(g, r.value, x + colW - (cols > 1 ? 4 : 190), y + rowH * 0.62, { size, fam: DISPLAY, weight: 400, align: 'right' });
     if (cols === 1 && r.tag) put(g, r.tag, x + colW, y + rowH * 0.62, { size: 30, color: TONE[r.tone] || C.ink3, align: 'right' });

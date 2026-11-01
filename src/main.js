@@ -24,7 +24,7 @@ import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
 import { fmt, fmtDelta } from './time.js';
-import { createMenu, pauseView, describe } from './menu.js';
+import { createMenu, pauseView, describe, dareResults } from './menu.js';
 import { createGarage } from './render/garage.js';
 import { createFestival } from './render/festival.js';
 
@@ -169,6 +169,12 @@ const BRIEFS = {
     tt: 'Three laps alone against your best run. Carry speed up the tower climb.',
     pr: 'Free laps with no field. Learn the wall and the blind crest at the tower.',
   },
+  pad: {
+    lineup: 'Jump the line off the kicker. Every clear adds a vehicle. A flip or a roll in the air multiplies the clear. Touch one and the dare is over.',
+    gp: 'Three laps against seven Roadsters round the oval. Draft down the straights, hold the line over the kicker.',
+    tt: 'Three laps alone against your best run.',
+    pr: 'Free laps with no field. Learn the kicker.',
+  },
 };
 const BRIEF = BRIEFS[venue.id] || {};
 const save = Object.assign({ events: {}, hints: {}, venues: {} }, load(SAVE, {}));
@@ -176,7 +182,7 @@ const book = venue.id === 'proving' ? save.events : (save.venues[venue.id] ||= {
 const persist = () => store(SAVE, save);
 const authorTime = (id) => author[id]?.total || 0;
 const PODIUM = [{ id: 'gold', name: 'Gold' }, { id: 'silver', name: 'Silver' }, { id: 'bronze', name: 'Bronze' }];
-const medalOf = (ev) => { const b = book[ev.id]?.best; if (!b || ev.kind === 'pr') return null; return ev.kind === 'gp' ? PODIUM[b - 1] || null : medalFor(b, authorTime(ev.id)); };
+const medalOf = (ev) => { const b = book[ev.id]?.best; if (!b || ev.kind === 'pr' || ev.kind === 'dare') return null; return ev.kind === 'gp' ? PODIUM[b - 1] || null : medalFor(b, authorTime(ev.id)); };
 
 let mode = 'title', launching = false;
 let race = createRace(world, { event: EVENTS[0] }), ghost = null, replay = null, replayEnd = 0, recorder = null, finishAt = 0, current = EVENTS[0];
@@ -204,17 +210,17 @@ function medalDot(m) { return `<i class="medal ${m ? m.id : ''}"></i>`; }
 
 function eventRows() {
   return EVENTS.map((ev, k) => {
-    const b = book[ev.id]?.best, gp = ev.kind === 'gp';
-    const ladder = gp ? PODIUM.map((m, j) => ({ ...m, time: `P${j + 1}`, t: j + 1 })) : ev.kind === 'pr' ? [] : medalTimes(authorTime(ev.id)).map((m) => ({ ...m, time: fmt(m.t) }));
+    const b = book[ev.id]?.best, gp = ev.kind === 'gp', dare = ev.kind === 'dare';
+    const ladder = gp ? PODIUM.map((m, j) => ({ ...m, time: `P${j + 1}`, t: j + 1 })) : ev.kind === 'pr' || dare ? [] : medalTimes(authorTime(ev.id)).map((m) => ({ ...m, time: fmt(m.t) }));
     return {
       id: ev.id, name: ev.name, circuit: !!ev.circuit,
-      tag: ev.circuit ? ['GP', 'TT', 'PR'][k] : k === 0 ? 'RUN' : `S${k}`,
-      best: gp ? (b ? `P${b}` : '') : b ? fmt(b) : '',
+      tag: ev.circuit ? ev.kind.slice(0, 2).toUpperCase() : k === 0 ? 'RUN' : `S${k}`,
+      best: gp ? (b ? `P${b}` : '') : dare ? (b ? `${b}` : '') : b ? fmt(b) : '',
       medal: medalOf(ev),
-      kicker: ev.circuit ? `${venue.name} · ${ev.kind === 'pr' ? 'Free laps' : `${ev.laps} laps`}` : k === 0 ? `${venue.name} · Full run` : `Practice · Sector ${k}`,
+      kicker: ev.circuit ? `${venue.name} · ${dare ? 'Dare' : ev.kind === 'pr' ? 'Free laps' : `${ev.laps} laps`}` : k === 0 ? `${venue.name} · Full run` : `Practice · Sector ${k}`,
       brief: BRIEF[ev.id] || '',
       ladder: ladder.map((m) => ({ id: m.id, name: m.name, time: m.time, got: !!b && b <= m.t })),
-      bestLabel: ev.kind === 'pr' ? '' : gp ? 'BEST FINISH' : 'PERSONAL BEST',
+      bestLabel: ev.kind === 'pr' ? '' : gp ? 'BEST FINISH' : dare ? 'BEST SCORE' : 'PERSONAL BEST',
     };
   });
 }
@@ -222,7 +228,7 @@ function eventRows() {
 function venueRows() {
   return Object.values(VENUES).map((v) => {
     const set = Object.values(v.id === 'proving' ? save.events : save.venues[v.id] || {}).filter((e) => e?.best).length;
-    const total = v.circuit ? 3 : v.course.pieces.filter((p) => p.sector).length + 1;
+    const total = v.circuit ? 3 + (v.dares?.length || 0) : v.course.pieces.filter((p) => p.sector).length + 1;
     return { id: v.id, name: v.name, place: v.place, note: `${set} of ${total} set` };
   });
 }
@@ -374,7 +380,7 @@ function startRace(ev = current) {
   recorder = createRecorder();
   ghost = settings.ghost ? createGhost(world, ghostRun(ev)) : null;
   const ref = ev.kind === 'tt' ? lapSplits(ghostRun(ev)) : null;
-  bestLap = 0; lapRef = ref ? ref.cum : null; contactCount = 0;
+  bestLap = 0; lapRef = ref ? ref.cum : null; contactCount = 0; clears = [];
   race.entries.forEach((e, k) => { if (k) snapshot(e.car, rprev[k - 1]); });
   rivalViews.forEach((v, k) => { v.root.visible = k + 1 < race.entries.length; });
   if (ghost) { ensureGhostView().root.visible = true; snapshot(ghost.race.car, gprev); } else if (ghostView) ghostView.root.visible = false;
@@ -387,8 +393,8 @@ function startRace(ev = current) {
   menu.close();
   hud.show(true);
   hud.begin(ev, targetFor(ev));
-  if (ev.circuit) hud.els.target.textContent = ref ? `BEST ${fmt(ref.t)}` : '';
-  hud.sectorsBegin(ev.circuit ? ev.perLap : ev.cps.length);
+  if (ev.circuit) hud.els.target.textContent = ev.kind === 'dare' ? (book[ev.id]?.best ? `BEST ${book[ev.id].best}` : '') : ref ? `BEST ${fmt(ref.t)}` : '';
+  hud.sectorsBegin(ev.kind === 'dare' ? 0 : ev.circuit ? ev.perLap : ev.cps.length);
   hud.tower([]);
   updateTower(-1, 0);
   audio.start();
@@ -415,7 +421,7 @@ function watchReplay() {
 function endReplay() { replay = null; $('replayBug').hidden = true; mode = 'results'; }
 
 const POINTS = [25, 18, 15, 12, 10, 8, 6, 4];
-let contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null;
+let clears = [], contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null;
 const speedUnit = () => (settings.units === 'kmh' ? 3.6 : 2.237);
 const medalLine = (m, before) => (m ? { id: m.id, name: m.name, fresh: !(before && before.id === m.id) } : null);
 function showResults(result, m, before) {
@@ -465,7 +471,17 @@ function finishCircuit(ev) {
   }, m, before);
 }
 
+function finishDare(ev) {
+  const d = race.dare, best = book[ev.id]?.best || 0;
+  if (d.score > best) { book[ev.id] = { best: d.score }; persist(); }
+  showResults(dareResults({
+    card: `${venue.name} · ${ev.name}`, score: d.score, best, line: d.count, clears,
+    speed: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}`, hasNext: !!EVENTS[ev.card],
+  }), null, null);
+}
+
 function finish() {
+  if (current.kind === 'dare') { finishDare(current); return; }
   if (current.circuit) { finishCircuit(current); return; }
   const ev = current, prevRec = book[ev.id];
   const prevBest = prevRec?.best;
@@ -532,6 +548,7 @@ function handleEvents() {
       case 'light': hud.light(e.n); audio.light(e.n); break;
       case 'go': cheerNear(0.7); hud.light(0); audio.lightsOut(); input.rumble(0.5, 0.4, 160); chase.bump(0.15); break;
       case 'check': {
+        if (race.dare) break;
         if (current.circuit) {
           audio.event('check');
           const k = e.index % current.perLap, color = circuitSector(e.index);
@@ -552,6 +569,7 @@ function handleEvents() {
         break;
       }
       case 'lap': {
+        if (race.dare) break;
         const per = current.perLap;
         const base = e.lap > 1 ? race.splits[(e.lap - 1) * per - 1] : 0;
         const first = !bestLap;
@@ -570,8 +588,13 @@ function handleEvents() {
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
       case 'near_miss': audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
       case 'track_limits': hud.toast('TRACK LIMITS', e.penalty ? 'orange' : 'red', e.penalty ? `+${e.gain.toFixed(1)} S PENALTY` : 'LAP INVALID'); audio.event('miss'); break;
-      case 'clear': lineup.set(race.dare.count); break;
-      case 'clip': lineup.clip(e.k); break;
+      case 'clear': {
+        clears.push(e);
+        lineup.set(race.dare.count);
+        hud.toast(`+${e.count * e.mult} CLEARED${e.mult > 1 ? ` ×${e.mult}` : ''}`, e.hard ? 'white' : 'good', `LINE ${race.dare.count} NEXT`);
+        break;
+      }
+      case 'clip': lineup.clip(e.k); hud.toast('CLIPPED', 'red', `SCORE ${e.score}`); audio.event('clip'); break;
       case 'gate': gates.pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
       case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
@@ -593,6 +616,7 @@ function handleEvents() {
       case 'impact': audio.event('impact'); input.rumble(Math.min(1, e.v / 20), 0.4, 160); chase.bump(Math.min(1, e.v / 15)); break;
       case 'respawn': wreckToast?.remove(); audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
       case 'finish': {
+        if (race.dare) { finishAt = performance.now(); break; }
         if (current.circuit) {
           const k = track.finish % track.lap * 3;
           for (const side of [-1, 1]) fireworks.show(finishAtPos.set(track.P[k] + track.R[k] * side * 32, track.P[k + 1], track.P[k + 2] + track.R[k + 2] * side * 32), race.order[0] === race ? 5 : 3, 24);

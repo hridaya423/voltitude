@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { fmt, fmtDelta } from './time.js';
 import { raceClock } from './sim/race.js';
+import { turns } from './sim/drive.js';
 
 const $ = (id) => document.getElementById(id);
 const TOWER_ROW = 27;
@@ -64,7 +65,7 @@ export function createHud(world, settings) {
     begin(event, targetText) {
       buildMap(event);
       setText(els.card, event.id === 'full' ? 'FULL RUN' : event.circuit ? event.name.toUpperCase() : `S${event.card - 1}  ${event.name.toUpperCase()}`);
-      els.cpLabel.firstChild.textContent = event.circuit ? 'LAP' : 'CHECKPOINT';
+      els.cpLabel.firstChild.textContent = event.kind === 'dare' ? 'LINE' : event.circuit ? 'LAP' : 'CHECKPOINT';
       els.target.innerHTML = targetText || '';
       toggle(els.delta, 'on', false);
       els.lights.classList.remove('on', 'out');
@@ -103,6 +104,7 @@ export function createHud(world, settings) {
     },
     sectorsBegin(n) {
       els.sectors.innerHTML = '<i></i>'.repeat(n);
+      els.sectors._v = undefined;
       els.sectors.children[0]?.classList.add('now');
     },
     sector(i, color) {
@@ -153,9 +155,12 @@ export function createHud(world, settings) {
     },
     update(dt, race, camera, ghostPos, interpPos) {
       const c = race.car;
-      setText(els.clock, fmt(raceClock(race)));
-      const ev = race.event;
-      setText(els.cps, ev.circuit ? (ev.laps > 9 ? `${Math.min(race.laps.length + 1, ev.laps)}` : `${Math.min(race.laps.length + 1, ev.laps)}/${ev.laps}`) : `${Math.min(race.next, ev.cps.length - 1)}/${ev.cps.length - 1}`);
+      const ev = race.event, d = race.dare;
+      setText(els.clock, d ? `${d.score}` : fmt(raceClock(race)));
+      const mult = d?.armed ? Math.min(3, 1 + turns(c.flip) + turns(c.barrel) + turns(c.spin)) : 0;
+      if (d) setText(els.sectors, mult > 1 ? `×${mult}` : '');
+      toggle(els.sectors, 'mult', mult > 1);
+      setText(els.cps, d ? `${d.count}` : ev.circuit ? (ev.laps > 9 ? `${Math.min(race.laps.length + 1, ev.laps)}` : `${Math.min(race.laps.length + 1, ev.laps)}/${ev.laps}`) : `${Math.min(race.next, ev.cps.length - 1)}/${ev.cps.length - 1}`);
       const mph = settings.units === 'kmh' ? c.speed * 3.6 : c.speed * 2.237;
       setText(els.speed, String(Math.round(mph)));
       setText(els.unit, settings.units === 'kmh' ? 'KM/H' : 'MPH');

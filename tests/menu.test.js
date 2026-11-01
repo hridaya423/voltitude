@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMenu, pauseView, SETTINGS, PAUSE, RESULT_ACTIONS } from '../src/menu.js';
+import { createMenu, pauseView, dareResults, describe, SETTINGS, PAUSE, RESULT_ACTIONS } from '../src/menu.js';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, createInput, stepRace, eventsFor } from '../src/sim/race.js';
 import { ACTIONS, DEFAULT_KEYS } from '../src/input.js';
@@ -218,6 +218,24 @@ test('results: next and replay act when available', () => {
   assert.equal(named('replay').length, 1);
   menu.command('right');
   assert.equal(RESULT_ACTIONS[menu.view().board.index].id, 'next');
+});
+
+test('results for a dare show score, best and the line reached, with no sector dots', () => {
+  const clears = [{ count: 1, mult: 1, hard: false }, { count: 2, mult: 2, hard: false }, { count: 3, mult: 1, hard: true }];
+  const r = dareResults({ card: 'The Pad · The Lineup', score: 8, best: 5, line: 4, clears, speed: '140 MPH', hasNext: true });
+  assert.equal(r.dare, true);
+  assert.equal(r.label, 'SCORE');
+  assert.equal(r.time, '8');
+  assert.equal(r.line, 4);
+  assert.deepEqual(r.delta, { text: 'New best · +3', tone: 'good' });
+  assert.deepEqual(r.rows.map((x) => [x.label, x.value, x.tag]), [['Line 1', '+1', ''], ['Line 2', '+4', '×2'], ['Line 3', '+3', 'HARD']]);
+  assert.ok(r.rows.every((x) => !('dot' in x)));
+  assert.deepEqual(r.stats.map((x) => [x.label, x.value]), [['Best', '8'], ['Cleared', '6'], ['Top speed', '140 MPH']]);
+  assert.deepEqual(dareResults({ card: '', score: 2, best: 5, line: 2, clears: [], speed: '' }).delta, { text: '3 short of your best', tone: 'bad' });
+  assert.equal(dareResults({ card: '', score: 0, best: 0, line: 1, clears: [], speed: '' }).delta.text, 'First time on the board');
+  const { menu } = setup();
+  menu.open('results', { results: r });
+  assert.equal(describe(menu.view()), 'Results. Score 8. Line 4. New best · +3. Retry.');
 });
 
 test('pointer: hovering selects, clicking a mode drives it', () => {

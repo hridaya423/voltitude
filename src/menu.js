@@ -230,6 +230,19 @@ export function createMenu({ settings, data, on }) {
   return api;
 }
 
+export function dareResults({ card, score, best, line, clears, speed, hasNext = false }) {
+  const delta = !best ? { text: 'First time on the board', tone: '' }
+    : score > best ? { text: `New best · +${score - best}`, tone: 'good' }
+      : { text: score === best ? 'Equal to your best' : `${best - score} short of your best`, tone: score === best ? 'good' : 'bad' };
+  return {
+    card, dare: true, pos: 0, field: 1, medal: null, label: 'SCORE', time: `${score}`, line, delta, note: '',
+    title: 'CLEARS',
+    rows: clears.map((c) => ({ label: `Line ${c.count}`, value: `+${c.count * c.mult}`, tag: c.hard ? 'HARD' : c.mult > 1 ? `×${c.mult}` : '', tone: c.hard ? 'bad' : 'good' })),
+    stats: [{ label: 'Best', value: `${Math.max(score, best)}` }, { label: 'Cleared', value: `${clears.reduce((n, c) => n + c.count, 0)}` }, { label: 'Top speed', value: speed }],
+    hasNext,
+  };
+}
+
 export function describe(view) {
   const { page, board, floor, tyre } = view;
   if (page === 'venue') { const v = floor.venues[floor.index]; return `Venue ${v.name}, ${v.place}. ${v.note}.${v.id === floor.current ? ' Loaded.' : ' Press Enter to load.'}`; }
@@ -239,6 +252,7 @@ export function describe(view) {
     const value = r.type === 'toggle' ? (r.value ? 'on' : 'off') : r.type === 'slider' ? `${Math.round(r.value * 100)} percent` : r.value || '';
     return `${page === 'keys' ? 'Controls' : 'Settings'}. ${r.label.split(' \u00b7 ')[0]} ${value}. ${r.note || ''}`;
   }
+  if (board.kind === 'results' && board.dare) return `Results. Score ${board.time}. Line ${board.line}. ${board.delta.text}. ${board.actions[board.index].label}.`;
   if (board.kind === 'results') return `Results. ${board.pos ? `Position ${board.pos} of ${board.field}. ` : ''}Time ${board.time}. ${board.delta.text}. ${board.note || ''} ${board.actions[board.index].label}.`;
   if (board.kind === 'pause') return `Paused. ${board.rows[board.index].label}.`;
   const e = board.rows[board.index];

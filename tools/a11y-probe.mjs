@@ -6,7 +6,7 @@ import { join } from 'node:path';
 const out = process.argv[2] || '/tmp/a11y-probe';
 const port = process.env.PORT || 8790;
 const MIN_PX = 14, MIN_RATIO = 4.5;
-const RUNS = [['proving', 'gp', 'day'], ['proving', 'tt', 'day'], ['launch', 'gp', 'night']];
+const RUNS = process.env.RUNS ? process.env.RUNS.split(',').map((r) => r.split(':')) : [['proving', 'gp', 'day'], ['proving', 'tt', 'day'], ['launch', 'gp', 'night'], ['pad', 'lineup', 'day']];
 mkdirSync(out, { recursive: true });
 
 const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -25,11 +25,11 @@ for (const [venue, event, session] of RUNS) {
   });
   await page.goto(`http://localhost:${port}/index.html?venue=${venue}&event=${event}&autostart&autopilot&${session}`);
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__g?.race.phase === 'racing', null, { timeout: 120000, polling: 100 });
-  await page.waitForFunction(() => document.querySelector('#sectors .now') && window.__g.race.raceTick > 120 * 14, null, { timeout: 200000, polling: 250 });
+  await page.waitForFunction(() => (document.querySelector('#sectors .now') || window.__g.race.dare) && window.__g.race.raceTick > 120 * 14, null, { timeout: 200000, polling: 250 });
   await page.evaluate(() => {
     const { hud } = window.__g;
-    hud.toast('TRACK LIMITS', 'orange', '+0.6 S PENALTY');
-    hud.toast('PERFECT LANDING', 'good');
+    if (window.__g.race.dare) { hud.toast('+6 CLEARED ×2', 'good', 'LINE 4 NEXT'); hud.toast('CLIPPED', 'red', 'SCORE 6'); }
+    else { hud.toast('TRACK LIMITS', 'orange', '+0.6 S PENALTY'); hud.toast('PERFECT LANDING', 'good'); }
     hud.gasGain('near_miss', 0.12);
     hud.hint('Hold <kbd>Space</kbd> to hover');
   });
