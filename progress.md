@@ -1268,4 +1268,6 @@ Phase 1 gate:
 - Blocked: the cold test needs three people, five minutes each, without instructions. The user has to run it and record the quotes here.
 - Blocked: perf. The load average was 27 now and 128 over five minutes, with other processes on several cores. `tools/perf.mjs` timed out booting. Rerun `node tools/perf.mjs "http://localhost:8790/index.html?venue=pad&event=lineup&autostart&autopilot&day" 60` and the same with `night` on a quiet machine.
 
-Next: Phase 2, starting with Task 2.5 (ghost links, testable headless) and Task 2.1 (encoder).
+- Task 2.1: `src/clip/encode.js` with mp4-muxer 5.2.2 vendored at `rl/vendor/mp4-muxer-5.2.2/` (MIT, licence file included). Codec order: H.264 High, then Baseline, then VP9 in MP4. A WebM fallback is not needed, because mp4-muxer carries VP9. `tools/clip-test.mjs` passes: avc1.640028 is picked, 90 frames give a duration of 1.5 s and 2.18 MB, ffprobe reports `h264,1920,1080,90`, and a decoded frame shows the garage. Encoding took 6.1 s for 90 frames in headless Chrome on a loaded machine.
+
+Next: Task 2.2 (portrait replay render).
