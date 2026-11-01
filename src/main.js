@@ -138,6 +138,7 @@ const { createCarView, loadCar, PROBE_LAYER } = await import('./render/car.js');
 await loadCar();
 for (const o of [skyMesh, terrainGroup, course.group, venueArt?.group].filter(Boolean)) o.traverse((m) => { if (!m.isInstancedMesh) m.layers.enable(PROBE_LAYER); });
 const carView = createCarView({ quality: settings.quality, envMap, headlights: NIGHT });
+scene.add(carView.vapour.points);
 scene.add(carView.root);
 post.track(carView.root);
 const garage = createGarage({ renderer, night: NIGHT, settings, sunUniform, fogDensity, skyTex });
@@ -847,7 +848,9 @@ function draw(dt, ticks = -1) {
     const gd = gInterp.distanceTo(interp);
     ghostView.root.visible = gd > 3 && ghost.race.phase !== 'finished';
   }
-  if (!inGarage) dust.update(time, dt, interp, c, renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360));
+  const pixelScale = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
+  if (!inGarage) dust.update(time, dt, interp, c, pixelScale);
+  carView.vapour.update(time, pixelScale);
   if (inGarage) {
     if (menu.dirty || menu.listening) {
       garageView = menu.view();

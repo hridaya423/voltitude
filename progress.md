@@ -1305,4 +1305,9 @@ Phase 3:
   - Sheet `docs/sheets/2026-11-01-paint-dust.jpg`: before at golden (top left), dust at full (top right), a close 3/4 with flakes, and full dust at night. The flakes read as a fine grain only at the closest framing. `npm test`: 144 of 144.
   - Not checked: dust building up in a real off-road run. The frames set `dust` directly.
 
-Next: Task 3.4 (cold-gas plumes and downwash).
+- Task 3.4: cold-gas plumes. The existing additive cones stay. `createVapour` in `src/render/fx.js` adds a world-space vapour trail. The car view emits from each nozzle at a rate set by its power, with the nozzle's exit speed plus the car's velocity, so the trail hangs in the air behind the car. About 7% of the particles are small sunlit ice glints. The existing ground dust now also rises when the car hops or hovers within 1.5 m of the ground.
+  - Sheet `docs/sheets/2026-11-01-plumes.jpg`, from a fixed camera beside the start: rest, a hop with down plumes and dust, the vapour columns left behind, and a boost from rest with its trail. `npm test`: 144 of 144.
+  - Not done: the refracting cone. The post chain's `uHeat` is a screen-space ground shimmer with no per-object mask, so plume refraction needs a mask pass. Deferred to Task 3.7, which owns heat shimmer.
+  - Not done: the plan's 4 s portrait clip. The clip renders through the same `draw`, and replay time only moves forward, so old particles expire. No clip was rendered to prove it.
+
+Next: Task 3.5 (ground).

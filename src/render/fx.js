@@ -45,8 +45,10 @@ export function createDust(height, count = 600) {
     update(time, dt, p, c, pixelScale) {
       mat.uniforms.uTime.value = time;
       mat.uniforms.uScale.value = pixelScale;
-      const k = (c.mode === 2 ? Math.min(1, c.speed / 25) : 0) * Math.max(0, 1 - (p.y - height(p.x, p.z)) / 9);
-      acc += dt * k * (40 + c.speed * 2.2);
+      const gap = p.y - height(p.x, p.z);
+      const k = (c.mode === 2 ? Math.min(1, c.speed / 25) : 0) * Math.max(0, 1 - gap / 9);
+      const wash = c.lifting || c.hopT > 0.4 ? Math.max(0, 1 - (gap - 0.6) / 1.5) : 0;
+      acc += dt * (k * (40 + c.speed * 2.2) + wash * 160);
       let n = Math.min(60, Math.floor(acc));
       acc -= n;
       if (!n) return;
@@ -140,6 +142,78 @@ export function createFireworks(shells = 8, per = 180) {
         next = (next + 1) % shells;
         queue.splice(i, 1);
       }
+    },
+  };
+}
+
+export function createVapour(count = 768) {
+  const p0 = new Float32Array(count * 3), vel = new Float32Array(count * 3), born = new Float32Array(count).fill(-99), seed = new Float32Array(count);
+  for (let i = 0; i < count; i++) seed[i] = Math.random();
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(p0, 3));
+  geo.setAttribute('vel', new THREE.BufferAttribute(vel, 3));
+  geo.setAttribute('born', new THREE.BufferAttribute(born, 1));
+  geo.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+  for (const a of ['position', 'vel', 'born']) geo.attributes[a].setUsage(THREE.DynamicDrawUsage);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uScale: { value: 600 }, uSun: { value: new THREE.Color('#fff1e0') }, uAmb: { value: new THREE.Color('#7d8496') } },
+    vertexShader: /* glsl */ `
+      attribute vec3 vel; attribute float born; attribute float seed;
+      uniform float uTime; uniform float uScale; varying float vA; varying float vS; varying float vT;
+      void main() {
+        float t = uTime - born;
+        float life = 0.45 + seed * 0.5;
+        vT = t / life;
+        vA = t < 0.0 || t > life ? 0.0 : smoothstep(0.0, 0.05, t) * pow(1.0 - t / life, 1.5);
+        float drag = (1.0 - exp(-t * 6.0)) / 6.0;
+        vec3 p = position + vel * drag + vec3(0.0, t * t * 0.4, 0.0);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        vS = seed;
+        float size = seed > 0.93 ? 0.05 : 0.12 + t * 2.4;
+        gl_PointSize = size * uScale / -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uSun; uniform vec3 uAmb; varying float vA; varying float vS; varying float vT;
+      void main() {
+        vec2 q = gl_PointCoord - 0.5;
+        float d = dot(q, q) * 4.0;
+        if (d > 1.0 || vA <= 0.0) discard;
+        if (vS > 0.93) { float s = (1.0 - d) * vA * step(vT, 0.5) * (0.6 + 0.4 * sin(vS * 900.0 + vT * 40.0)); gl_FragColor = vec4(uSun * s * 3.0, 0.0); return; }
+        float a = (1.0 - d) * (1.0 - d) * vA * 0.3;
+        vec3 c = mix(uAmb, uSun, 0.45 + 0.3 * vS);
+        gl_FragColor = vec4(c * a, a);
+      }`,
+    transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  let next = 0, lo = -1, cnt = 0;
+  return {
+    points,
+    emit(x, y, z, vx, vy, vz, time) {
+      const i = next;
+      next = (next + 1) % count;
+      if (lo < 0) lo = i;
+      cnt++;
+      p0[i * 3] = x; p0[i * 3 + 1] = y; p0[i * 3 + 2] = z;
+      vel[i * 3] = vx; vel[i * 3 + 1] = vy; vel[i * 3 + 2] = vz;
+      born[i] = time;
+    },
+    update(time, pixelScale) {
+      mat.uniforms.uTime.value = time;
+      mat.uniforms.uScale.value = pixelScale;
+      if (lo < 0) return;
+      cnt = Math.min(cnt, count);
+      for (const name of ['position', 'vel', 'born']) {
+        const at = geo.attributes[name];
+        at.clearUpdateRanges();
+        const w = name === 'born' ? 1 : 3;
+        if (lo + cnt <= count) at.addUpdateRange(lo * w, cnt * w);
+        else { at.addUpdateRange(lo * w, (count - lo) * w); at.addUpdateRange(0, (lo + cnt - count) * w); }
+        at.needsUpdate = true;
+      }
+      lo = -1; cnt = 0;
     },
   };
 }

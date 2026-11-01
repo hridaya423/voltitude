@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../../rl/vendor/three-r169/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
 import { CAR } from '@rl/js/config.js';
+import { createVapour } from './fx.js';
 
 const COLD = new THREE.Color('#bfefff');
 
@@ -254,6 +255,7 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
   if (wing) wing.visible = false;
   let plume = null, head = null;
   const uDust = { value: 0 }, uCar = { value: new THREE.Matrix4() };
+  const vapour = ghost || lite ? null : createVapour(), puff = new Float32Array(NOZ.length), vp = new THREE.Vector3(), vd = new THREE.Vector3();
   if (!ghost) {
     plume = createPlume(lite);
     holder.add(plume);
@@ -274,6 +276,7 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
   let spin = 0, lastSpeed = 0, aLong = 0, aLat = 0, bob = 0, brakeGlow = 0;
   return {
     root: holder,
+    vapour,
     reflect(renderer, scene, viewer, indoors) {
       if (mats.paint) mats.paint.envMapIntensity = indoors ? 0.3 : 1.2;
       if (mats.glass) mats.glass.envMapIntensity = indoors ? 0.4 : 2.2;
@@ -342,6 +345,18 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
         if (lite) plume.visible = dist < 160 && (c.boosting || P[0] > 0.02);
       }
       if (!lite) { holder.updateMatrixWorld(); uCar.value.copy(chassis.matrixWorld).invert(); }
+      if (vapour && plume) {
+        const P = plume.material.uniforms.uPow.value;
+        for (let k = 0; k < NOZ.length; k++) {
+          puff[k] = P[k] > 0.05 ? puff[k] + dt * P[k] * (k < 4 ? 110 : 70) : 0;
+          while (puff[k] >= 1) {
+            puff[k]--;
+            vp.fromArray(NOZ[k].pos).applyMatrix4(holder.matrixWorld);
+            vd.fromArray(NOZ[k].dir).transformDirection(holder.matrixWorld).multiplyScalar((k < 4 ? 16 : 11) * (0.7 + Math.random() * 0.6));
+            vapour.emit(vp.x, vp.y, vp.z, vd.x + c.vx + (Math.random() - 0.5) * 2, vd.y + c.vy + (Math.random() - 0.5) * 2, vd.z + c.vz + (Math.random() - 0.5) * 2, time);
+          }
+        }
+      }
     },
   };
 }
