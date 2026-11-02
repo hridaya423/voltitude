@@ -1561,3 +1561,12 @@ The user said the trench looked sloppy and black, and the HUD was cluttered.
 - The game points at the Worker through `<meta name="voltitude-api">`. The `voltitude.app` placeholders are now `voltitude.vercel.app` (OG, canonical, share links, Worker fallback, launch drafts).
 - Checked through the live Worker: `/r/2cc791411789` carries the og tags and forwards to the game. A local build opened `#g=2cc791411789`, loaded the Launch Complex, started The Trench and raced the ghost.
 - Canonical domain is now https://voltitude.hridya.tech (Cloudflare-proxied CNAME to Vercel, already serving the build). Swapped in for voltitude.vercel.app in OG, canonical, share links, the Worker's `GAME` var and fallback, and the launch drafts.
+
+## Session 2026-11-02 (cont.): Lineup retune and real vehicles
+
+- User: "the lineup feels way too easy and effortless" and "instead of stupid cubes make it be actual cars".
+- Pad lineup moved from `{ at: 18, pitch: 7.5 }` to `{ at: 120, pitch: 11 }`. The pad terrain is rebaked.
+- Measured on The Pad: the autopilot reaches the lip at 57.9 m/s and throws 106 m. Flat out gives 65 m/s and 134 m. Lift on the descent with a full tank reaches 264 m.
+- The result: line 1 needs flat-out throttle, lines 2 to 4 need lift, and line 5 and beyond need gas earned from near misses, landings and tricks. The dare autopilot (`bot.js`) clears 4 and clips on line 5.
+- The cubes are replaced by Kenney Car Kit models (CC0): hatch, taxi, van, pickup and delivery truck. Each is an InstancedMesh per kind, scaled to its collision box. The clip flash tints the instance red.
+- Evidence: screenshots of a forced line of 8 in flight show the row as distinct vehicles on the road, with shadows. `npm test` 157 of 157, `npm run test:server` 6 of 6.

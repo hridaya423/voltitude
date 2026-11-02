@@ -24,7 +24,7 @@ export function autopilot(race, inp, skill = 1) {
   }
   vmax *= 0.97 + 0.03 * skill;
   inp.steer = steerTo(c, track, 0, 0, track.curv[Math.min(n - 1, c.hint + Math.round(2 + c.speed * 0.12))]);
-  inp.pitch = 0; inp.roll = 0; inp.reset = 0;
+  inp.pitch = 0; inp.roll = 0; inp.reset = 0; inp.lift = 0;
   inp.throttle = c.speed < vmax ? 1 : 0;
   inp.brake = c.speed > vmax + 4 ? 1 : 0;
   const tag = track.bot[c.hint] || '';
@@ -50,5 +50,8 @@ export function autopilot(race, inp, skill = 1) {
       inp.boost = pitch > 0.1 && clear < 1 ? 1 : 0;
     }
   }
+  const L = race.dare && track.lineup;
+  if (L && c.hint > L.lip - 200 && c.hint < L.lip + 5 && c.mode !== 0) { inp.throttle = 1; inp.brake = 0; inp.boost = 0; }
+  if (L && c.mode === 0 && c.hint >= L.lip) { inp.boost = 0; inp.lift = c.vy < 0 ? 1 : 0; }
   return inp;
 }

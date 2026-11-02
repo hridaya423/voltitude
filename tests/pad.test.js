@@ -10,7 +10,7 @@ test('the pad builds, bakes and laps', () => {
   assert.ok(pad.baked, 'terrain bake is current');
   assert.ok(track.closed && track.lap > 1400 && track.lap < 1650, `lap ${track.lap} m`);
   assert.equal(track.jumps.length, 1);
-  assert.deepEqual(track.lineup, { lip: track.jumps[0].lip, i0: track.jumps[0].lip + 18, pitch: 7.5 });
+  assert.deepEqual(track.lineup, { lip: track.jumps[0].lip, i0: track.jumps[0].lip + 120, pitch: 11 });
   const tt = eventsFor(track).find((e) => e.id === 'tt');
   const race = createRace(pad, { event: tt, seed: 1 });
   const inp = createInput();

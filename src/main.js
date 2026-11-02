@@ -768,8 +768,9 @@ function tick() {
   }
   if (ghost) snapshot(ghost.race.car, gprev);
   for (const g of dailyGhosts) { snapshot(g.race.car, g.prev); g.step(); }
-  if (autoplay && current.circuit && !current.spur) botInput(race, simIn, 0.97);
-  else if (autoplay || race.phase === 'finished') { if (!current.circuit || current.spur) autopilot(race, simIn, 1); }
+  const racer = current.circuit && !current.spur && current.kind !== 'dare';
+  if (autoplay && racer) botInput(race, simIn, 0.97);
+  else if ((autoplay || race.phase === 'finished') && !racer) autopilot(race, simIn, 1);
   else { Object.assign(simIn, input.state); touch?.apply(simIn, DT, race.car.mode === 0); }
   if (race.phase !== 'finished') {
     packInput(simIn, packed, 0);

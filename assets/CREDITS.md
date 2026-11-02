@@ -2,7 +2,7 @@
 
 Every asset below is CC0 1.0 (public domain dedication). No attribution is required; it is given as courtesy. Redistribution inside a game is permitted.
 
-All files were downloaded from Poly Haven (https://polyhaven.com, API https://api.polyhaven.com). License: https://polyhaven.com/license (CC0).
+Unless a section says otherwise, files were downloaded from Poly Haven (https://polyhaven.com, API https://api.polyhaven.com). License: https://polyhaven.com/license (CC0).
 
 ## Sky
 
@@ -62,3 +62,11 @@ Sound sources, authors and licences are listed in [`audio/CREDITS.md`](audio/CRE
 ## Type and mark
 
 Archivo (Omnibus-Type) and Martian Mono (Evil Martians) are self-hosted in `fonts/` (latin subsets of the variable files from Google Fonts). Both are under the SIL Open Font License 1.1. The mark (`mark.svg`, `icon.svg`, `src/mark.js`) is drawn for this project.
+
+## Lineup vehicles (`models/lineup/`)
+
+The parked vehicles in The Lineup. The renderer merges each GLB into one mesh and scales it to its collision box.
+
+| Files | Asset | Author | Source | License |
+|---|---|---|---|---|
+| `hatchback-sports.glb`, `taxi.glb`, `van.glb`, `truck.glb`, `delivery.glb`, `Textures/colormap.png` | Car Kit 3.1 | Kenney | https://kenney.nl/assets/car-kit | CC0 |

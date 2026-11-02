@@ -47,16 +47,27 @@ function run(race, script, ticks = 900) {
   return events;
 }
 
-test('a car at 62 m/s off the kicker clears a line of three and the line grows', () => {
-  const race = dareAt(lip - 2, 62, 3);
+test('at 66 m/s, flat out, throttle alone clears a line of one and the line grows', () => {
+  const race = dareAt(lip - 2, 66, 1);
   const events = run(race, (inp) => { inp.throttle = 1; });
-  const clears = events.filter((e) => e.type === 'clear');
   assert.equal(events.filter((e) => e.type === 'clip').length, 0);
-  assert.equal(clears.length, 1);
-  assert.equal(clears[0].count, 3);
-  assert.equal(race.dare.count, 4);
-  assert.equal(race.dare.cleared, 3);
-  assert.equal(race.dare.score, 3 * clears[0].mult);
+  assert.equal(events.find((e) => e.type === 'clear')?.count, 1);
+  assert.equal(race.dare.count, 2);
+  assert.equal(race.dare.cleared, 1);
+});
+
+test('throttle alone falls short of a line of two, so the thrusters have to work', () => {
+  const events = run(dareAt(lip - 2, 66, 2), (inp) => { inp.throttle = 1; });
+  assert.ok(events.some((e) => e.type === 'clip'), `no clip: ${events.map((e) => e.type).join(',')}`);
+  assert.equal(events.filter((e) => e.type === 'clear').length, 0);
+});
+
+test('holding lift on the way down carries a line of three', () => {
+  const race = dareAt(lip - 2, 66, 3);
+  const events = run(race, (inp, c) => { inp.throttle = 1; inp.lift = c.mode === 0 && c.vy < 0 ? 1 : 0; });
+  assert.equal(events.filter((e) => e.type === 'clip').length, 0);
+  assert.equal(events.find((e) => e.type === 'clear')?.count, 3);
+  assert.equal(race.dare.score, 3 * race.dare.mult);
 });
 
 test('a slow car hits the first vehicle, and the dare ends', () => {
@@ -108,8 +119,8 @@ test('a lineup point inside a box is a clip; one just above it is a near miss', 
 });
 
 test('a barrel roll over the line doubles the clear', () => {
-  const race = dareAt(lip - 2, 62, 2);
-  const events = run(race, (inp, c) => { inp.throttle = 1; inp.roll = c.mode === 0 && Math.abs(c.barrel) < TAU - 0.3 ? 1 : 0; });
+  const race = dareAt(lip - 2, 66, 2);
+  const events = run(race, (inp, c) => { inp.throttle = 1; inp.roll = c.mode === 0 && Math.abs(c.barrel) < TAU - 0.3 ? 1 : 0; inp.lift = c.mode === 0 && c.vy < 0 ? 1 : 0; });
   const clear = events.find((e) => e.type === 'clear');
   assert.ok(clear, `no clear: ${events.map((e) => e.type).join(',')}`);
   assert.equal(clear.mult, 2);
@@ -117,9 +128,9 @@ test('a barrel roll over the line doubles the clear', () => {
 });
 
 test('a hard landing after the line keeps the count and resets the multiplier', () => {
-  const race = dareAt(lip - 2, 62, 1, false);
+  const race = dareAt(lip - 2, 66, 1, false);
   race.dare.mult = 3;
-  const events = run(race, (inp, c) => { inp.throttle = 1; inp.pitch = c.mode === 0 && c.air < 38 ? 1 : 0; });
+  const events = run(race, (inp, c) => { inp.throttle = 1; inp.pitch = c.mode === 0 && c.air < 38 ? 1 : 0; inp.lift = c.mode === 0 && c.vy < 0 ? 1 : 0; });
   const clear = events.find((e) => e.type === 'clear');
   assert.ok(clear, `no clear: ${events.map((e) => e.type + (e.quality ? ':' + e.quality : '')).join(',')}`);
   assert.equal(clear.hard, true);
@@ -130,10 +141,11 @@ test('a hard landing after the line keeps the count and resets the multiplier', 
 
 test('a recorded dare replays to the same line and score, so a clip shows what happened', async () => {
   const { createRecorder, encodeRun, createGhost } = await import('../src/sim/ghost.js');
-  const { botInput, packInput, unpackInput } = await import('../src/sim/race.js');
+  const { packInput, unpackInput } = await import('../src/sim/race.js');
+  const { autopilot } = await import('../src/sim/bot.js');
   const race = createRace(pad, { event: LINEUP }), rec = createRecorder(), inp = createInput(), q = new Int8Array(6);
-  for (let t = 0; t < 120 * 70; t++) {
-    if (race.phase === 'racing') botInput(race, inp, 0.97);
+  for (let t = 0; t < 120 * 100; t++) {
+    if (race.phase === 'racing') autopilot(race, inp, 1);
     packInput(inp, q, 0); unpackInput(q, 0, inp);
     rec.push(inp);
     stepRace(race, inp);
@@ -141,7 +153,7 @@ test('a recorded dare replays to the same line and score, so a clip shows what h
   }
   assert.ok(race.dare.cleared >= 3, `bot cleared ${race.dare.cleared}`);
   const ghost = createGhost(pad, encodeRun(race, rec.bytes()));
-  for (let t = 0; t < 120 * 70; t++) ghost.step();
+  for (let t = 0; t < 120 * 100; t++) ghost.step();
   assert.deepEqual(ghost.race.dare, race.dare);
   assert.equal(ghost.race.car.x, race.car.x);
 });
