@@ -9,10 +9,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "voltitude"
-database_id = "set-after-wrangler-d1-create"
-
-[limits]
-cpu_ms = 30000
+database_id = "cd9097ac-92d2-42b4-9b80-50d528958d64"
 
 [vars]
-GAME = "https://voltitude.app/"
+GAME = "https://voltitude.vercel.app/"

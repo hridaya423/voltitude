@@ -1549,3 +1549,14 @@ The user said the trench looked sloppy and black, and the HUD was cluttered.
   - The state label floats above the speed plate, so the plate holds only speed and gas.
 - Evidence: sheet `docs/sheets/2026-11-02-trench-hud.jpg` (trench at 5 s and 10 s, Proving TT, Launch GP). `a11y-probe`: PASS, 105 elements, 0 failing. `npm test`: 155 of 155. Exploits on Launch: PASS.
 - Cloudflare Worker: not deployed. `wrangler whoami` says not logged in, and envsync has no Cloudflare token.
+
+## Session 2026-11-02 (cont.): deploy (user approved: "deploy and then push all the changes to gh so vercel deploys too")
+
+- Worker deployed: https://voltitude.hridayahoney.workers.dev. D1 `voltitude` (cd9097ac-92d2-42b4-9b80-50d528958d64), schema applied, `GAME` = https://voltitude.vercel.app/.
+- The free plan rejects `[limits] cpu_ms`, so it is removed. Measured live:
+  - `/daily/2026-11-09` returns 200.
+  - A forged trench run (1 s faster) gets 422.
+  - The Trench author run gets 201 in 179 ms, id `2cc791411789`, and appears on the board.
+  - Launch TT and Proving TT author runs get 503: they exceed the free plan's CPU limit. Three of the seven authored dailies are time trials, so their boards stay "offline" until the paid plan. The client shows "Daily board offline" on that 503.
+- The game points at the Worker through `<meta name="voltitude-api">`. The `voltitude.app` placeholders are now `voltitude.vercel.app` (OG, canonical, share links, Worker fallback, launch drafts).
+- Checked through the live Worker: `/r/2cc791411789` carries the og tags and forwards to the game. A local build opened `#g=2cc791411789`, loaded the Launch Complex, started The Trench and raced the ghost.

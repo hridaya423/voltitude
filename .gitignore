@@ -6,3 +6,4 @@ trailer/out/
 trailer/renders/
 trailer/.hyperframes/
 .jury/*/shots/
+server/.wrangler/

@@ -12,8 +12,12 @@ One Cloudflare Worker with D1. It re-simulates every submitted run with the game
 
 Test locally: `node --test server/test/*.test.js`. Load test: `node server/load.mjs 1000`.
 
-Deploy (not done yet; it publishes the service):
+Deployed 2026-11-02 at https://voltitude.hridayahoney.workers.dev (D1 `voltitude`, id in `wrangler.toml`). To redeploy, run `npx wrangler deploy` from this folder.
+
+First-time deploy steps:
 
 1. `npx wrangler d1 create voltitude`, then put the printed id in `wrangler.toml`.
 2. `npx wrangler d1 execute voltitude --remote --file=schema.sql`
-3. `npx wrangler deploy` from this folder. Re-simulation needs the paid plan's CPU limit (`[limits] cpu_ms`); a 35 s run costs about 9 ms of CPU in node on an M-series laptop.
+3. `npx wrangler deploy` from this folder.
+
+The account is on the free plan, which allows 10 ms of CPU per request and rejects a `[limits] cpu_ms` setting. Measured live: The Trench (22 s) re-simulates and stores; 3 to 4 minute time trials return 503. To accept time trials, move to the paid plan and add `[limits]` with `cpu_ms = 30000` back to `wrangler.toml`.

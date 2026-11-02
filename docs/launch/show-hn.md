@@ -2,7 +2,7 @@
 
 **Title:** Show HN: Voltitude – a browser stunt racer where the server replays every run
 
-**URL:** https://voltitude.app/ [replace with the deployed domain]
+**URL:** https://voltitude.vercel.app/
 
 **Text:**
 
