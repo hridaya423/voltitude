@@ -1362,3 +1362,6 @@ Next: Phase 4 (the range).
 - `npm test`: 144 of 144.
 
 Next: Phase 5.
+
+## Handoff 2026-11-02
+The second compaction happened at the start of Phase 5. The handoff is at /private/tmp/claude-501/shook-handoff-2026-11-02.md. Task 5.1 (The Ramp) has no code yet.
