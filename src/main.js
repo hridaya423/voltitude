@@ -499,13 +499,14 @@ async function postDaily(result) {
   result.note = API ? 'Posting to the daily board…' : 'Daily board offline';
   menu.refresh();
   if (!API) return;
+  const run = lastRun, score = race.dare?.score, ev = current;
   try {
     const og = await ogImage().catch((e) => { console.warn('og', e); return null; });
-    const res = await fetch(`${API}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ venue: venue.id, run: lastRun, score: race.dare?.score, day: TODAY, name: callsign, og }) });
+    const res = await fetch(`${API}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ venue: venue.id, run, score, day: TODAY, name: callsign, og }) });
     const body = await res.json();
     if (!res.ok && res.status !== 409) throw new Error(body.error);
     submitted = body.id || null;
-    const board = await (await fetch(`${API}/board/${venue.id}.${current.id}/${TODAY}`)).json();
+    const board = await (await fetch(`${API}/board/${venue.id}.${ev.id}/${TODAY}`)).json();
     result.note = res.ok ? `Daily rank ${body.rank} of ${board.rows.length} · ${callsign}` : 'This exact run is already on the board';
     result.title = 'DAILY BOARD';
     result.rows = board.rows.slice(0, 8).map((r) => ({ label: `${r.rank}. ${r.name}`, value: r.score ?? fmt(r.total), tag: r.id === body.id ? 'YOU' : '', tone: r.id === body.id ? 'good' : '' }));
@@ -1055,13 +1056,57 @@ async function makeClip(portrait) {
   }
 }
 async function ghostUrl() {
-  if (submitted) return `${location.origin}${location.pathname}#g=${submitted}`;
+  if (submitted) return `${API}/r/${submitted}`;
   const { encodeLink } = await import('./share.js');
   return `${location.origin}${location.pathname}#g=${await encodeLink(lastRun, venue.id)}`;
 }
 
+function peakTick(run) {
+  const g = createGhost(world, run), { track } = g.race.world;
+  let best = Math.max(0, run.total - 240), top = 2;
+  while (g.race.phase !== 'finished' && g.race.tick < 120 * 600) {
+    g.step();
+    const c = g.race.car, alt = c.y - track.H[c.hint * 3 + 1];
+    if (c.mode === 0 && c.uy > 0.7 && alt > top) { top = alt; best = g.race.raceTick; }
+  }
+  return best;
+}
+
 async function ogImage() {
-  return null;
+  if (!lastRun || clipping) return null;
+  const [width, height] = [1200, 630], at = peakTick(lastRun);
+  const out = Object.assign(document.createElement('canvas'), { width, height }), g2 = out.getContext('2d');
+  clipping = true;
+  const was = { mode, aspect: camera.aspect };
+  try {
+    replay = createGhost(world, lastRun);
+    while (replay.race.phase === 'countdown' || replay.race.raceTick < at - 40) replay.step();
+    race = replay.race;
+    mode = 'replay';
+    snapshot(race.car, prev);
+    chase.snap();
+    if (ghostView) ghostView.root.visible = false;
+    ghost = null;
+    renderer.setPixelRatio(1);
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    for (let f = 0; f < 20; f++) draw(1 / 60, 2);
+    g2.drawImage(renderer.domElement, 0, 0, width, height);
+    const blob = await new Promise((r) => out.toBlob(r, 'image/jpeg', 0.85));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  } finally {
+    replay = null;
+    mode = was.mode;
+    renderer.setPixelRatio(scale);
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.aspect = was.aspect;
+    camera.updateProjectionMatrix();
+    clipping = false;
+  }
 }
 $('sharePick').addEventListener('click', (e) => { const f = e.target.closest('button')?.dataset.fmt; if (f) makeClip(f === 'portrait'); });
 $('shareClose').addEventListener('click', closeShare);

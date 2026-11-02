@@ -80,6 +80,23 @@ async function board(env, key, day) {
   return json({ venue, event, day, rows: results.map((r, k) => ({ rank: k + 1, ...r })) });
 }
 
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function card(env, url, id) {
+  const row = /^[0-9a-f]{12}$/.test(id) && await env.DB.prepare('SELECT venue, event, name, total, score, og IS NOT NULL AS og FROM runs WHERE id = ?').bind(id).first();
+  if (!row) return new Response('not found', { status: 404 });
+  const game = env.GAME || 'https://voltitude.app/', to = `${game}#g=${id}`;
+  const result = row.score !== null ? `${row.score} points` : `${Math.floor(row.total / 7200)}:${((row.total % 7200) / 120).toFixed(3).padStart(6, '0')}`;
+  const title = `${row.name} · ${result} on ${VENUES[row.venue].name}. Beat it.`;
+  const image = row.og ? `${url.origin}/og/${id}.jpg` : `${game}assets/og.jpg`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="Race this run's ghost in Voltitude, a browser stunt racer.">
+<meta property="og:image" content="${esc(image)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:url" content="${esc(url.href)}"><meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="refresh" content="0; url=${esc(to)}"></head><body><a href="${esc(to)}">Race the ghost</a><script>location.replace(${JSON.stringify(to)})</script></body></html>`;
+  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url), p = url.pathname.split('/').filter(Boolean);
@@ -92,6 +109,7 @@ export default {
         const row = await env.DB.prepare('SELECT venue, name, run FROM runs WHERE id = ?').bind(p[1]).first();
         return row ? json({ venue: row.venue, name: row.name, run: JSON.parse(row.run) }) : json({ error: 'not found' }, 404);
       }
+      if (req.method === 'GET' && p[0] === 'r' && p.length === 2) return await card(env, url, p[1]);
       if (req.method === 'GET' && p[0] === 'og' && p.length === 2 && p[1].endsWith('.jpg')) {
         const row = await env.DB.prepare('SELECT og FROM runs WHERE id = ?').bind(p[1].slice(0, -4)).first();
         if (!row?.og) return new Response('not found', { status: 404, headers: CORS });

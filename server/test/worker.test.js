@@ -66,3 +66,15 @@ test('a daily run must be the event of that day', async () => {
   const board = await call('GET', `/board/pad.ramp/${day}`);
   assert.equal(board.body.rows.length, 1);
 });
+
+test('a run link unfurls with its own image and forwards to the game', async () => {
+  const id = (await call('POST', '/runs', { venue: 'pad', run: padded(ramp.run, 7), score: ramp.score, name: 'card', og: JPEG })).body.id;
+  const res = await worker.fetch(new Request(`https://w.test/r/${id}`), { ...env, GAME: 'https://game.test/' });
+  const html = await res.text();
+  assert.equal(res.headers.get('content-type'), 'text/html; charset=utf-8');
+  assert.match(html, new RegExp(`<meta property="og:image" content="https://w.test/og/${id}.jpg">`));
+  assert.match(html, /twitter:card" content="summary_large_image"/);
+  assert.match(html, new RegExp(`location.replace\\("https://game.test/#g=${id}"\\)`));
+  assert.match(html, /card · 585 points on The Pad/);
+  assert.equal((await worker.fetch(new Request('https://w.test/r/zzz'), env)).status, 404);
+});
