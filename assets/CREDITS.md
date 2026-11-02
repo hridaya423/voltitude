@@ -61,4 +61,4 @@ Sound sources, authors and licences are listed in [`audio/CREDITS.md`](audio/CRE
 
 ## Type and mark
 
-Archivo (Omnibus-Type) and Martian Mono (Evil Martians) load from Google Fonts. Both are under the SIL Open Font License 1.1. The mark (`mark.svg`, `icon.svg`, `src/mark.js`) is drawn for this project.
+Archivo (Omnibus-Type) and Martian Mono (Evil Martians) are self-hosted in `fonts/` (latin subsets of the variable files from Google Fonts). Both are under the SIL Open Font License 1.1. The mark (`mark.svg`, `icon.svg`, `src/mark.js`) is drawn for this project.

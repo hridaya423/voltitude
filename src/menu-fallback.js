@@ -18,7 +18,7 @@ function records(save) {
 export function showFallback({ settings, save, reason }) {
   const root = document.getElementById('fallback');
   const keys = ACTIONS.map(([id, label]) => `<li><span>${label}</span><kbd>${(settings.keys[id] || []).map(keyLabel).join(' / ') || '—'}</kbd></li>`).join('');
-  root.innerHTML = `<div class="fb"><h1>VOLTITUDE</h1><p class="why" role="alert">The garage and the races need WebGL, and this browser did not provide it. <span class="reason"></span> Turn on hardware acceleration or try another browser, then reload.</p><button type="button" class="fb-btn">Reload</button><div class="fb-grid"><div><h2>Records</h2>${records(save)}</div><div><h2>Controls</h2><ul>${keys}</ul></div></div></div>`;
+  root.innerHTML = `<div class="fb"><h1>VOLTITUDE</h1><p class="why" role="alert">The garage and the races need WebGL, and this browser did not provide it. <span class="reason"></span> Turn on hardware acceleration or try another browser, then reload.</p><p class="why">A fan project. Not affiliated with or endorsed by Tesla, Inc. “Tesla” and “Roadster” are trademarks of their owner.</p><button type="button" class="fb-btn">Reload</button><div class="fb-grid"><div><h2>Records</h2>${records(save)}</div><div><h2>Controls</h2><ul>${keys}</ul></div></div></div>`;
   root.querySelector('.reason').textContent = reason ? `(${reason})` : '';
   const reload = root.querySelector('.fb-btn');
   reload.addEventListener('click', () => location.reload());

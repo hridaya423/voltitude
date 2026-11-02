@@ -79,6 +79,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = true;
 renderer.info.autoReset = false;
 const PHONE = params.has('tier') ? params.get('tier') === 'phone' : matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 900;
+if (!settings.reduced && !PHONE) $('hero').play().catch(() => {});
 const post = createPost(renderer, { msaa: params.has('msaa') ? Number(params.get('msaa')) : 0, session: SESSION, lite: PHONE, levels: PHONE ? 3 : 4 });
 const maxScale = PHONE ? 1 : Math.min(devicePixelRatio || 1, 2);
 let scale = Math.min(maxScale, Number(params.get('scale')) || maxScale);
@@ -914,7 +915,7 @@ let warmFrames = 0;
 function loop(now) {
   requestAnimationFrame(loop);
   if (clipping) { last = now; return; }
-  if (warmFrames >= 0 && ++warmFrames > 8 && (now - last < 20 || performance.now() - readyAt > 1500)) { warmFrames = -1; $('loading').classList.add('done'); }
+  if (warmFrames >= 0 && ++warmFrames > 8 && (now - last < 20 || performance.now() - readyAt > 1500)) { warmFrames = -1; $('loading').classList.add('done'); $('hero').pause(); }
   const ms = now - last;
   last = now;
   const dt = Math.min(0.1, ms / 1000);

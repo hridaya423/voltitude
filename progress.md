@@ -1475,3 +1475,31 @@ Next: Phase 7 (mark and type, HUD motion pass, trailer and launch page, launch).
   - Reduced motion: the in-game setting never reached the CSS. `settings.reduced` now sets `html.reduced`, which drops the translates (fade only) and swaps the dialog animations for a fade. The OS media query already collapses durations to 1 ms. Checked: with `reducedMotion: 'reduce'`, `html` has `reduced` and the HUD card's off-state translate is `none`; without it, `-28px`.
   - Evidence: sheet `docs/sheets/2026-11-02-motion.jpg`: HUD frames 0, 90, 180 and 500 ms after show, and the row highlight in mid-slide (captured with the duration stretched to 1.2 s through route injection, since a screenshot takes longer than 180 ms). `node tools/a11y-probe.mjs`: PASS, 105 text elements, 0 failing. `npm test`: 155 of 155.
   - Not done: the results screen's rows and the settings tyre still change without motion. The text colour swaps at once while the highlight travels.
+
+- Task 7.3: trailer and launch page.
+  - Footage: `tools/trailer-clips.mjs` drives five autopilot runs and exports each through the game's own `exportClip` in landscape:
+    - The Lineup on The Pad.
+    - The Ramp.
+    - The Trench, 20 s window.
+    - Proving Ground TT, 20 s window.
+    - Launch GP at night.
+  - Trailer: a HyperFrames project in `trailer/` (shot list and notes in `trailer/REVIEW.md`).
+    - 30 s at 1920x1080 and 30 fps: nine shots, dip cuts at the chapter seams, and Archivo titles ("IT FLIES.", "THE RAMP", "THE TRENCH", "GRAND PRIX", "ONE DAILY CARD. EVERY GHOST ON IT.").
+    - End card: the mark drops, the bar wipes in, then the wordmark, then "Free in your browser · voltitude.app".
+    - Sound is the game's own clip mix. Measured, not heard: −14.3 LUFS, −1.8 dBTP.
+    - `npx hyperframes check`: ok.
+    - Render: `trailer/out/voltitude-trailer.mp4`, 47 MB, gitignored. Rebuild with `node tools/trailer-clips.mjs trailer/assets/clips`, then `cd trailer && npx hyperframes render -o out/voltitude-trailer.mp4`.
+  - Launch page: the game is the page. The loading screen now carries it:
+    - `assets/hero.mp4`, an 8.6 s 16:9 loop (720p, 1.1 MB) cut from the trailer. It plays on desktop only and not under reduced motion; phones and reduced motion get the poster. It pauses when the hangar appears.
+    - The lockup, a one-line pitch, the fan-project disclaimer, and share links for X, Reddit and Hacker News.
+    - OG and Twitter card tags pointing at `assets/og.jpg`: the Lineup leap, signature frame 1.
+    - A canonical link and `robots.txt`. The disclaimer also appears on the WebGL fallback page.
+    - `voltitude.app` is a placeholder until the deploy names the domain.
+  - Fonts are now self-hosted (`assets/fonts/`, variable woff2, 125 KB, preloaded). Chrome measures the same axes as from Google Fonts. Self-hosting removes a third-party round trip from boot, and the audit's 3.3 MB TTF result (Google serves TTF to non-browser user agents).
+  - The audit found no `<h1>` and no `<main>`. The lockup is now the `<h1>`, and the canvas, HUD and dialogs sit in `<main>`. Audit: 0 FAIL.
+  - Jury (`.jury/localhost-8790/scorecard.md`), from an independent critic subagent:
+    - Critic 7.3: Design 7.5, Usability 6.5, Creativity 8, Content 7.5. Jury estimate about 8.4.
+    - Caveat: the jury capture script timed out under software WebGL, so the critic scored GPU captures I chose. No hover, keyboard, reduced-motion or LCP data.
+    - Fixed after scoring: floor-pad labels crowding the borders, and no pitch line on the landing.
+    - Open: legend size and contrast, a sparse detail panel, minimap clipping on phone landscape, a sitemap and 404 at deploy.
+  - Evidence: sheets `docs/sheets/2026-11-02-launch-page.jpg` and the trailer contact sheets (scratchpad). `npm test`: 155 of 155.

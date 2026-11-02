@@ -1,3 +1,8 @@
 tools/node_modules/
 .DS_Store
 __pycache__/
+trailer/assets/clips/
+trailer/out/
+trailer/renders/
+trailer/.hyperframes/
+.jury/*/shots/

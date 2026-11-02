@@ -334,13 +334,13 @@ export function drawFloor(g, glow, f) {
     for (const [cx, cy] of [[x + 8, 32], [x + bw - 8, 32], [x + 8, h - 32], [x + bw - 8, h - 32]]) g.fillRect(cx - 24, cy - 24, 48, 48);
     g.fillStyle = paint; g.strokeStyle = paint;
     const words = v.name.toUpperCase().split(' ');
-    words.forEach((word, k) => put(g, word, x + bw / 2, 128 + k * 84, { size: 72, fam: DISPLAY, weight: '800 expanded', color: paint, align: 'center', gap: 4, max: bw - 120 }));
+    words.forEach((word, k) => put(g, word, x + bw / 2, 140 + k * 80, { size: 66, fam: DISPLAY, weight: '800 expanded', color: paint, align: 'center', gap: 4, max: bw - 120 }));
     g.fillStyle = paint; g.strokeStyle = paint;
     trace(g, VENUES[v.id], x + 120, 250, bw - 240, 300);
-    put(g, v.place.toUpperCase(), x + bw / 2, 624, { size: 40, color: paint, align: 'center', gap: 8 });
-    put(g, v.note.toUpperCase(), x + bw / 2, 684, { size: 38, color: paint, align: 'center', gap: 4 });
-    if (here) put(g, 'LOADED', x + bw / 2, 744, { size: 38, weight: 700, color: paint, align: 'center', gap: 10 });
-    else if (sel) put(g, 'ENTER  ·  LOAD', x + bw / 2, 744, { size: 38, weight: 700, color: paint, align: 'center', gap: 8 });
+    put(g, v.place.toUpperCase(), x + bw / 2, 612, { size: 40, color: paint, align: 'center', gap: 8 });
+    put(g, v.note.toUpperCase(), x + bw / 2, 664, { size: 38, color: paint, align: 'center', gap: 4 });
+    if (here) put(g, 'LOADED', x + bw / 2, 718, { size: 38, weight: 700, color: paint, align: 'center', gap: 10 });
+    else if (sel) put(g, 'ENTER  ·  LOAD', x + bw / 2, 718, { size: 38, weight: 700, color: paint, align: 'center', gap: 8 });
     if (sel) {
       glow.strokeStyle = C.redHot; glow.lineWidth = 8; glow.shadowColor = C.redHot; glow.shadowBlur = 20;
       glow.strokeRect(x + 24, 48, bw - 48, h - 96);

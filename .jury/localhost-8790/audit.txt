@@ -1,0 +1,8 @@
+WARN  /index.html                   no canonical link
+WARN  site                          404 page has no <h1> (design it: a way back, in the site voice)
+WARN  site                          no robots.txt
+WARN  site                          no sitemap
+
+1 pages crawled from http://localhost:8790/index.html?day
+heaviest page /index.html: ~153 KB | html 2 | JS 20 (gz) | CSS 5 (gz) | fonts 125 | images 0
+0 FAIL, 4 WARN
