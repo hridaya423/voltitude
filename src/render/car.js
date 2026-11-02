@@ -73,9 +73,9 @@ function createPlume(lite) {
 
 const models = {};
 
-export async function loadCar() {
+export async function loadCar(hero = true) {
   const loader = new GLTFLoader();
-  const [hi, lo] = await Promise.all(['roadster', 'roadster_lod1'].map((n) => loader.loadAsync(new URL(`../../assets/models/car/${n}.glb`, import.meta.url).href)));
+  const [lo, hi = lo] = await Promise.all(['roadster_lod1', ...(hero ? ['roadster'] : [])].map((n) => loader.loadAsync(new URL(`../../assets/models/car/${n}.glb`, import.meta.url).href)));
   models.hi = hi.scene; models.lo = lo.scene;
   models.lite = liteModel(hi.scene, (n) => NEAR[n] || n);
   models.liteFar = liteModel(lo.scene, (n) => (KEEP.has(n) ? n : 'black'));

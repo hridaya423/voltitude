@@ -161,8 +161,14 @@ function cardMaterial(uniforms, atlas, sunUniform, fogDensity) {
   return m;
 }
 
-async function loadBuffer(name) {
-  return (await fetch(new URL(name, BASE))).arrayBuffer();
+const buffers = new Map();
+function loadBuffer(name) {
+  if (!buffers.has(name)) {
+    buffers.set(name, fetch(new URL(`${name}.gz`, BASE))
+      .then((r) => (r.ok ? new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer() : Promise.reject(new Error(r.status))))
+      .catch(() => fetch(new URL(name, BASE)).then((r) => r.arrayBuffer())));
+  }
+  return buffers.get(name);
 }
 
 export async function createPeople(renderer, sunUniform, fogDensity, cards = false) {

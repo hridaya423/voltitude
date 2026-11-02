@@ -30,6 +30,21 @@ export function encodeHeights(H, hash) {
   return new Uint8Array(out);
 }
 
+export function packBake(bin) {
+  const n = (bin.length - 16) / 2, q = new Uint16Array(bin.buffer.slice(bin.byteOffset + 16, bin.byteOffset + bin.length));
+  const out = new Uint8Array(bin.length);
+  out.set(bin.subarray(0, 16));
+  for (let i = 0, prev = 0; i < n; i++) { const d = (q[i] - prev) & 0xffff; prev = q[i]; out[16 + i] = d & 0xff; out[16 + n + i] = d >> 8; }
+  return out;
+}
+
+export function unpackBake(packed) {
+  const n = (packed.length - 16) / 2, out = new Uint8Array(packed.length), q = new Uint16Array(out.buffer, 16, n);
+  out.set(packed.subarray(0, 16));
+  for (let i = 0, prev = 0; i < n; i++) { prev = (prev + (packed[16 + i] | (packed[16 + n + i] << 8))) & 0xffff; q[i] = prev; }
+  return out;
+}
+
 export function decodeHeights(buf, track, venue) {
   const head = new DataView(buf.buffer || buf, buf.byteOffset || 0);
   if (head.getUint32(0, true) !== trackHash(track, venue)) return null;

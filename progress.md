@@ -1427,3 +1427,23 @@ Next: Phase 6 (phone tier, touch, boot).
   - On short screens the HUD scales down. With touch on, the minimap and the keyboard hints hide, and on circuits the speed readout moves to bottom centre, clear of the buttons.
   - Evidence: Chrome phone emulation (844x390, DPR 3) driven with CDP touch events. On The Pad, a 60 px drag gave steer 0.86, a second finger gave boost 1, and a tap gave lift 1 with the car airborne (`hopped`). On Proving TT, holding GAS gave throttle 1 and the car reached 17 m/s, and a 50 px left drag with the other thumb gave steer −0.72. Buttons measured 56 to 88 px. Sheet `docs/sheets/2026-11-02-touch.jpg`. `npm test`: 153 of 153.
   - Not done: tilt steering (iOS needs a permission prompt; drag covers it). Not checked: the diegetic garage menu by touch, and play on a real iPhone and Pixel over the LAN. The garage legend still shows keyboard keys.
+
+- Task 6.3: boot. `window.__boot` records a mark per loading phase.
+  - Terrain bakes are delta coded, split into byte planes and gzipped (`packBake`/`unpackBake`, `.bin.gz`, about 40% smaller). The crowd VAT buffers are gzipped and cached so they load once. The client inflates both with `DecompressionStream`, and the raw files remain as a fallback.
+  - On phones: no hero car GLB (LOD1 only), LOD1 boulders, flat normals, and 1k albedo for terrain and road.
+  - The height bake, terrain textures, author ghosts, boulders, flora, stands, car and fonts now load in parallel instead of one after another.
+  - Download size: desktop 36.1 to 26.5 MB, phone 10.1 MB.
+  - Throttled cold boot to the first raced frame, measured on The Pad with `boot2.mjs`:
+    - Desktop at 50 Mbps: 7.0 to 6.4 s.
+    - Phone on Fast 4G (9 Mbps, 60 ms RTT, 4x CPU): 14.4 to 12.4 s.
+    - Unthrottled on localhost: 2.4 s.
+  - Both targets missed (3 s desktop, 5 s phone). Bandwidth alone sets a floor: 26.5 MB at 50 Mbps is 4.2 s, and 10.1 MB at 9 Mbps is 9 s. Meeting the targets needs a different design: boot into the hangar on a few MB and stream the venue in behind it. I did not build that.
+  - `npm test`: 155 of 155, including gz round-trip tests for the bake and the crowd buffers.
+
+### Phase 6 gate (2026-11-02)
+- Phone tier, touch and boot changes are built and verified in emulation only.
+- Open: 30 fps on a real iPhone 13 and Pixel 6, which needs the devices.
+- Failed: boot under 3 s on desktop and under 5 s on phone (measured 6.4 s and 12.4 s throttled, see 6.3).
+- Open: a cold playtest by someone new, which needs a person.
+
+Next: Phase 7 (mark and type, HUD motion pass, trailer and launch page, launch).

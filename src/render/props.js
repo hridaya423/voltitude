@@ -29,10 +29,10 @@ export function trackClearance(track) {
   };
 }
 
-export async function createBoulders(world, fogPatch) {
+export async function createBoulders(world, fogPatch, lite = false) {
   const loader = new GLTFLoader();
   const load = (url) => loader.loadAsync(url).catch(() => null);
-  const loaded = await Promise.all(MODELS.flatMap((m) => [load(`assets/models/${m}.glb`), load(`assets/models/${m}_lod1.glb`)]));
+  const loaded = (await Promise.all(MODELS.map((m) => Promise.all([lite ? null : load(`assets/models/${m}.glb`), load(`assets/models/${m}_lod1.glb`)])))).flatMap(([hi, lo]) => [hi || lo, lo]);
   const first = (gltf) => { let mesh = null; gltf?.scene.traverse((o) => { if (o.isMesh && !mesh) mesh = o; }); return mesh; };
   const kinds = [];
   for (let i = 0; i < loaded.length; i += 2) {

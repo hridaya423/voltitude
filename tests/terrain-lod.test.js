@@ -54,3 +54,15 @@ for (const id of ['proving', 'airfield', 'launch']) {
     assert.ok(worst >= PIXEL_AT, `coarse terrain over the track is drawn from ${worst.toFixed(0)} m away at ${where}`);
   });
 }
+
+test('the gzipped bake the client downloads unpacks to the exact bake', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { gunzipSync } = await import('node:zlib');
+  const { unpackBake } = await import('../src/sim/world.js');
+  for (const id of ['proving', 'airfield', 'launch', 'pad']) {
+    const bin = readFileSync(new URL(`../assets/terrain/height/${id}.bin`, import.meta.url));
+    const gz = readFileSync(new URL(`../assets/terrain/height/${id}.bin.gz`, import.meta.url));
+    assert.ok(gz.length < bin.length * 0.65, `${id} ${gz.length} of ${bin.length}`);
+    assert.deepEqual(unpackBake(new Uint8Array(gunzipSync(gz))), new Uint8Array(bin));
+  }
+});

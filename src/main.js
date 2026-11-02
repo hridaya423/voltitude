@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildWorld } from './sim/world.js';
+import { buildWorld, unpackBake } from './sim/world.js';
 import { VENUES, venueOf } from './sim/venues.js';
 import { createRace, stepRace, createInput as createSimInput, packInput, unpackInput, eventsFor, botInput, DT, SIM_VERSION, DARES } from './sim/race.js';
 import { ROSTER } from './sim/drivers.js';
@@ -59,7 +59,8 @@ const SESSION = ['golden', 'day', 'night'].find((s) => params.has(s)) || setting
 const NIGHT = SESSION === 'night';
 const saveSettings = () => store(STORE, settings);
 
-const progress = (k, text) => { $('loadFill').style.transform = `scaleX(${k})`; $('loadText').textContent = text; };
+const marks = (window.__boot = [['start', performance.now()]]);
+const progress = (k, text) => { marks.push([text, performance.now()]); $('loadFill').style.transform = `scaleX(${k})`; $('loadText').textContent = text; };
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 
 const canvas = $('view');
@@ -90,6 +91,10 @@ camera.layers.enable(4);
 scene.add(camera);
 const sunUniform = { value: SUN_DIR };
 const fogDensity = { value: SESSION === 'golden' ? 0.000476 : 0.00034 };
+const heightP = fetch(`assets/terrain/height/${venue.id}.bin.gz`)
+  .then(async (r) => (r.ok ? unpackBake(new Uint8Array(await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer())) : null))
+  .catch(() => fetch(`assets/terrain/height/${venue.id}.bin`).then(async (r) => (r.ok ? new Uint8Array(await r.arrayBuffer()) : null)))
+  .catch(() => null);
 const { sky: skyTex, info: skyInfo, sunIrradiance } = await loadSky(SESSION, renderer);
 const skyMesh = createSky(skyTex, skyInfo.maxLuminance);
 scene.add(skyMesh);
@@ -97,18 +102,23 @@ const sun = createCascades(scene, NIGHT ? '#9fb3e8' : SESSION === 'golden' ? '#f
 
 progress(0.15, 'Building the course…');
 await frame();
-const heightBin = await fetch(`assets/terrain/height/${venue.id}.bin`).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
-const world = buildWorld(heightBin ? new Uint8Array(heightBin) : null, venue);
+const world = buildWorld(await heightP, venue);
 const { track, terrain } = world;
-const terrainTex = await loadTerrainTextures(renderer, venue).catch((e) => { console.warn('terrain textures', e); return null; });
+const texP = loadTerrainTextures(renderer, venue, !PHONE).catch((e) => { console.warn('terrain textures', e); return null; });
+const authorP = fetch(`assets/ghosts/${venue.id}.json`).then((r) => r.json()).catch(() => ({}));
+const bouldersP = createBoulders(world, (m) => skyFog(m, sunUniform, fogDensity), PHONE).catch((e) => { console.warn('boulders', e); return new THREE.Group(); });
+const floraP = createFlora(world, (m, f) => skyFog(m, sunUniform, fogDensity, false, f)).catch((e) => { console.warn('flora', e); return { group: new THREE.Group(), update() {} }; });
+const standsP = createGrandstands(world, sunUniform, fogDensity, renderer, PHONE);
+const carP = import('./render/car.js').then(async (m) => { await m.loadCar(!PHONE); return m; });
+const fontsP = Promise.all([document.fonts.load('600 64px Michroma'), document.fonts.load('600 30px Saira')]).catch(() => null);
+const terrainTex = await texP;
 const terrainGroup = createTerrain(terrain, sunUniform, fogDensity, terrainTex, venue, track, PHONE ? 4 : 6);
 scene.add(terrainGroup);
-await document.fonts.load('600 64px Michroma').catch(() => null);
-await document.fonts.load('600 30px Saira').catch(() => null);
-const course = createRoad(world, sunUniform, fogDensity, renderer);
-const author = await fetch(`assets/ghosts/${venue.id}.json`).then((r) => r.json()).catch(() => ({}));
-scene.add(await createBoulders(world, (m) => skyFog(m, sunUniform, fogDensity)).catch((e) => { console.warn('boulders', e); return new THREE.Group(); }));
-const flora = await createFlora(world, (m, f) => skyFog(m, sunUniform, fogDensity, false, f)).catch((e) => { console.warn('flora', e); return { group: new THREE.Group(), update() {} }; });
+await fontsP;
+const course = createRoad(world, sunUniform, fogDensity, renderer, PHONE ? '1k' : '2k');
+const author = await authorP;
+scene.add(await bouldersP);
+const flora = await floraP;
 scene.add(flora.group);
 for (const m of [...course.group.children]) if (m.isMesh && !m.isInstancedMesh && m.geometry.attributes.position.count > 20000) { course.group.remove(m); course.group.add(chunkMesh(m)); }
 scene.add(createScrub(world, (m) => skyFog(m, sunUniform, fogDensity)), course.group, createTrackside(world, sunUniform, fogDensity, NIGHT).group);
@@ -117,7 +127,7 @@ if (track.closed) scene.add((await import('./render/circuit.js')).createCircuitP
 const venueArt = venue.id === 'airfield' ? (await import('./render/airfield.js')).createAirfield(world, sunUniform, fogDensity, renderer)
   : venue.id === 'launch' ? (await import('./render/launch.js')).createLaunchComplex(world, sunUniform, fogDensity, renderer, NIGHT) : null;
 if (venueArt) scene.add(venueArt.group);
-const stands = await createGrandstands(world, sunUniform, fogDensity, renderer, PHONE);
+const stands = await standsP;
 const festival = createFestival(world, sunUniform, fogDensity, NIGHT, stands);
 const range = createRange(world, sunUniform, fogDensity, festival.used);
 if (track.spurs && Object.keys(track.spurs).length) scene.add((await import('./render/spur.js')).createSpurs(world, sunUniform, fogDensity).group);
@@ -147,8 +157,7 @@ scene.environmentIntensity = NIGHT ? 0.55 : 1.0;
 
 progress(0.5, 'Rolling out the Roadster…');
 await frame();
-const { createCarView, loadCar, PROBE_LAYER } = await import('./render/car.js');
-await loadCar();
+const { createCarView, PROBE_LAYER } = await carP;
 for (const o of [skyMesh, terrainGroup, course.group, venueArt?.group].filter(Boolean)) o.traverse((m) => { if (!m.isInstancedMesh) m.layers.enable(PROBE_LAYER); });
 const carView = createCarView({ quality: PHONE ? 'low' : settings.quality, envMap, headlights: NIGHT });
 scene.add(carView.vapour.points);

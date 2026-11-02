@@ -35,3 +35,12 @@ test('audio manifest points at real files with sane loop windows and cues', () =
   for (const n of ['kerb', 'scrub', 'scrub_burn', 'crowd_bed2', 'motor_z1']) assert.ok(man.loops[n], n);
   for (const n of ['burst_a', 'ignite_gas', 'vent', 'kerb_a', 'contact_a']) assert.ok(man.real.cues[n], n);
 });
+
+test('the gzipped crowd buffers the client downloads match the raw ones', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { gunzipSync } = await import('node:zlib');
+  for (const f of ['vat_pos.bin', 'vat_nrm.bin', 'crowd.bin']) {
+    const raw = readFileSync(new URL(`../assets/crowd/${f}`, import.meta.url));
+    assert.ok(gunzipSync(readFileSync(new URL(`../assets/crowd/${f}.gz`, import.meta.url))).equals(raw), `${f}.gz is stale: regzip it`);
+  }
+});

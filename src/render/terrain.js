@@ -43,7 +43,7 @@ const GROUND = {
   coast: [['desert_sand', 7, 0.95], ['dry_rocks', 5, 0.9], ['laterite', 6, 0.92]],
 };
 
-export async function loadTerrainTextures(renderer, venue) {
+export async function loadTerrainTextures(renderer, venue, normals = true) {
   const loader = new THREE.TextureLoader();
   const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const get = (url, srgb) => loader.loadAsync(url).then((t) => {
@@ -52,8 +52,11 @@ export async function loadTerrainTextures(renderer, venue) {
     t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     return t;
   });
+  const flat = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1);
+  flat.wrapS = flat.wrapT = THREE.RepeatWrapping;
+  flat.needsUpdate = true;
   const set = async (name) => {
-    const [a, n] = await Promise.all([get(`assets/terrain/${name}/ground_albedo_2k.webp`, true), get(`assets/terrain/${name}/ground_nrm_2k.webp`, false)]);
+    const [a, n] = await Promise.all([get(`assets/terrain/${name}/ground_albedo_${normals ? 2 : 1}k.webp`, true), normals ? get(`assets/terrain/${name}/ground_nrm_2k.webp`, false) : flat]);
     return { a, n };
   };
   const rows = GROUND[venue.terrain.style] || GROUND.mesa;

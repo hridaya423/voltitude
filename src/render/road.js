@@ -119,11 +119,11 @@ export function panelMaterial(color, rough, metal, sunUniform, fogDensity, key, 
   return m;
 }
 
-function surfaceMaterial(renderer, sunUniform, fogDensity, grid) {
+function surfaceMaterial(renderer, sunUniform, fogDensity, grid, res) {
   const loader = new THREE.TextureLoader();
   const aniso = Math.min(16, renderer.capabilities.getMaxAnisotropy());
   const load = (f, srgb) => {
-    const t = loader.load(`assets/terrain/runway_asphalt/${f}_2k.webp`);
+    const t = loader.load(`assets/terrain/runway_asphalt/${f}_${res}.webp`);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.anisotropy = aniso;
     t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -233,7 +233,7 @@ function basisAt(track, i, out) {
   return out.setFromRotationMatrix(_m);
 }
 
-function runoffMesh(track, list, bar, sunUniform, fogDensity, renderer) {
+function runoffMesh(track, list, bar, sunUniform, fogDensity, renderer, res) {
   const parts = [];
   for (const side of [1, -1]) {
     const b = side > 0 ? bar.R : bar.L, gravel = side > 0 ? track.runoff.gravelR : track.runoff.gravelL;
@@ -248,8 +248,12 @@ function runoffMesh(track, list, bar, sunUniform, fogDensity, renderer) {
     t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     return t;
   };
-  const m = new THREE.MeshStandardMaterial({ map: load('desert_sand/ground_albedo_2k', true), normalMap: load('desert_sand/ground_nrm_2k', false), roughness: 0.95, metalness: 0, envMapIntensity: 0.5 });
-  const stones = load('dry_rocks/ground_albedo_2k', true), stonesN = load('dry_rocks/ground_nrm_2k', false);
+  const flat = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1);
+  flat.wrapS = flat.wrapT = THREE.RepeatWrapping;
+  flat.needsUpdate = true;
+  const nrm = (f) => (res === '2k' ? load(f, false) : flat);
+  const m = new THREE.MeshStandardMaterial({ map: load(`desert_sand/ground_albedo_${res}`, true), normalMap: nrm('desert_sand/ground_nrm_2k'), roughness: 0.95, metalness: 0, envMapIntensity: 0.5 });
+  const stones = load(`dry_rocks/ground_albedo_${res}`, true), stonesN = nrm('dry_rocks/ground_nrm_2k');
   skyFog(m, sunUniform, fogDensity, false, (sh) => {
     sh.uniforms.tStones = { value: stones }; sh.uniforms.tStonesN = { value: stonesN };
     sh.vertexShader = sh.vertexShader
@@ -275,7 +279,7 @@ function runoffMesh(track, list, bar, sunUniform, fogDensity, renderer) {
   return mesh;
 }
 
-export function createRoad(world, sunUniform, fogDensity, renderer) {
+export function createRoad(world, sunUniform, fogDensity, renderer, res = '2k') {
   const { track, terrain } = world;
   const group = new THREE.Group();
   const list = runs(track);
@@ -289,7 +293,7 @@ export function createRoad(world, sunUniform, fogDensity, renderer) {
   const grid = track.closed ? Array.from({ length: 12 }, (_, k) => { const g = gridSlot(track, k); return new THREE.Vector2(g.i * track.step - 1.2, g.lat); }) : [new THREE.Vector2(-1e4, 0)];
 
   const top = extrude(track, list, [(w, i) => [pavedEdge(track, i, 1), 0], (w, i) => [-pavedEdge(track, i, -1), 0]], (i, l) => [l, i * track.step, track.halfW[i], track.runoff.tyreL[i] + 2 * track.runoff.tyreR[i], kerb[i], lip[i], line[i], off[i % track.lap] || 0, kerb[i] * (off[i % track.lap] || 0) / track.halfW[i]]);
-  const surface = new THREE.Mesh(top, surfaceMaterial(renderer, sunUniform, fogDensity, grid));
+  const surface = new THREE.Mesh(top, surfaceMaterial(renderer, sunUniform, fogDensity, grid, res));
   surface.receiveShadow = true;
 
   const shellMat = panelMaterial(WHITE, 0.55, 0.05, sunUniform, fogDensity, 'shell', 8);
@@ -322,7 +326,7 @@ export function createRoad(world, sunUniform, fogDensity, renderer) {
     new THREE.BoxGeometry(track.halfW[ledAt] * 2 - 3, 0.05, 0.35).translate(0, 0.03, 0).applyQuaternion(basisAt(track, ledAt, _q)).translate(track.P[ledAt * 3], track.P[ledAt * 3 + 1], track.P[ledAt * 3 + 2]),
     new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.5, 2.8), toneMapped: false }));
   group.add(surface, shell, rails, caps, startLed);
-  if (track.closed) group.add(runoffMesh(track, list, bar, sunUniform, fogDensity, renderer));
+  if (track.closed) group.add(runoffMesh(track, list, bar, sunUniform, fogDensity, renderer, res));
 
   const capsGeo = [];
   for (const run of list) for (const [i, dir] of [[run[0], -1], [run[run.length - 1], 1]]) {
