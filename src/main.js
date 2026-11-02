@@ -167,6 +167,7 @@ function ensureGhostView() {
 }
 
 const input = createInput(settings);
+const touch = matchMedia('(pointer: coarse)').matches || params.has('touch') ? (await import('./touch.js')).createTouch($('touch'), { onPause: () => pause() }) : null;
 const audio = createAudio(settings);
 audio.stands(stands.centres);
 const hud = createHud(world, settings);
@@ -762,7 +763,7 @@ function tick() {
   for (const g of dailyGhosts) { snapshot(g.race.car, g.prev); g.step(); }
   if (autoplay && current.circuit && !current.spur) botInput(race, simIn, 0.97);
   else if (autoplay || race.phase === 'finished') { if (!current.circuit || current.spur) autopilot(race, simIn, 1); }
-  else Object.assign(simIn, input.state);
+  else { Object.assign(simIn, input.state); touch?.apply(simIn, DT, race.car.mode === 0); }
   if (race.phase !== 'finished') {
     packInput(simIn, packed, 0);
     unpackInput(packed, 0, simIn);
@@ -915,6 +916,7 @@ function loop(now) {
 function draw(dt, ticks = -1) {
   renderer.info.reset();
   if (ticks < 0) { input.poll(dt); menuKeys(); }
+  if (touch && (touch.on !== (mode === 'race') || touch.dare !== (current.kind === 'dare'))) touch.show(mode === 'race', current.kind === 'dare');
   const inGarage = mode === 'title' || mode === 'paused' || mode === 'results';
   if (inGarage !== garage.active) {
     garage.setActive(inGarage, scene, garageKeep);

@@ -17,6 +17,17 @@
 <body>
 <canvas id="view" aria-label="Race view"></canvas>
 
+<div id="touch" class="touch" hidden>
+  <div class="t-pad"><span class="t-stick" aria-hidden="true"></span></div>
+  <button type="button" data-t="pause" class="t-pause" aria-label="Pause">II</button>
+  <div class="t-btns">
+    <button type="button" data-t="lift">LIFT</button>
+    <button type="button" data-t="boost">BOOST</button>
+    <button type="button" data-t="brake">BRAKE</button>
+    <button type="button" data-t="gas" class="t-gas">GAS</button>
+  </div>
+  <p class="t-help">Drag to steer · tap to hop · hold to hover · second finger boosts</p>
+</div>
 <div id="hud" class="hud" hidden>
   <div class="hud-tl">
     <div class="card-label" id="card"></div>

@@ -199,3 +199,28 @@ button { font: inherit; }
 .share-close { justify-self: start; background: none !important; border-color: transparent !important; color: var(--ink-2) !important; padding: 0 !important; }
 .share-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
 .share-bar i { display: block; height: 100%; width: 100%; background: var(--red); transform-origin: left; transform: scaleX(0); }
+
+.touch { position: fixed; inset: 0; z-index: 3; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.touch[hidden] { display: none; }
+.t-pad { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; }
+.touch.dare .t-pad { width: 100%; }
+.t-stick { position: absolute; left: calc(var(--gut) + 24px); bottom: max(28px, env(safe-area-inset-bottom)); width: 112px; height: 56px; border-radius: 28px; background: var(--glass); border: 1px solid var(--hair); }
+.t-stick::after { content: ''; position: absolute; left: 34px; top: 6px; width: 44px; height: 44px; border-radius: 50%; background: var(--ink-2); }
+.touch.dare .t-stick { left: calc(50% - 56px); }
+.t-btns { position: absolute; right: var(--gut); bottom: max(28px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: 72px 88px; grid-template-rows: 64px 88px; gap: 12px; }
+.touch.dare .t-btns { display: none; }
+.t-btns button, .t-pause { min-width: 56px; min-height: 56px; border-radius: 16px; border: 1px solid var(--hair); background: var(--glass); color: var(--ink); font: 600 13px/1 var(--ui); letter-spacing: 0.14em; touch-action: none; }
+.t-btns button.on, .t-pause.on { background: var(--ink); color: #0b0c10; }
+.t-btns .t-gas { background: rgba(227, 25, 55, 0.5); }
+.t-pause { position: absolute; top: max(16px, env(safe-area-inset-top)); right: var(--gut); width: 56px; }
+.touch:not([hidden]) ~ .hud .hint { display: none; }
+.touch:not([hidden]):not(.dare) ~ .hud .dash { right: auto; left: 50%; transform: translateX(-50%) scale(0.62); transform-origin: bottom center; }
+.touch:not([hidden]) ~ .hud .map { display: none; }
+.t-help { position: absolute; left: 50%; bottom: max(96px, calc(env(safe-area-inset-bottom) + 96px)); transform: translateX(-50%); margin: 0; padding: 8px 14px; border-radius: 8px; background: var(--glass); color: var(--ink-2); font: 500 13px/1.3 var(--ui); white-space: nowrap; pointer-events: none; transition: opacity 600ms var(--ease); }
+.touch:not(.dare) .t-help, .touch.used .t-help { opacity: 0; }
+@media (max-height: 500px) {
+  .hud-tl, .hud-clock { transform: scale(0.72); transform-origin: top left; }
+  .hud-clock { transform-origin: top center; }
+  .dash { transform: scale(0.62); transform-origin: bottom right; }
+  .map { display: none; }
+}
