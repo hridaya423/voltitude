@@ -1,0 +1,15 @@
+name = "voltitude"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "../assets/terrain/height"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "voltitude"
+database_id = "set-after-wrangler-d1-create"
+
+[limits]
+cpu_ms = 30000
