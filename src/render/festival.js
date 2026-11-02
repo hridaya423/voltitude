@@ -20,7 +20,7 @@ function rng(seed) {
   };
 }
 
-export function festivalSites(world) {
+export function festivalSites(world, gaps = [9, 24, 44]) {
   const { track, terrain } = world, N = track.lap, line = lineFor(track), clear = trackClearance(track);
   const cams = [];
   for (let i = 0; i < N; i += 10) {
@@ -31,7 +31,7 @@ export function festivalSites(world) {
   for (let i = 0; i < N; i += 6) {
     const k = i * 3;
     if (track.gap[i] || track.loopMask[i] || track.U[k + 1] < 0.95) continue;
-    for (const side of [-1, 1]) for (const gap of [9, 24, 44]) {
+    for (const side of [-1, 1]) for (const gap of gaps) {
       const lat = side * ((side < 0 ? track.wallL[i] : track.wallR[i]) + gap);
       const x = track.P[k] + track.R[k] * lat, z = track.P[k + 2] + track.R[k + 2] * lat;
       if (clear(x, z) < gap - 2) continue;
@@ -185,7 +185,7 @@ export function createFestival(world, sunUniform, fogDensity, night, stands) {
   const zones = [];
   for (const a of track.jumps ?? []) for (const at of [a.lip - 40, a.to + 20]) zones.push(...pick(sites, used, 1, 44, (s) => fits(s) && near(s, (at + N) % N, 120)));
   zones.push(...pick(sites, used, 26, 44, fits));
-  const flagSites = pick(sites, used, 20, 30, (s) => s.gap === 24);
+  const flagSites = pick(sites, used, 8, 30, (s) => s.gap === 24);
   const tentSites = pick(sites, used, 8, 40, (s) => s.gap >= 24);
   const camps = pick(sites, used, 26, 60, (s) => s.gap === 44);
 
@@ -361,6 +361,7 @@ export function createFestival(world, sunUniform, fogDensity, night, stands) {
   let lastDraw = -1;
   return {
     group,
+    used,
     sites: { stage, paddock, zones, flags: flagSites, tents: tentSites },
     finishAt(out) { const k = track.finish * 3; return out.set(track.P[k], track.P[k + 1], track.P[k + 2]); },
     update(time, scale, race) {

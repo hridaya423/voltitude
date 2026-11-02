@@ -1342,3 +1342,23 @@ Phase 3:
 Phase 3 status: Tasks 3.1 to 3.8 are built and committed. Open human gates: the Phase 1 cold test and quiet-machine perf, the Phase 2 phone share and two-machine ghost link, and the Phase 3 blind clip test. The flora 1.5 ms budget needs the perf run.
 
 Next: Phase 4 (the range).
+
+## Session 2026-11-02: Phase 4, the range
+
+- Kit (4.1), changed from the plan: no Blender. `src/render/range.js` builds the kit from merged primitives, the pattern `launch.js` and `festival.js` already use. Pieces: test stand with flame bucket (52 m lattice), horizontal stand with trench, tank farm, water tower, propellant tanker, container stacks, antenna mast with dish, vertical tank pair, generators, and the rocket on its mount (110 m, half stainless, half black tile). Everything merges into five meshes (white, concrete, steel, silver, painted) plus one point cloud of red beacons, so the whole kit costs about 7 main draws and 10 shadow draws.
+- Placement (4.2): `festivalSites` takes setbacks (`[24, 50, 70, 110]`), and `createFestival` returns its used footprints so the kit never overlaps stands, camps or tents.
+  - Anchors sit at 110 m, spread around the lap.
+  - Mid-ground pieces come one per 110 m of track, with no repeat of a type within 200 m. Low pieces go at 24 m and tall ones at 50 to 70 m.
+  - The rocket is placed by a line-of-sight test from the grid camera: 14° to 30° off-axis to clear the start gantry, with sightlines passing near a grandstand rejected, then relaxed tiers.
+  - Counts: Proving 39, Airfield 39, Launch 30, The Pad 16.
+- Re-dress (4.3): flags drop from 20 to 8; the kit takes their sites. Launch already had a flame trench.
+- Draw calls: the baseline already broke the gate (up to 998). A per-object `renderBufferDirect` tally on the Launch grid found the player car at 220 (three shadow cascades), rivals at 47 each and boulders at 140. Fixes: only paint, gloss, black, carbon and tyre cast car shadows. Rival near LOD folds trim into black. Boulder cells grew from 140 m to 300 m, far LODs cast no shadows, and pebbles use one kind. Launch grid: 885 to 671.
+- Gate evidence (`gate4.mjs`, chase frames at 1, 9, 18, 30 and 45 s on all four venues, golden and night): every frame is under 700 draw calls (231 to 635). Sheets `docs/sheets/2026-11-02-range-before.jpg`, `-after.jpg` and `-night.jpg` (rows: airfield, launch, pad, proving). The rocket now shows from every grid.
+- Gate not met:
+  - Landmark in every frame: most frames now hold one, but some fast corners on Airfield and Proving still show only fences and stands. At night the kit reads only as silhouettes and beacons.
+  - Edge density at 0.05: nine frames fall short (lowest 0.039, plus one camera-in-car frame), most of them at speed with motion blur. The baseline had more.
+  - Collision proxies: not added. The kit sits at least 20 m beyond the walls, so ground cars cannot reach it, but a flying car can pass through it. Adding colliders changes the sim and the recorded ghosts.
+- Found: on night Proving at 18 s the chase camera sat inside a rival car. Not caused by this phase.
+- `npm test`: 144 of 144.
+
+Next: Phase 5.

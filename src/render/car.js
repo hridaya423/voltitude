@@ -85,7 +85,8 @@ const WHEELS = ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr'];
 const TYRE = new Set(['tire', 'tire_text', 'brake']);
 const RIM = new Set(['rim', 'spoke', 'gunmetal']);
 const KEEP = new Set(['paint', 'glass', 'light_front', 'light_tail']);
-const NEAR = { liner: 'gap', throat: 'gap', lens: 'reflector', amber: 'reflector', trim: 'carbon' };
+const NEAR = { liner: 'black', throat: 'black', lens: 'black', amber: 'black', trim: 'black', gap: 'black', gloss: 'black', carbon: 'black', lip: 'black', plate: 'black', reflector: 'black' };
+const CASTS = new Set(['paint', 'gloss', 'black', 'carbon', 'tire']);
 
 function bake(root, bucket) {
   const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), parts = {};
@@ -150,7 +151,7 @@ function buildModel(src, { envMap, ghost }) {
     const name = o.material.name;
     o.material = mats[name] ||= o.material.clone();
     o.material.envMap = envMap;
-    o.castShadow = name !== 'glass';
+    o.castShadow = CASTS.has(name);
     o.receiveShadow = true;
   });
   return { model, chassis, wheels, mats };

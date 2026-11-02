@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../../rl/vendor/three-r169/examples/jsm/loaders/GLTFLoader.js';
 
-const CELL = 140;
+const CELL = 300;
 const MODELS = ['desert_boulder_blocky', 'desert_boulder_brown', 'desert_boulder_orange', 'desert_boulder_round'];
 
 export function rng(seed) {
@@ -75,7 +75,7 @@ export async function createBoulders(world, fogPatch) {
     sc.set(size * (0.8 + rand() * 0.5), size * (0.6 + rand() * 0.6), size * (0.8 + rand() * 0.5));
     p.set(x, h - size * sink, z);
     m.compose(p, q, sc);
-    out[Math.floor(rand() * kinds.length)].push({ m: m.clone(), cx: Math.floor(x / CELL), cz: Math.floor(z / CELL) });
+    out[out === small ? 0 : Math.floor(rand() * kinds.length)].push({ m: m.clone(), cx: Math.floor(x / CELL), cz: Math.floor(z / CELL) });
   };
   for (let i = 0; i < track.n; i += 2) {
     const k = i * 3;
@@ -130,7 +130,7 @@ export async function createBoulders(world, fogPatch) {
         lod.addLevel(new THREE.Object3D(), far);
       } else {
         lod.addLevel(build(kind.geo, true), 0);
-        lod.addLevel(build(kind.lgeo, true), lo);
+        lod.addLevel(build(kind.lgeo, false), lo);
       }
       group.add(lod);
     }

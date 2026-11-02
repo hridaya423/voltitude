@@ -11,6 +11,7 @@ import { createPost, exposureFor } from './render/post.js';
 import { createCascades } from './render/shadows.js';
 import { createBoulders } from './render/props.js';
 import { createFlora } from './render/flora.js';
+import { createRange } from './render/range.js';
 import { createScrub } from './render/scrub.js';
 import { chunkMesh } from './render/chunks.js';
 import { skyFog } from './render/sky.js';
@@ -115,7 +116,8 @@ const venueArt = venue.id === 'airfield' ? (await import('./render/airfield.js')
 if (venueArt) scene.add(venueArt.group);
 const stands = await createGrandstands(world, sunUniform, fogDensity, renderer);
 const festival = createFestival(world, sunUniform, fogDensity, NIGHT, stands);
-scene.add(facility.group, stands.group, festival.group);
+const range = createRange(world, sunUniform, fogDensity, festival.used);
+scene.add(facility.group, stands.group, festival.group, range.group);
 const dust = createDust(terrain.height);
 const skids = createSkids();
 scene.add(dust.points, skids.mesh);
@@ -877,6 +879,7 @@ function draw(dt, ticks = -1) {
     stands.update(time, dt, NIGHT ? 1 : 0, camera);
     const px = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
     festival.update(time, px, race);
+    range.update(time, px, NIGHT ? 1 : 0);
     fireworks.update(time, px);
     gates.update(time, dt, px);
     lineup?.update(dt);
