@@ -66,7 +66,7 @@ export function createHud(world, settings) {
     begin(event, targetText) {
       track = event.spur ? world.track.spurs[event.spur] : world.track;
       buildMap(event);
-      setText(els.card, event.id === 'full' ? 'FULL RUN' : event.circuit ? event.name.toUpperCase() : `S${event.card - 1}  ${event.name.toUpperCase()}`);
+      setText(els.card, event.id === 'full' ? 'FULL RUN' : event.circuit || event.spur ? event.name.toUpperCase() : `S${event.card - 1}  ${event.name.toUpperCase()}`);
       els.cpLabel.firstChild.textContent = event.dare === 'ramp' ? 'TRY' : event.kind === 'dare' ? 'LINE' : event.circuit ? 'LAP' : 'CHECKPOINT';
       els.target.innerHTML = targetText || '';
       toggle(els.delta, 'on', false);

@@ -146,6 +146,19 @@ export const VENUES = {
     terrain: { style: 'coast', cx: 920, cz: 500, size: 5600, res: 934, ring: 1900, sea: [2400, [[1200, -780, 700, 500], [390, 615, 130, 95]]], mesas: [], buttes: [], pad: null },
     lakes: [],
     look: { sat: 0.35, tint: [1.22, 1.17, 1.06], sand: '#c9bda4', dune: '#a99a80' },
+    dares: ['trench'],
+    spurs: {
+      trench: {
+        start: [200, 4.5, -60], yaw: 90, w: 6, pieces: [
+          { len: 70, sector: 'Start' }, { len: 40, w: 4.5, cp: true, gate: { h: 1.6, r: 4, at: 20 } },
+          { len: 50, sector: 'Trench', cp: true, roof: 1, gate: { h: 1.6, r: 4, at: 30 } }, { len: 80, bank: 180, tube: 4.5, roof: 1 },
+          { len: 35, sector: 'Ceiling', cp: true, roof: 1, gate: { h: 1.6, r: 4, at: 15 } }, { len: 35, roof: 1, gate: { h: 1.6, r: 4, at: 20 } },
+          { len: 80, bank: 0, tube: 4.5, roof: 1 }, { len: 40, roof: 1 },
+          { len: 110, turn: -180, w: 6, sector: 'Turn', cp: true }, { len: 80, cp: true, gate: { h: 1.6, r: 4.5, at: 40 } },
+          { len: 120, cp: true, gate: { h: 1.6, r: 4.5, at: 60 } }, { len: 40, finish: true },
+        ],
+      },
+    },
   },
   pad: {
     id: 'pad', name: 'The Pad', place: 'Test range', circuit: PAD,

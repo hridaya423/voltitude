@@ -41,7 +41,8 @@ export function unpackInput(buf, o, inp) {
   return inp;
 }
 
-const DARES = { lineup: 'The Lineup', ramp: 'The Ramp' };
+const DARES = { lineup: 'The Lineup', ramp: 'The Ramp', trench: 'The Trench' };
+const GATE_MISS = 3;
 const RAMP = { tries: 3, wait: 180, stall: 360, roll: 150 };
 
 export function eventsFor(track, venue = null) {
@@ -51,7 +52,9 @@ export function eventsFor(track, venue = null) {
       id, name, kind, laps, from: 0, to: track.lap, gas: 1, circuit: true, perLap: perLap.length,
       cps: Array.from({ length: laps }, () => perLap).flat(),
     });
-    const spur = (id) => ({ ...mode(id, DARES[id], 'dare', 1), dare: id, spur: id, from: 10, to: track.spurs[id].n - 1, perLap: 0, cps: [] });
+    const spur = (id, s = track.spurs[id]) => s.gates.length
+      ? { ...mode(id, DARES[id], 'trial', 1), dare: id, spur: id, circuit: false, from: 1, to: s.finish, perLap: 0, cps: [...s.cps.filter((i) => i > 1 && i < s.finish), s.finish], gates: s.gates.length }
+      : { ...mode(id, DARES[id], 'dare', 1), dare: id, spur: id, from: 10, to: s.n - 1, perLap: 0, cps: [] };
     const list = [...(venue?.dares || []).map((id) => (track.spurs?.[id] ? spur(id) : mode(id, DARES[id], 'dare', 99))), mode('gp', 'Grand Prix', 'gp', 3), mode('tt', 'Time Trial', 'tt', 3), mode('pr', 'Practice', 'pr', 99)];
     return list.map((e, k) => Object.assign(e, { card: k + 1 }));
   }
@@ -130,7 +133,8 @@ function respawn(race, e, from = e.lastIdx, fromSpeed = e.lastSpeed) {
   const { track } = race.world;
   const c = e.car;
   let i = from;
-  for (let n = 0; n < track.lap && !safeAt(track, i); n++) i = (i + track.lap - 1) % track.lap;
+  if (track.closed) for (let n = 0; n < track.lap && !safeAt(track, i); n++) i = (i + track.lap - 1) % track.lap;
+  else while (i > 0 && !safeAt(track, i)) i--;
   const speed = Math.min(fromSpeed, safeAt(track, c.hint) ? 90 : 45);
   placeCar(c, track, i, speed, e.driver ? lineFor(track).off[i] : 0);
   c.gas = Math.max(c.gas, RESPAWN_GAS);
@@ -152,6 +156,7 @@ function progress(race, e) {
 
 function finishEntry(race, e) {
   e.done = true;
+  if (race.event.gates) e.penalty += GATE_MISS * (race.event.gates - e.gateLaps.filter((v) => v !== undefined).length);
   e.total = race.raceTick + Math.round(e.penalty * 120);
   e.finishPos = ++race.finished;
   if (e === race) { race.phase = 'finished'; emit(race, 'finish', { t: e.total }); }

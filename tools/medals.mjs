@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { loadWorld, ghostUrl } from './load-world.mjs';
 import { VENUES } from '../src/sim/venues.js';
 import { createRace, stepRace, createInput, eventsFor, packInput, unpackInput, botInput } from '../src/sim/race.js';
@@ -8,9 +8,10 @@ import { createRecorder, encodeRun } from '../src/sim/ghost.js';
 for (const id of process.argv[2] && process.argv[2] !== 'all' ? [process.argv[2]] : Object.keys(VENUES)) {
   const world = loadWorld(id);
   if (!world.baked) throw new Error(`terrain not baked for ${id}`);
-  const out = {};
-  for (const event of eventsFor(world.track)) {
-    if (event.circuit && event.kind !== 'tt') continue;
+  const only = process.argv[3];
+  const out = only && existsSync(ghostUrl(id)) ? JSON.parse(readFileSync(ghostUrl(id), 'utf8')) : {};
+  for (const event of eventsFor(world.track, world.venue)) {
+    if ((event.circuit && event.kind !== 'tt') || event.kind === 'dare' || (only && event.id !== only)) continue;
     const race = createRace(world, { event, seed: 1 });
     const rec = createRecorder();
     const raw = createInput(), applied = createInput(), bytes = new Int8Array(6);

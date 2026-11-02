@@ -220,3 +220,44 @@ test('the autopilot finishes the ramp, and its recording replays to the same sco
   while (ghost.race.phase !== 'finished') ghost.step();
   assert.deepEqual(ghost.race.dare, race.dare);
 });
+
+const launch = loadWorld('launch');
+const TRENCH = eventsFor(launch.track, launch.venue).find((e) => e.id === 'trench');
+
+async function trenchRun(meddle = () => {}) {
+  const { autopilot } = await import('../src/sim/bot.js');
+  const race = createRace(launch, { event: TRENCH }), inp = createInput(), events = [];
+  for (let t = 0; t < 120 * 90 && race.phase !== 'finished'; t++) {
+    autopilot(race, inp, 1);
+    meddle(race);
+    stepRace(race, inp);
+    events.push(...race.events);
+    race.events.length = 0;
+  }
+  return { race, events };
+}
+
+test('the trench is a timed spur on the launch complex with six gates, two of them on the ceiling', () => {
+  assert.equal(launch.baked, true);
+  assert.deepEqual(eventsFor(launch.track, launch.venue).map((e) => e.id), ['trench', 'gp', 'tt', 'pr']);
+  assert.equal(TRENCH.kind, 'trial');
+  assert.equal(TRENCH.gates, 6);
+  const spur = launch.track.spurs.trench;
+  assert.equal(spur.gates.filter((g) => spur.U[g.i * 3 + 1] < -0.99).length, 2);
+  assert.equal(TRENCH.cps[TRENCH.cps.length - 1], spur.finish);
+});
+
+test('the autopilot threads all six trench gates in about thirty seconds with no penalty', async () => {
+  const { race, events } = await trenchRun();
+  assert.equal(race.phase, 'finished');
+  assert.equal(events.filter((e) => e.type === 'gate').length, 6);
+  assert.equal(race.penalty, 0);
+  assert.equal(race.respawns, 0);
+  assert.ok(race.total > 120 * 18 && race.total < 120 * 40, `total ${(race.total / 120).toFixed(2)} s`);
+});
+
+test('a missed trench gate costs three seconds on the clock', async () => {
+  const { race } = await trenchRun((r) => { if (r.gateLaps[2] !== undefined) r.gateLaps[2] = undefined; });
+  assert.equal(race.penalty, 3);
+  assert.equal(race.total, race.raceTick + 360);
+});

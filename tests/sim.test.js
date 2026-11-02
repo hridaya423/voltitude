@@ -150,7 +150,7 @@ for (const id of Object.keys(VENUES)) {
     for (const t of race.laps) assert.ok(t / 120 > lapLo && t / 120 < lapHi, `lap ${(t / 120).toFixed(1)} s`);
   });
 
-  if (circuit && !VENUES[id].dares) test(`${name}: full throttle into the walls is slower than braking for the corners`, () => {
+  if (circuit && !VENUES[id].dares?.includes('lineup')) test(`${name}: full throttle into the walls is slower than braking for the corners`, () => {
     const lap2 = (flat) => {
       const race = createRace(world, { event: eventsFor(world.track).find((e) => e.id === 'tt'), seed: 1 });
       const inp = createInput();

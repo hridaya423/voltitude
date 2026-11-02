@@ -58,6 +58,29 @@ function chevrons(track, from, to) {
   return out;
 }
 
+function tunnel(track, height) {
+  const out = [];
+  const { P, T, R, roof, halfW } = track;
+  let a = 0;
+  while (a < track.n && !roof[a]) a++;
+  let b = a;
+  while (b + 1 < track.n && roof[b + 1]) b++;
+  if (a >= track.n) return out;
+  const k = a * 3, len = Math.hypot(P[b * 3] - P[k], P[b * 3 + 2] - P[k + 2]), w = halfW[a], wallH = 2 * w + 0.6;
+  const yaw = Math.atan2(T[k], T[k + 2]), cx = (P[k] + P[b * 3]) / 2, cz = (P[k + 2] + P[b * 3 + 2]) / 2, y = P[k + 1];
+  const put = (g, lat, up) => out.push(g.rotateY(yaw).translate(cx + R[k] * lat, y + up, cz + R[k + 2] * lat));
+  for (const s of [-1, 1]) put(new THREE.BoxGeometry(1.2, wallH + 1.4, len), s * (w + 0.9), wallH / 2 - 0.7);
+  put(new THREE.BoxGeometry(2 * w + 3, 1.2, len * 0.42), 0, -1.2);
+  for (let d = -len / 2 + 6; d < len / 2; d += 12) for (const s of [-1, 1]) {
+    const g = new THREE.BoxGeometry(2.2, wallH + 2.6, 1.6);
+    out.push(g.rotateY(yaw).translate(cx + R[k] * s * (w + 1.8) + T[k] * d, y + wallH / 2, cz + R[k + 2] * s * (w + 1.8) + T[k + 2] * d));
+  }
+  const mid = (a + b) >> 1, m = mid * 3, top = y + wallH + 0.6;
+  for (const [dl, dt] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) out.push(new THREE.BoxGeometry(1.4, 34, 1.4).translate(P[m] + R[m] * dl * (w + 1.8) + T[m] * dt * 6, top + 17, P[m + 2] + R[m + 2] * dl * (w + 1.8) + T[m + 2] * dt * 6));
+  for (let h = 8; h <= 34; h += 8) out.push(new THREE.BoxGeometry(2 * w + 5, 0.8, 13.4).rotateY(yaw).translate(P[m], top + h, P[m + 2]));
+  return out;
+}
+
 export function createSpurs(world, sunUniform, fogDensity) {
   const group = new THREE.Group();
   const deck = panelMaterial('#2f3033', 0.82, 0.02, sunUniform, fogDensity, 'spur-deck', 4);
@@ -75,6 +98,7 @@ export function createSpurs(world, sunUniform, fogDensity) {
       posts.push(...supports(track, world.terrain.height, at.Curl, track.n - 1));
       marks.push(...chevrons(track, at.Curl, at.Ceiling ?? track.n - 1));
     }
+    unders.push(...tunnel(track, world.terrain.height));
   }
   if (!tops.length) return { group };
   merged(group, tops, deck, true);

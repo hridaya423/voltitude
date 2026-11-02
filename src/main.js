@@ -125,6 +125,8 @@ scene.add(dust.points, skids.mesh);
 const fireworks = createFireworks();
 const gates = createGates(world, (m) => skyFog(m, sunUniform, fogDensity));
 scene.add(gates.group);
+const spurGates = Object.fromEntries(Object.entries(track.spurs || {}).filter(([, t]) => t.gates.length).map(([id, t]) => [id, createGates({ ...world, track: t }, (m) => skyFog(m, sunUniform, fogDensity))]));
+for (const g of Object.values(spurGates)) scene.add(g.group);
 const lineup = track.lineup ? (await import('./render/lineup.js')).createLineup(world, (m) => skyFog(m, sunUniform, fogDensity)) : null;
 if (lineup) scene.add(lineup.mesh);
 scene.add(fireworks.points);
@@ -184,6 +186,7 @@ const BRIEFS = {
     gp: 'Three laps against seven Roadsters. Ride the banked wall round the tank farm, then climb past the launch tower.',
     tt: 'Three laps alone against your best run. Carry speed up the tower climb.',
     pr: 'Free laps with no field. Learn the wall and the blind crest at the tower.',
+    trench: 'Time attack through the flame trench. Roll up the wall onto the ceiling, thread two gates upside down, roll back down. Every gate you miss costs three seconds.',
   },
   pad: {
     lineup: 'Jump the line off the kicker. Every clear adds a vehicle. A flip or a roll in the air multiplies the clear. Touch one and the dare is over.',
@@ -231,10 +234,10 @@ function eventRows() {
     const ladder = gp ? PODIUM.map((m, j) => ({ ...m, time: `P${j + 1}`, t: j + 1 })) : ev.kind === 'pr' || dare ? [] : medalTimes(authorTime(ev.id)).map((m) => ({ ...m, time: fmt(m.t) }));
     return {
       id: ev.id, name: ev.name, circuit: !!ev.circuit,
-      tag: ev.circuit ? ev.kind.slice(0, 2).toUpperCase() : k === 0 ? 'RUN' : `S${k}`,
+      tag: ev.spur ? 'DR' : ev.circuit ? ev.kind.slice(0, 2).toUpperCase() : k === 0 ? 'RUN' : `S${k}`,
       best: gp ? (b ? `P${b}` : '') : dare ? (b ? `${b}` : '') : b ? fmt(b) : '',
       medal: medalOf(ev),
-      kicker: ev.circuit ? `${venue.name} · ${dare ? 'Dare' : ev.kind === 'pr' ? 'Free laps' : `${ev.laps} laps`}` : k === 0 ? `${venue.name} · Full run` : `Practice · Sector ${k}`,
+      kicker: ev.spur ? `${venue.name} · Dare${dare ? '' : ' · Time attack'}` : ev.circuit ? `${venue.name} · ${dare ? 'Dare' : ev.kind === 'pr' ? 'Free laps' : `${ev.laps} laps`}` : k === 0 ? `${venue.name} · Full run` : `Practice · Sector ${k}`,
       brief: BRIEF[ev.id] || '',
       ladder: ladder.map((m) => ({ id: m.id, name: m.name, time: m.time, got: !!b && b <= m.t })),
       bestLabel: ev.kind === 'pr' ? '' : gp ? 'BEST FINISH' : dare ? 'BEST SCORE' : 'PERSONAL BEST',
@@ -631,7 +634,7 @@ function handleEvents() {
         break;
       }
       case 'retry': wreckToast?.remove(); chase.snap(); snapshot(race.car, prev); break;
-      case 'gate': gates.pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
+      case 'gate': (spurGates[current.spur] || gates).pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
       case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
       case 'land': {
@@ -660,8 +663,8 @@ function handleEvents() {
         }
         const pb = book[current.id]?.best;
         if (!pb || race.total < pb) {
-          const k = Math.min(track.n - 1, current.to + 70) * 3;
-          for (const side of [-1, 1]) fireworks.show(finishAtPos.set(track.P[k] + track.R[k] * side * 32, track.P[k + 1], track.P[k + 2] + track.R[k + 2] * side * 32), pb ? 4 : 3, 24);
+          const ft = race.world.track, k = Math.min(ft.n - 1, current.to + 70) * 3;
+          for (const side of [-1, 1]) fireworks.show(finishAtPos.set(ft.P[k] + ft.R[k] * side * 32, ft.P[k + 1], ft.P[k + 2] + ft.R[k + 2] * side * 32), pb ? 4 : 3, 24);
         }
         const beatAuthor = race.total <= authorTime(current.id) && !(pb && pb <= authorTime(current.id));
         audio.radio(beatAuthor ? 'finish_author' : !pb || race.total < pb ? 'finish_pb' : 'finish');
@@ -878,7 +881,7 @@ function draw(dt, ticks = -1) {
       menu.clean();
     }
     garage.update(dt, time, garageView, camera, pointer);
-  } else if (mode === 'replay' && clipping && !broadcast.onLine(c.hint)) chase.update(dt, interp, c, { reduced: false });
+  } else if (mode === 'replay' && (current.spur || (clipping && !broadcast.onLine(c.hint)))) chase.update(dt, interp, c, { reduced: false });
   else if (mode === 'replay') broadcast.update(dt, interp, c);
   else if (running) chase.update(dt, interp, c, { reduced: settings.reduced });
   if (fixedCam) { camera.position.fromArray(fixedCam, 0); if (fixedCam.length > 7) camera.up.fromArray(fixedCam, 7); else camera.up.set(0, 1, 0); camera.lookAt(fixedCam[3], fixedCam[4], fixedCam[5]); if (camera.fov !== fixedCam[6]) { camera.fov = fixedCam[6]; camera.filmOffset = 0; camera.updateProjectionMatrix(); } }
@@ -892,6 +895,7 @@ function draw(dt, ticks = -1) {
     range.update(time, px, NIGHT ? 1 : 0);
     fireworks.update(time, px);
     gates.update(time, dt, px);
+    for (const g of Object.values(spurGates)) g.update(time, dt, px);
     lineup?.update(dt);
   }
   c.clearance = c.mode === 0 ? 6 : 0; c.contact = c.mode !== 0; c.wy = c.yawRate; c.bank = 0; c.impact = 0;

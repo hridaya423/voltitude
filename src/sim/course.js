@@ -19,7 +19,7 @@ function frame(yaw, pitch, roll, o) {
 
 export function buildCourse(def) {
   const pts = [], fr = [], meta = [];
-  const cps = [], pads = [], sectors = [];
+  const cps = [], pads = [], sectors = [], gates = [];
   let [x, y, z] = def.start;
   let yaw = def.yaw * D, pitch = 0, roll = 0, w = def.w;
   const f = new Float64Array(9);
@@ -41,12 +41,13 @@ export function buildCourse(def) {
     if (p.sector) sectors.push({ name: p.sector, i: i0 });
     if (p.pad) pads.push({ i: i0 + Math.min(20, steps - 1), type: p.pad });
     if (p.finish) finish = i0;
+    if (p.gate) gates.push({ i: i0 + Math.round(p.gate.at ?? 0), h: p.gate.h, r: p.gate.r });
     for (let s = 0; s < steps; s++) {
       const u = s / steps, [a, b, c, ww] = at(u);
       frame(a, b, c, f);
       pts.push(x, y, z);
       fr.push(...f);
-      meta.push({ w: ww, gap: p.gap ? 1 : 0, chasm: p.chasm || 0, wall: p.wall || 0, roof: p.roof || 0, bot: p.bot || '' });
+      meta.push({ w: ww, gap: p.gap ? 1 : 0, chasm: p.chasm || 0, wall: p.wall || 0, roof: p.roof || 0, bot: p.bot || '', tube: tube > 0 });
       const [am, bm] = at((s + 0.5) / steps);
       const cpm = Math.cos(bm);
       const sh = (p.shift || 0) * (ease((s + 1) / steps) - ease(u));
@@ -70,6 +71,18 @@ export function buildCourse(def) {
     T[k] = fr[q]; T[k + 1] = fr[q + 1]; T[k + 2] = fr[q + 2];
     U[k] = fr[q + 3]; U[k + 1] = fr[q + 4]; U[k + 2] = fr[q + 5];
     R[k] = fr[q + 6]; R[k + 1] = fr[q + 7]; R[k + 2] = fr[q + 8];
+    if (meta[i].tube) {
+      const a = (i - 1) * 3, b = (i + 1) * 3;
+      let tx = H[b] - H[a], ty = H[b + 1] - H[a + 1], tz = H[b + 2] - H[a + 2];
+      const tl = Math.hypot(tx, ty, tz);
+      tx /= tl; ty /= tl; tz /= tl;
+      const d = U[k] * tx + U[k + 1] * ty + U[k + 2] * tz;
+      let ux = U[k] - tx * d, uy = U[k + 1] - ty * d, uz = U[k + 2] - tz * d;
+      const ul = Math.hypot(ux, uy, uz);
+      ux /= ul; uy /= ul; uz /= ul;
+      T[k] = tx; T[k + 1] = ty; T[k + 2] = tz; U[k] = ux; U[k + 1] = uy; U[k + 2] = uz;
+      R[k] = ty * uz - tz * uy; R[k + 1] = tz * ux - tx * uz; R[k + 2] = tx * uy - ty * ux;
+    }
     for (let c = 0; c < 3; c++) P[k + c] = H[k + c] - U[k + c] * HEART;
     halfW[i] = meta[i].w; gap[i] = meta[i].gap; chasm[i] = meta[i].chasm; wall[i] = meta[i].wall; roof[i] = meta[i].roof; bot[i] = meta[i].bot;
   }
@@ -81,7 +94,7 @@ export function buildCourse(def) {
     speedCap[i] = Math.abs(curv[i]) > 1e-5 ? Math.sqrt(42 / Math.abs(curv[i])) : 999;
   }
   if (finish < 0) finish = n - 1;
-  return { n, step: 1, len: n - 1, closed: false, loopMask: new Uint8Array(n), jumps: [], H, P, T, U, R, halfW, wallL: halfW, wallR: halfW, runoff: { L: wall, R: wall, gravelL: gap, gravelR: gap, tyreL: gap, tyreR: gap }, gap, chasm, wall, roof, bot, speedCap, curv, cps, pads, sectors, finish };
+  return { n, step: 1, len: n - 1, closed: false, loopMask: new Uint8Array(n), jumps: [], H, P, T, U, R, halfW, wallL: halfW, wallR: halfW, runoff: { L: wall, R: wall, gravelL: gap, gravelR: gap, tyreL: gap, tyreR: gap }, gap, chasm, wall, roof, bot, speedCap, curv, cps, pads, sectors, finish, gates };
 }
 
 export function nearestIndex(track, x, y, z, hint, window = 40) {
