@@ -51,5 +51,6 @@ export function buildWorld(heights, venue = VENUES.proving) {
     Object.assign(track, runoff(track, (i) => P[i * 3 + 1] - sampleGrid(shaped, g, P[i * 3], P[i * 3 + 2]) > RAISE));
   }
   const terrain = buildTerrain(track, shaped, venue.terrain);
+  track.spurs = Object.fromEntries(Object.entries(venue.spurs || {}).map(([id, def]) => [id, buildCourse(def)]));
   return { venue, track, terrain, baked: !!baked };
 }

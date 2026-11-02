@@ -246,6 +246,16 @@ export function dareResults({ card, score, best, line, clears, speed, hasNext = 
   };
 }
 
+export function rampResults({ card, score, best, tries, speed, hasNext = false }) {
+  const r = dareResults({ card, score, best, line: 0, clears: [], speed, hasNext });
+  const why = { wreck: 'Wrecked', stall: 'Stalled', reset: 'Reset' };
+  return {
+    ...r, line: undefined, title: 'TRIES',
+    rows: tries.map((t, k) => ({ label: `Try ${k + 1}`, value: `+${t.points}`, tag: t.why ? why[t.why] : `${Math.round(t.align * 100)}% · ${Math.round(t.kept * 100)}%${t.rolls ? ` · ${t.rolls}R` : ''}`, tone: t.why ? 'bad' : 'good' })),
+    stats: [{ label: 'Best', value: `${Math.max(score, best)}` }, { label: 'Rolls', value: `${tries.reduce((n, t) => n + (t.rolls || 0), 0)}` }, { label: 'Top speed', value: speed }],
+  };
+}
+
 export function describe(view) {
   const { page, board, floor, tyre } = view;
   if (page === 'venue') { const v = floor.venues[floor.index]; return `Venue ${v.name}, ${v.place}. ${v.note}.${v.id === floor.current ? ' Loaded.' : ' Press Enter to load.'}`; }
@@ -255,7 +265,7 @@ export function describe(view) {
     const value = r.type === 'toggle' ? (r.value ? 'on' : 'off') : r.type === 'slider' ? `${Math.round(r.value * 100)} percent` : r.value || '';
     return `${page === 'keys' ? 'Controls' : 'Settings'}. ${r.label.split(' \u00b7 ')[0]} ${value}. ${r.note || ''}`;
   }
-  if (board.kind === 'results' && board.dare) return `Results. Score ${board.time}. Line ${board.line}. ${board.delta.text}. ${board.actions[board.index].label}.`;
+  if (board.kind === 'results' && board.dare) return `Results. Score ${board.time}.${board.line ? ` Line ${board.line}.` : ''} ${board.delta.text}. ${board.actions[board.index].label}.`;
   if (board.kind === 'results') return `Results. ${board.pos ? `Position ${board.pos} of ${board.field}. ` : ''}Time ${board.time}. ${board.delta.text}. ${board.note || ''} ${board.actions[board.index].label}.`;
   if (board.kind === 'pause') return `Paused. ${board.rows[board.index].label}.`;
   const e = board.rows[board.index];

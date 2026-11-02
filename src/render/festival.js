@@ -172,6 +172,7 @@ export function createFestival(world, sunUniform, fogDensity, night, stands) {
   const start = track.sectors[0].i;
   const near = (s, from, d) => Math.min((s.i - from + N) % N, (from - s.i + N) % N) < d;
   const used = (stands?.centres || []).map((c) => ({ x: c.x, z: c.z, r: 70 }));
+  for (const sp of Object.values(world.track.spurs || {})) for (let i = 0; i < sp.n; i += 10) used.push({ x: sp.P[i * 3], z: sp.P[i * 3 + 2], r: 40 });
   const ground = (x, z, r) => Math.min(terrain.height(x, z), terrain.height(x + r, z), terrain.height(x - r, z), terrain.height(x, z + r), terrain.height(x, z - r));
   const uniforms = { uTime: { value: 0 } };
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s1 = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);

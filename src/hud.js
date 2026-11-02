@@ -31,7 +31,8 @@ export function createHud(world, settings) {
     cpLabel: $('cpLabel'), lights: $('lights'), toasts: $('toasts'), hint: $('hint'), marker: $('marker'), markerDist: $('markerDist'),
     speed: $('speed'), unit: $('unit'), gas: $('gas'), gasFill: $('gasFill'), gasPct: $('gasPct'), gasEdge: $('gasEdge'), gasLift: $('gasLift'), gasGains: $('gasGains'), map: $('map'), state: $('state'),
   };
-  const { track, terrain } = world;
+  const { terrain } = world;
+  let track = world.track;
   const NS = 'http://www.w3.org/2000/svg';
   let mapFn = null, meDot = null, ghostDot = null, cpDot = null, rivalDots = [];
   const v = new THREE.Vector3();
@@ -63,9 +64,10 @@ export function createHud(world, settings) {
     els,
     show(on) { els.hud.hidden = !on; },
     begin(event, targetText) {
+      track = event.spur ? world.track.spurs[event.spur] : world.track;
       buildMap(event);
       setText(els.card, event.id === 'full' ? 'FULL RUN' : event.circuit ? event.name.toUpperCase() : `S${event.card - 1}  ${event.name.toUpperCase()}`);
-      els.cpLabel.firstChild.textContent = event.kind === 'dare' ? 'LINE' : event.circuit ? 'LAP' : 'CHECKPOINT';
+      els.cpLabel.firstChild.textContent = event.dare === 'ramp' ? 'TRY' : event.kind === 'dare' ? 'LINE' : event.circuit ? 'LAP' : 'CHECKPOINT';
       els.target.innerHTML = targetText || '';
       toggle(els.delta, 'on', false);
       els.lights.classList.remove('on', 'out');
@@ -157,10 +159,11 @@ export function createHud(world, settings) {
       const c = race.car;
       const ev = race.event, d = race.dare;
       setText(els.clock, d ? `${d.score}` : fmt(raceClock(race)));
-      const mult = d?.armed ? Math.min(3, 1 + turns(c.flip) + turns(c.barrel) + turns(c.spin)) : 0;
-      if (d) setText(els.sectors, mult > 1 ? `×${mult}` : '');
-      toggle(els.sectors, 'mult', mult > 1);
-      setText(els.cps, d ? `${d.count}` : ev.circuit ? (ev.laps > 9 ? `${Math.min(race.laps.length + 1, ev.laps)}` : `${Math.min(race.laps.length + 1, ev.laps)}/${ev.laps}`) : `${Math.min(race.next, ev.cps.length - 1)}/${ev.cps.length - 1}`);
+      const tricks = d?.armed ? turns(c.flip) + turns(c.barrel) + turns(c.spin) : 0, ramp = ev.dare === 'ramp';
+      const mult = ramp ? 0 : tricks ? Math.min(3, 1 + tricks) : 0;
+      if (d) setText(els.sectors, ramp ? (tricks ? `+${150 * tricks}` : '') : mult > 1 ? `×${mult}` : '');
+      toggle(els.sectors, 'mult', !!tricks);
+      setText(els.cps, ramp ? `${Math.min(d.tries.length + 1, 3)}/3` : d ? `${d.count}` : ev.circuit ? (ev.laps > 9 ? `${Math.min(race.laps.length + 1, ev.laps)}` : `${Math.min(race.laps.length + 1, ev.laps)}/${ev.laps}`) : `${Math.min(race.next, ev.cps.length - 1)}/${ev.cps.length - 1}`);
       const mph = settings.units === 'kmh' ? c.speed * 3.6 : c.speed * 2.237;
       setText(els.speed, String(Math.round(mph)));
       setText(els.unit, settings.units === 'kmh' ? 'KM/H' : 'MPH');
@@ -182,6 +185,7 @@ export function createHud(world, settings) {
       if (deltaTimer <= 0) toggle(els.delta, 'on', false);
       if (hintTimer > 0) { hintTimer -= dt; if (hintTimer <= 0) toggle(els.hint, 'on', false); }
 
+      if (!race.event.cps.length) { toggle(els.marker, 'on', false); if (mapFn) { meDot.setAttribute('cx', mapFn[0](interpPos.x).toFixed(1)); meDot.setAttribute('cy', mapFn[1](interpPos.z).toFixed(1)); } return; }
       const i = race.event.cps[Math.min(race.next, race.event.cps.length - 1)];
       const o = i * 3;
       v.set(track.H[o] + track.U[o] * 4, track.H[o + 1] + track.U[o + 1] * 4, track.H[o + 2] + track.U[o + 2] * 4).project(camera);

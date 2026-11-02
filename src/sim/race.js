@@ -41,7 +41,8 @@ export function unpackInput(buf, o, inp) {
   return inp;
 }
 
-const DARES = { lineup: 'The Lineup' };
+const DARES = { lineup: 'The Lineup', ramp: 'The Ramp' };
+const RAMP = { tries: 3, wait: 180, stall: 360, roll: 150 };
 
 export function eventsFor(track, venue = null) {
   if (track.closed) {
@@ -50,7 +51,8 @@ export function eventsFor(track, venue = null) {
       id, name, kind, laps, from: 0, to: track.lap, gas: 1, circuit: true, perLap: perLap.length,
       cps: Array.from({ length: laps }, () => perLap).flat(),
     });
-    const list = [...(venue?.dares || []).map((id) => mode(id, DARES[id], 'dare', 99)), mode('gp', 'Grand Prix', 'gp', 3), mode('tt', 'Time Trial', 'tt', 3), mode('pr', 'Practice', 'pr', 99)];
+    const spur = (id) => ({ ...mode(id, DARES[id], 'dare', 1), dare: id, spur: id, from: 10, to: track.spurs[id].n - 1, perLap: 0, cps: [] });
+    const list = [...(venue?.dares || []).map((id) => (track.spurs?.[id] ? spur(id) : mode(id, DARES[id], 'dare', 99))), mode('gp', 'Grand Prix', 'gp', 3), mode('tt', 'Time Trial', 'tt', 3), mode('pr', 'Practice', 'pr', 99)];
     return list.map((e, k) => Object.assign(e, { card: k + 1 }));
   }
   const { sectors, cps, finish } = track;
@@ -84,7 +86,8 @@ function initEntry(e, world, event, slot) {
   });
 }
 
-export function createRace(world, { event, assist = true, seed = 1, tier = 'pro' }) {
+export function createRace(venueWorld, { event, assist = true, seed = 1, tier = 'pro' }) {
+  const world = event.spur ? { ...venueWorld, track: venueWorld.track.spurs[event.spur] } : venueWorld;
   const { track } = world;
   const race = initEntry({
     world, event, assist, seed, tier, tick: 0, raceTick: -COUNTDOWN, phase: 'countdown',
@@ -108,7 +111,8 @@ export function createRace(world, { event, assist = true, seed = 1, tier = 'pro'
     });
     race.order = race.entries.slice().sort((a, b) => a.grid - b.grid);
   }
-  if (event.kind === 'dare') race.dare = { count: 1, score: 0, mult: 1, cleared: 0, armed: false, over: false, endAt: 0, near: [] };
+  if (event.dare === 'ramp') race.dare = { count: 0, score: 0, tries: [], phase: 'run', entry: 0, still: 0, until: 0, flown: false, armed: false, over: false, endAt: 0 };
+  else if (event.kind === 'dare') race.dare = { count: 1, score: 0, mult: 1, cleared: 0, armed: false, over: false, endAt: 0, near: [] };
   if (track.closed) lineFor(track);
   return race;
 }
@@ -170,7 +174,7 @@ function stepEntry(race, e, inp) {
     if (ev.type === 'wreck') e.wrecks++;
   }
   c.ev.length = 0;
-  if (e.dare && race.phase === 'racing') dareStep(race, c, touch);
+  if (e.dare && race.phase === 'racing') (race.event.dare === 'ramp' ? rampStep : dareStep)(race, c, touch);
   if (e.done) return;
   if (c.mode === 0) e.airTime++;
   e.maxSpeed = Math.max(e.maxSpeed, c.speed);
@@ -197,7 +201,7 @@ function stepEntry(race, e, inp) {
   e.still = race.raceTick > 360 && c.speed < 2 ? e.still + 1 : 0;
   const held = !track.closed || c.speed <= lineFor(track).cap[c.hint] * 1.1 + 3;
   if (c.mode === 1 && !e.lost && !c.wrecked && held && safeAt(track, c.hint)) { e.lastIdx = c.hint; e.lastSpeed = c.speed; }
-  if (!e.dare?.over) {
+  if (!e.dare?.over && race.event.dare !== 'ramp') {
     if (c.wrecked && !e.respawnIn) e.respawnIn = 70;
     if (e.respawnIn && --e.respawnIn === 0) respawn(race, e);
     else if (e.lost > 60 || e.still > STILL) respawn(race, e);
@@ -214,6 +218,7 @@ function stepEntry(race, e, inp) {
     }
   }
 
+  if (!race.event.cps.length) return;
   const cp = race.event.cps[e.next];
   const q = cp * 3;
   const d0 = (px - track.H[q]) * track.T[q] + (py - track.H[q + 1]) * track.T[q + 1] + (pz - track.H[q + 2]) * track.T[q + 2];
@@ -259,6 +264,54 @@ function dareStep(race, c, touch) {
   d.armed = false;
   d.near = [];
   emit(race, 'clear', { count, mult: d.mult, hard, score: d.score });
+}
+
+function rampStep(race, c, touch) {
+  const d = race.dare, { track } = race.world, [, curl, ceiling, lip] = track.sectors.map((s) => s.i);
+  if (d.over) { if (race.tick >= d.endAt) finishEntry(race, race); return; }
+  if (d.phase === 'wait') { if (race.tick >= d.until) nextTry(race, c); return; }
+  if (d.phase === 'run') {
+    if (!d.entry && c.hint >= curl) d.entry = c.speed;
+    d.still = c.speed < 2 ? d.still + 1 : 0;
+    if (c.wrecked || d.still > RAMP.stall) return endTry(race, { points: 0, why: c.wrecked ? 'wreck' : 'stall' });
+    if (c.hint < lip && !(c.hint >= ceiling - 10 && c.mode === 0)) return;
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < curl; i++) {
+      const k = i * 3, e = (track.H[k] - c.x) ** 2 + (track.H[k + 2] - c.z) ** 2;
+      if (e < bd) { bd = e; best = i; }
+    }
+    c.hint = best;
+    for (const w of c.wl) w.hint = best;
+    d.phase = 'free'; d.armed = true;
+    emit(race, 'release', { v: c.speed });
+    return;
+  }
+  if (touch?.type === 'wreck' || c.wrecked) return endTry(race, { points: 0, why: 'wreck' });
+  if (c.mode === 0) { d.flown = true; return; }
+  if (!d.flown) return;
+  const k = c.hint * 3;
+  const up = c.ux * track.U[k] + c.uy * track.U[k + 1] + c.uz * track.U[k + 2];
+  const head = Math.abs(c.fx * track.T[k] + c.fy * track.T[k + 1] + c.fz * track.T[k + 2]);
+  const align = Math.max(0, up) * head, kept = Math.min(1, c.speed / Math.max(d.entry, 1));
+  const rolls = touch?.type === 'land' ? touch.tricks.length : 0;
+  endTry(race, { points: Math.round(100 * align) + Math.round(100 * kept) + RAMP.roll * rolls, align, kept, rolls, quality: touch?.quality || 'clean' });
+}
+
+function endTry(race, r) {
+  const d = race.dare;
+  d.tries.push(r);
+  d.score += r.points;
+  d.phase = 'wait'; d.until = race.tick + RAMP.wait; d.armed = false;
+  emit(race, 'try', { ...r, n: d.tries.length, score: d.score });
+}
+
+function nextTry(race, c) {
+  const d = race.dare;
+  if (d.tries.length >= RAMP.tries) { d.over = true; d.endAt = race.tick; finishEntry(race, race); return; }
+  placeCar(c, race.world.track, race.event.from + 1, 0);
+  c.gas = race.event.gas;
+  d.phase = 'run'; d.entry = 0; d.still = 0; d.flown = false;
+  emit(race, 'retry', { n: d.tries.length + 1 });
 }
 
 function clip(race, c, k) {
@@ -389,12 +442,15 @@ export function stepRace(race, inp) {
     }
   }
   if (race.phase === 'racing') {
-    if (inp.reset && !race.resetHeld && !race.dare?.over) respawn(race, race, race.cpIdx, race.cpSpeed);
+    if (inp.reset && !race.resetHeld && !race.dare?.over) {
+      if (race.event.dare !== 'ramp') respawn(race, race, race.cpIdx, race.cpSpeed);
+      else if (race.dare.phase !== 'wait') endTry(race, { points: 0, why: 'reset' });
+    }
     race.resetHeld = !!inp.reset;
   }
   const rivals = race.entries;
   if (rivals.length > 1) for (const e of rivals) e.car.tow = towFor(race, e);
-  stepEntry(race, race, race.phase === 'racing' && !race.dare?.over ? inp : IDLE);
+  stepEntry(race, race, race.phase === 'racing' && !race.dare?.over && race.dare?.phase !== 'wait' ? inp : IDLE);
   for (let k = 1; k < rivals.length; k++) {
     const e = rivals[k];
     stepEntry(race, e, drive(race, e, e.input || (e.input = createInput())));

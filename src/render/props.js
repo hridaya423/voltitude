@@ -16,15 +16,15 @@ export function rng(seed) {
 
 export function trackClearance(track) {
   const S = 24, grid = new Map();
-  for (let i = 0; i < track.n; i += 2) {
-    const key = `${Math.floor(track.P[i * 3] / S)},${Math.floor(track.P[i * 3 + 2] / S)}`;
+  for (const t of [track, ...Object.values(track.spurs || {})]) for (let i = 0; i < t.n; i += 2) {
+    const key = `${Math.floor(t.P[i * 3] / S)},${Math.floor(t.P[i * 3 + 2] / S)}`;
     if (!grid.has(key)) grid.set(key, []);
-    grid.get(key).push(i);
+    grid.get(key).push([t, i]);
   }
   return (x, z) => {
     let best = Infinity;
     const cx = Math.floor(x / S), cz = Math.floor(z / S);
-    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const i of grid.get(`${cx + a},${cz + b}`) || []) best = Math.min(best, Math.hypot(x - track.P[i * 3], z - track.P[i * 3 + 2]) - Math.max(track.wallL[i], track.wallR[i]));
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const [t, i] of grid.get(`${cx + a},${cz + b}`) || []) best = Math.min(best, Math.hypot(x - t.P[i * 3], z - t.P[i * 3 + 2]) - Math.max(t.wallL[i], t.wallR[i]));
     return best;
   };
 }

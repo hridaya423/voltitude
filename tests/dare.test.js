@@ -11,7 +11,7 @@ const EVENTS = eventsFor(pad.track, pad.venue);
 const LINEUP = EVENTS.find((e) => e.id === 'lineup');
 
 test('the pad lists its dare first and keeps the circuit events', () => {
-  assert.deepEqual(EVENTS.map((e) => [e.id, e.card]), [['lineup', 1], ['gp', 2], ['tt', 3], ['pr', 4]]);
+  assert.deepEqual(EVENTS.map((e) => [e.id, e.card]), [['lineup', 1], ['ramp', 2], ['gp', 3], ['tt', 4], ['pr', 5]]);
   assert.equal(LINEUP.kind, 'dare');
   assert.deepEqual(eventsFor(loadWorld('proving').track, loadWorld('proving').venue).map((e) => e.id), ['gp', 'tt', 'pr']);
 });
@@ -144,4 +144,79 @@ test('a recorded dare replays to the same line and score, so a clip shows what h
   for (let t = 0; t < 120 * 70; t++) ghost.step();
   assert.deepEqual(ghost.race.dare, race.dare);
   assert.equal(ghost.race.car.x, race.car.x);
+});
+
+const RAMP = EVENTS.find((e) => e.id === 'ramp');
+
+function rampRun(script, { assist = true, tries = 1, ticks = 120 * 60 } = {}) {
+  const race = createRace(pad, { event: RAMP, assist }), inp = createInput(), events = [];
+  race.phase = 'racing'; race.raceTick = 0;
+  for (let t = 0; t < ticks && race.dare.tries.length < tries && race.phase !== 'finished'; t++) {
+    Object.assign(inp, { throttle: 1, brake: 0, steer: 0, boost: 0, roll: 0, pitch: 0, lift: 0, reset: 0 }, script(race.car, race.dare, t));
+    stepRace(race, inp);
+    events.push(...race.events);
+    race.events.length = 0;
+  }
+  return { race, events };
+}
+
+test('the ramp runs on its own spur and leaves the circuit and its bake untouched', () => {
+  assert.equal(pad.baked, true);
+  const race = createRace(pad, { event: RAMP }), spur = pad.track.spurs.ramp;
+  assert.equal(race.world.track, spur);
+  assert.equal(race.world.terrain, pad.terrain);
+  assert.equal(spur.closed, false);
+  let ceiling = 0;
+  for (let i = 0; i < spur.n; i++) if (spur.U[i * 3 + 1] < -0.99) ceiling = Math.max(ceiling, spur.H[i * 3 + 1] - spur.H[1]);
+  assert.ok(ceiling > 14, `ceiling ${ceiling.toFixed(1)} m above the run-up`);
+  assert.equal(spur.gap[spur.n - 2], 1);
+});
+
+test('a ramp try drives up the curl, holds the ceiling inverted, and lands upright with assist', () => {
+  let inverted = 0;
+  const { race, events } = rampRun((c) => { if (c.uy < -0.95 && c.mode === 1) inverted++; return {}; });
+  assert.ok(inverted > 60, `held the ceiling for ${inverted} ticks`);
+  const r = race.dare.tries[0];
+  assert.ok(events.some((e) => e.type === 'release'));
+  assert.ok(r.align > 0.9 && r.kept > 0.8, JSON.stringify(r));
+  assert.equal(r.rolls, 0);
+  assert.equal(r.points, Math.round(100 * r.align) + Math.round(100 * r.kept));
+  assert.equal(race.dare.score, r.points);
+});
+
+test('an extra roll in the air counts, and landing it inverted scores nothing', () => {
+  const roll = rampRun((c, d) => ({ roll: d.phase === 'free' && c.barrel < 2.5 * Math.PI ? 1 : 0, lift: d.phase === 'free' && c.uy > 0.3 ? 1 : 0 })).race.dare.tries[0];
+  assert.equal(roll.rolls, 1);
+  assert.equal(roll.points, Math.round(100 * roll.align) + Math.round(100 * roll.kept) + 150);
+  const flat = rampRun(() => ({}), { assist: false }).race.dare.tries[0];
+  assert.deepEqual(flat, { points: 0, why: 'wreck' });
+});
+
+test('reset ends the try with nothing, and the dare ends after three tries', () => {
+  const { race, events } = rampRun((c, d, t) => ({ reset: d.phase === 'run' && c.hint > 100 && t % 2 ? 1 : 0 }), { tries: 3 });
+  assert.deepEqual(race.dare.tries.map((r) => r.why), ['reset', 'reset', 'reset']);
+  assert.equal(events.filter((e) => e.type === 'retry').length, 2);
+  for (let t = 0; t < 400 && race.phase !== 'finished'; t++) stepRace(race, createInput());
+  assert.equal(race.phase, 'finished');
+  assert.equal(race.dare.over, true);
+});
+
+test('the autopilot finishes the ramp, and its recording replays to the same score', async () => {
+  const { createRecorder, encodeRun, createGhost } = await import('../src/sim/ghost.js');
+  const { packInput, unpackInput } = await import('../src/sim/race.js');
+  const { autopilot } = await import('../src/sim/bot.js');
+  const race = createRace(pad, { event: RAMP }), rec = createRecorder(), inp = createInput(), q = new Int8Array(6);
+  for (let t = 0; t < 120 * 60 && race.phase !== 'finished'; t++) {
+    if (race.phase === 'racing') autopilot(race, inp, 1);
+    packInput(inp, q, 0); unpackInput(q, 0, inp);
+    rec.push(inp);
+    stepRace(race, inp);
+    race.events.length = 0;
+  }
+  assert.equal(race.phase, 'finished');
+  assert.equal(race.dare.tries.length, 3);
+  assert.ok(race.dare.score > 450, `score ${race.dare.score}`);
+  const ghost = createGhost(pad, encodeRun(race, rec.bytes()));
+  while (ghost.race.phase !== 'finished') ghost.step();
+  assert.deepEqual(ghost.race.dare, race.dare);
 });

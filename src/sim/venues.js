@@ -151,7 +151,8 @@ export const VENUES = {
     id: 'pad', name: 'The Pad', place: 'Test range', circuit: PAD,
     terrain: { style: 'playa', cx: 0, cz: 0, size: 2400, res: 400, ring: 900, mesas: [], buttes: [], pad: null },
     lakes: [[0, 0, 700, 700]],
-    dares: ['lineup'], lapWindow: [25, 45],
+    dares: ['lineup', 'ramp'], lapWindow: [25, 45],
+    spurs: { ramp: { start: [-60, 0.7, 170], yaw: 180, w: 6, pieces: [{ len: 220, sector: 'Run-up' }, { len: 40, pitch: 180, sector: 'Curl' }, { len: 24, sector: 'Ceiling' }, { len: 4, gap: true, sector: 'Lip' }] } },
   },
 };
 

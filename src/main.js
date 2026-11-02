@@ -27,7 +27,7 @@ import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
 import { fmt, fmtDelta } from './time.js';
-import { createMenu, pauseView, describe, dareResults } from './menu.js';
+import { createMenu, pauseView, describe, dareResults, rampResults } from './menu.js';
 import { createGarage } from './render/garage.js';
 import { createFestival } from './render/festival.js';
 
@@ -117,6 +117,7 @@ if (venueArt) scene.add(venueArt.group);
 const stands = await createGrandstands(world, sunUniform, fogDensity, renderer);
 const festival = createFestival(world, sunUniform, fogDensity, NIGHT, stands);
 const range = createRange(world, sunUniform, fogDensity, festival.used);
+if (track.spurs && Object.keys(track.spurs).length) scene.add((await import('./render/spur.js')).createSpurs(world, sunUniform, fogDensity).group);
 scene.add(facility.group, stands.group, festival.group, range.group);
 const dust = createDust(terrain.height);
 const skids = createSkids();
@@ -186,6 +187,7 @@ const BRIEFS = {
   },
   pad: {
     lineup: 'Jump the line off the kicker. Every clear adds a vehicle. A flip or a roll in the air multiplies the clear. Touch one and the dare is over.',
+    ramp: 'Three tries at the curl. Drive up, hold the ceiling, drop off the lip and roll out onto your wheels. Square landings, kept speed and extra rolls score.',
     gp: 'Three laps against seven Roadsters round the oval. Draft down the straights, hold the line over the kicker.',
     tt: 'Three laps alone against your best run.',
     pr: 'Free laps with no field. Learn the kicker.',
@@ -493,10 +495,10 @@ function finishDare(ev) {
   const d = race.dare, best = book[ev.id]?.best || 0;
   lastRun = encodeRun(race, recorder.bytes());
   if (d.score > best) { book[ev.id] = { best: d.score }; persist(); }
-  const result = dareResults({
-    card: `${venue.name} · ${ev.name}`, score: d.score, best, line: d.count, clears,
-    speed: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}`, hasNext: !!EVENTS[ev.card],
-  });
+  const speed = `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}`;
+  const result = ev.dare === 'ramp'
+    ? rampResults({ card: `${venue.name} · ${ev.name}`, score: d.score, best, tries: d.tries, speed, hasNext: !!EVENTS[ev.card] })
+    : dareResults({ card: `${venue.name} · ${ev.name}`, score: d.score, best, line: d.count, clears, speed, hasNext: !!EVENTS[ev.card] });
   if (linked?.run.event === ev.id) {
     const g = createGhost(world, linked.run);
     while (g.race.raceTick < linked.run.total && g.race.phase !== 'finished') g.step();
@@ -621,6 +623,14 @@ function handleEvents() {
         break;
       }
       case 'clip': lineup.clip(e.k); hud.toast('CLIPPED', 'red', `SCORE ${e.score}`); audio.event('clip', 1); cheerNear(0.2, 'gasp'); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
+      case 'release': hud.toast('LIP', 'white', 'ROLL OUT'); chase.punch(0.4); cheerNear(0.4); break;
+      case 'try': {
+        const why = { wreck: 'WRECKED', stall: 'STALLED', reset: 'RESET' }[e.why];
+        hud.toast(why || `+${e.points}`, why ? 'red' : e.rolls ? 'good' : 'white', why ? `TRY ${e.n} · NO SCORE` : `${Math.round(e.align * 100)}% SQUARE · ${Math.round(e.kept * 100)}% SPEED${e.rolls ? ` · ${e.rolls} ROLL${e.rolls > 1 ? 'S' : ''}` : ''}`);
+        if (!why) cheerNear(0.4 + 0.2 * e.rolls);
+        break;
+      }
+      case 'retry': wreckToast?.remove(); chase.snap(); snapshot(race.car, prev); break;
       case 'gate': gates.pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
       case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
@@ -674,8 +684,8 @@ function tick() {
     return;
   }
   if (ghost) snapshot(ghost.race.car, gprev);
-  if (autoplay && current.circuit) botInput(race, simIn, 0.97);
-  else if (autoplay || race.phase === 'finished') { if (!current.circuit) autopilot(race, simIn, 1); }
+  if (autoplay && current.circuit && !current.spur) botInput(race, simIn, 0.97);
+  else if (autoplay || race.phase === 'finished') { if (!current.circuit || current.spur) autopilot(race, simIn, 1); }
   else Object.assign(simIn, input.state);
   if (race.phase !== 'finished') {
     packInput(simIn, packed, 0);
@@ -886,7 +896,7 @@ function draw(dt, ticks = -1) {
   }
   c.clearance = c.mode === 0 ? 6 : 0; c.contact = c.mode !== 0; c.wy = c.yawRate; c.bank = 0; c.impact = 0;
   audio.listen(camera);
-  c.kerb = c.mode !== 0 && Math.abs(c.lat) > world.track.halfW[c.hint] - 1.7;
+  c.kerb = c.mode !== 0 && Math.abs(c.lat) > race.world.track.halfW[c.hint] - 1.7;
   if (mode === 'race' && c.boosting && !boostWas) { chase.punch(1); input.rumble(0.15, 0.6, 200); }
   boostWas = c.boosting;
   if (mode === 'race' && race.dare?.armed && !armedWas) { chase.punch(0.5); audio.event('lip'); input.rumble(0.3, 0.5, 160); }
@@ -985,7 +995,7 @@ async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
   const [width, height] = portrait ? [1080, 1920] : [1920, 1080];
   const { renderClip } = await import('./clip/render.js');
   const fps = 60, ev = current, d = race.dare;
-  const card = d ? { title: ev.name, value: `${d.score}`, sub: `${venue.name} · line ${d.count}` } : { title: ev.name, value: fmt(lastRun.total), sub: venue.name };
+  const card = d ? { title: ev.name, value: `${d.score}`, sub: `${venue.name} · ${ev.dare === 'ramp' ? `${d.tries.length} tries` : `line ${d.count}`}` } : { title: ev.name, value: fmt(lastRun.total), sub: venue.name };
   clipping = true;
   const was = { mode, aspect: camera.aspect };
   try {

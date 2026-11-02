@@ -23,7 +23,7 @@ export function createChaseCamera(camera, height) {
       const grounded = c.mode !== 0;
       if (grounded && !c.wrecked) tmp.set(c.ux, c.uy, c.uz); else tmp.copy(UP);
       if (!init) upS.copy(tmp);
-      upS.lerp(tmp, 1 - Math.exp(-dt * (grounded ? (tmp.y < upS.y - 0.02 ? 4.6 : 6.9) : 1.6))).normalize();
+      upS.lerp(tmp, 1 - Math.exp(-dt * (grounded ? (tmp.y < upS.y - 0.02 ? 4.6 : 6.9) : upS.y < 0.3 ? 5 : 1.6))).normalize();
       vel.set(c.vx, c.vy, c.vz);
       if (grounded || speed < 8) {
         tmp.set(c.fx, c.fy, c.fz);

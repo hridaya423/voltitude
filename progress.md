@@ -1365,3 +1365,16 @@ Next: Phase 5.
 
 ## Handoff 2026-11-02
 The second compaction happened at the start of Phase 5. The handoff is at /private/tmp/claude-501/shook-handoff-2026-11-02.md. Task 5.1 (The Ramp) has no code yet.
+
+## Session 2026-11-02 (cont.): Phase 5
+
+- Task 5.1: The Ramp. It runs on a spur, a second open ribbon built by `buildCourse` that only its dare drives on. The Pad's circuit, its terrain bake and recorded ghosts are unchanged (`pad.baked` stays true, so the bake hash still matches). Design and code:
+  - `venues.js`: `pad.spurs.ramp` in the infield beside the back straight: a 220 m run-up, a 40 m curl (`pitch: 180`), a 24 m ceiling over the run-up 15.5 m up, and a short gap that releases the car. `world.js` builds `track.spurs`; `eventsFor` lists spur dares with `spur` and `dare` fields; `createRace` swaps `race.world.track` for the spur.
+  - `course.js`: a `tube` piece option (a roll that also lifts the ribbon round a tube radius) for the trench, plus `closed`, `loopMask` and `jumps` fields so open ribbons work with the shared race code.
+  - Scoring (`rampStep` in `race.js`): three tries. A try is released at the lip (or when the car leaves the ceiling). The car's road hint then moves to the run-up below, so it lands on the deck. Points: 100 × alignment (up · normal × |heading · tangent|) + 100 × speed kept (landing speed over curl entry speed) + 150 per extra full roll. A wreck, a stall or reset scores 0. Input is idle for 1.5 s, then the next try starts from rest.
+  - The autopilot (assist on) lands three clean tries for 585. Holding roll plus hover gets one extra roll (341 points for that try); with assist off and no input, the car lands on its roof and the try scores 0.
+  - Render: `src/render/spur.js` (deck, rails, columns and beams under the raised parts, red and white chevrons on the curl). Festival props and the flora, scrub and boulder scatter now keep clear of spurs. The chase camera recovers its up vector faster when it starts inverted in the air (it took about 3 s to come upright after the lip).
+  - HUD shows `TRY n/3` and `+150` per extra roll in the air; toasts for the lip and each try; `rampResults` in `menu.js` lists the tries.
+  - Evidence: `tests/dare.test.js` adds five ramp tests (the spur leaves the bake untouched, a try holds the ceiling and lands upright, the extra roll and the roof landing, reset and the three-try end, the autopilot run replays to the same dare state). `npm test`: 149 of 149. `node tools/exploits.mjs pad`: PASS. Sheet `docs/sheets/2026-11-02-ramp.jpg`: side view, back view, run-up, the lip with the horizon inverted, roll-out, landing with +195.
+  - Bug found while looking: the course start point is the car's heart height, so the deck sat 0.62 m lower and the terrain covered it. The start is now at y 0.7.
+  - Open: the curl reads as a grey disc from the side. Rolls need hover, because the ceiling is only 15.5 m up (40 m curl, as planned).

@@ -31,6 +31,9 @@ export function buildCourse(def) {
     const dy = -(p.turn || 0) * D, dp = (p.pitch || 0) * D;
     const r1 = p.bank !== undefined ? p.bank * D : r0;
     const lean = (p.lean || 0) * D;
+    const tube = p.tube || 0, fs = frame(y0, p0, r0, new Float64Array(9));
+    const turn = (u) => (r1 - r0) * smooth(u);
+    const lift = (u, c) => tube * (fs[3 + c] * (1 - Math.cos(turn(u))) - fs[6 + c] * Math.sin(turn(u)));
     const w1 = p.w ?? w0;
     const at = (u) => [y0 + dy * ease(u), p0 + dp * ease(u), r0 + (r1 - r0) * smooth(u) + lean * bump(u), w0 + (w1 - w0) * smooth(u)];
     const i0 = pts.length / 3;
@@ -50,6 +53,7 @@ export function buildCourse(def) {
       x += Math.sin(am) * cpm * ds - Math.cos(am) * sh;
       y += Math.sin(bm) * ds;
       z += Math.cos(am) * cpm * ds + Math.sin(am) * sh;
+      if (tube) { const u1 = (s + 1) / steps; x += lift(u1, 0) - lift(u, 0); y += lift(u1, 1) - lift(u, 1); z += lift(u1, 2) - lift(u, 2); }
     }
     yaw = y0 + dy; pitch = p0 + dp; roll = r1; w = w1;
   }
@@ -77,7 +81,7 @@ export function buildCourse(def) {
     speedCap[i] = Math.abs(curv[i]) > 1e-5 ? Math.sqrt(42 / Math.abs(curv[i])) : 999;
   }
   if (finish < 0) finish = n - 1;
-  return { n, step: 1, len: n - 1, H, P, T, U, R, halfW, wallL: halfW, wallR: halfW, runoff: { L: wall, R: wall, gravelL: gap, gravelR: gap, tyreL: gap, tyreR: gap }, gap, chasm, wall, roof, bot, speedCap, curv, cps, pads, sectors, finish };
+  return { n, step: 1, len: n - 1, closed: false, loopMask: new Uint8Array(n), jumps: [], H, P, T, U, R, halfW, wallL: halfW, wallR: halfW, runoff: { L: wall, R: wall, gravelL: gap, gravelR: gap, tyreL: gap, tyreR: gap }, gap, chasm, wall, roof, bot, speedCap, curv, cps, pads, sectors, finish };
 }
 
 export function nearestIndex(track, x, y, z, hint, window = 40) {
