@@ -164,7 +164,7 @@ function results(g, b) {
   header(g, b.card.toUpperCase());
   if (b.pos || b.dare) {
     put(g, b.dare ? `${b.line}` : `P${b.pos}`, 64, 380, { size: 200, fam: DISPLAY, weight: 400, color: b.pos === 1 ? '#fff' : C.ink });
-    put(g, b.dare ? 'LINE REACHED' : `OF ${b.field}`, 64, 440, { size: 44, weight: 700, color: C.ink3, gap: 8 });
+    put(g, b.dare ? b.lineLabel || 'LINE REACHED' : `OF ${b.field}`, 64, 440, { size: 44, weight: 700, color: C.ink3, gap: 8 });
   }
   const mid = b.medal;
   if (!b.dare) {

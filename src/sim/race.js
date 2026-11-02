@@ -41,7 +41,7 @@ export function unpackInput(buf, o, inp) {
   return inp;
 }
 
-const DARES = { lineup: 'The Lineup', ramp: 'The Ramp', trench: 'The Trench' };
+export const DARES = { lineup: 'The Lineup', ramp: 'The Ramp', trench: 'The Trench' };
 const GATE_MISS = 3;
 const RAMP = { tries: 3, wait: 180, stall: 360, roll: 150 };
 

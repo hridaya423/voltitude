@@ -299,3 +299,12 @@ test('pausing during the countdown shows a zero race time', () => {
   assert.equal(race.phase, 'countdown');
   assert.equal(pauseView(race, ev, 'Proving Ground').lines[0].value, '0:00.000');
 });
+
+test('ramp results list each try and count the landed ones', async () => {
+  const { rampResults } = await import('../src/menu.js');
+  const r = rampResults({ card: 'The Pad · The Ramp', score: 536, best: 0, speed: '120 MPH', tries: [{ points: 341, align: 0.95, kept: 0.96, rolls: 1 }, { points: 0, why: 'wreck' }, { points: 195, align: 1, kept: 0.95, rolls: 0 }] });
+  assert.equal(r.line, '2/3');
+  assert.equal(r.lineLabel, 'LANDED');
+  assert.deepEqual(r.rows.map((x) => [x.value, x.tag, x.tone]), [['+341', '95% · 96% · 1R', 'good'], ['+0', 'Wrecked', 'bad'], ['+195', '100% · 95%', 'good']]);
+  assert.deepEqual(r.stats.map((x) => x.value), ['536', '1', '120 MPH']);
+});

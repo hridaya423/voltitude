@@ -51,3 +51,14 @@ export async function decodeLink(fragment) {
     return null;
   }
 }
+
+export async function openLink(fragment, api) {
+  if (!/^[0-9a-f]{12}$/.test(fragment)) return decodeLink(fragment);
+  if (!api) return null;
+  try {
+    const res = await fetch(`${api}/runs/${fragment}`);
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}

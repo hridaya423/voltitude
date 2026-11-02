@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildWorld } from './sim/world.js';
 import { VENUES, venueOf } from './sim/venues.js';
-import { createRace, stepRace, createInput as createSimInput, packInput, unpackInput, eventsFor, botInput, DT, SIM_VERSION } from './sim/race.js';
+import { createRace, stepRace, createInput as createSimInput, packInput, unpackInput, eventsFor, botInput, DT, SIM_VERSION, DARES } from './sim/race.js';
 import { ROSTER } from './sim/drivers.js';
 import { autopilot } from './sim/bot.js';
 import { createRecorder, encodeRun, createGhost } from './sim/ghost.js';
@@ -28,6 +28,7 @@ import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
 import { fmt, fmtDelta } from './time.js';
 import { createMenu, pauseView, describe, dareResults, rampResults } from './menu.js';
+import { dailyFor, dayOf } from './sim/daily.js';
 import { createGarage } from './render/garage.js';
 import { createFestival } from './render/festival.js';
 
@@ -46,7 +47,8 @@ const defaults = { tier: 'pro', assist: true, invertPitch: false, ghost: true, u
 const settings = Object.assign(structuredClone(defaults), load(STORE, {}));
 settings.keys = Object.assign(structuredClone(DEFAULT_KEYS), settings.keys);
 if (params.has('quality')) settings.quality = params.get('quality');
-const linked = location.hash.startsWith('#g=') ? await (await import('./share.js')).decodeLink(location.hash.slice(3)) : null;
+const API = (params.get('api') ?? document.querySelector('meta[name="voltitude-api"]')?.content ?? '').replace(/\/$/, '');
+const linked = location.hash.startsWith('#g=') ? await (await import('./share.js')).openLink(location.hash.slice(3), API) : null;
 if (linked && VENUES[linked.venue] && linked.venue !== (params.get('venue') || settings.venue)) {
   params.set('venue', linked.venue);
   location.replace(`?${params}${location.hash}`);
@@ -171,6 +173,11 @@ const chase = createChaseCamera(camera, terrain.height);
 const broadcast = createBroadcastCamera(camera, track, terrain.height);
 
 const EVENTS = eventsFor(track, venue);
+const TODAY = dailyFor(params.get('day') || '') ? params.get('day') : dayOf(Date.now()), DAILY = dailyFor(TODAY);
+const DAILY_EV = DAILY.venue === venue.id ? EVENTS.find((e) => e.id === DAILY.event) || null : null;
+const callsign = (() => { const k = 'voltitude.callsign'; let c = load(k, ''); if (!c) { c = `RD-${Math.random().toString(16).slice(2, 6).toUpperCase()}`; store(k, c); } return c; })();
+let dailyRun = false, dailyGhosts = [], submitted = null;
+const dailyViews = [];
 const BRIEFS = {
   proving: {
     gp: 'Three laps against seven Roadsters. Brake late into the hairpins, take the loop flat out, keep it straight over the jump.',
@@ -245,6 +252,24 @@ function eventRows() {
   });
 }
 
+function dailyRow() {
+  const v = VENUES[DAILY.venue];
+  return {
+    id: 'daily', name: `Daily · ${DARES[DAILY.event] || 'Time Trial'}`, circuit: true, tag: 'DY', best: '', medal: null, ladder: [], bestLabel: '',
+    kicker: `${TODAY} · ${v.name}${DAILY_EV ? '' : ' · loads the venue'}`,
+    brief: `${DAILY.title ? `${DAILY.title}. ` : ''}One card for everyone until 00:00 UTC.${API ? ' Your run goes on the daily board, and the top twenty race beside you.' : ' The daily board is offline, so the card plays without it.'}`,
+  };
+}
+
+function startDaily() {
+  if (DAILY_EV) { startRace(DAILY_EV, true); return; }
+  settings.venue = DAILY.venue;
+  saveSettings();
+  params.delete('venue');
+  params.set('daily', '');
+  location.search = params.toString();
+}
+
 function venueRows() {
   return Object.values(VENUES).map((v) => {
     const set = Object.values(v.id === 'proving' ? save.events : save.venues[v.id] || {}).filter((e) => e?.best).length;
@@ -257,15 +282,15 @@ function venueRows() {
 const RESUME = 'voltitude.resume';
 const menu = createMenu({
   settings,
-  data: { events: eventRows, venues: venueRows, pause: () => pauseView(race, current, venue.name) },
+  data: { events: () => [dailyRow(), ...eventRows()], venues: venueRows, pause: () => pauseView(race, current, venue.name) },
   on: {
     sound(kind) { audio.start(); audio.event(kind === 'drive' ? 'slot' : kind === 'deny' ? 'miss' : 'ui'); },
-    drive(i) { launch(() => startRace(EVENTS[i])); },
+    drive(i) { launch(() => (i ? startRace(EVENTS[i - 1]) : startDaily())); },
     venue: (id) => switchVenue(id),
     resume: () => resume(),
     restart: () => startRace(current),
     quit: () => toTitle(),
-    next() { const n = EVENTS[current.card]; if (n) { menu.open('board', { index: current.card }); startRace(n); } },
+    next() { const n = EVENTS[current.card]; if (n) { menu.open('board', { index: n.card }); startRace(n); } },
     replay: () => watchReplay(),
     share: () => openShare(),
     change(k) {
@@ -292,7 +317,7 @@ function toTitle() {
   hud.show(false);
   $('replayBug').hidden = true;
   menu.open('board');
-  current = EVENTS[menu.selected];
+  current = EVENTS[menu.selected - 1] || DAILY_EV || EVENTS[0];
   garage.cut();
   audio.mute(false);
 }
@@ -389,7 +414,11 @@ function startReplay() {
   ghost = null;
 }
 
-function startRace(ev = current) {
+function startRace(ev = current, daily = false) {
+  dailyRun = daily;
+  dailyGhosts = [];
+  submitted = null;
+  for (const v of dailyViews) v.root.visible = false;
   const line = raceCount > 0 ? (Math.random() < 0.3 ? 'again' : '') : 'radio_check';
   raceCount++;
   said = new Set();
@@ -398,6 +427,7 @@ function startRace(ev = current) {
   current = ev;
   lastSeed = ev.kind === 'gp' ? 1 + Math.floor(Math.random() * 1e6) : 1;
   race = createRace(world, { event: ev, assist: settings.assist, seed: lastSeed, tier: settings.tier });
+  if (daily && API) loadDailyGhosts(ev);
   lineup?.set(race.dare?.count ?? 0);
   recorder = createRecorder();
   carView.wash();
@@ -447,10 +477,50 @@ const POINTS = [25, 18, 15, 12, 10, 8, 6, 4];
 let clears = [], contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null;
 const speedUnit = () => (settings.units === 'kmh' ? 3.6 : 2.237);
 const medalLine = (m, before) => (m ? { id: m.id, name: m.name, fresh: !(before && before.id === m.id) } : null);
+async function loadDailyGhosts(ev) {
+  const r0 = race;
+  try {
+    const board = await (await fetch(`${API}/board/${venue.id}.${ev.id}/${TODAY}`)).json();
+    const runs = await Promise.all(board.rows.slice(0, 20).map((row) => fetch(`${API}/runs/${row.id}`).then((r) => r.json())));
+    if (race !== r0) return;
+    for (const { run } of runs) {
+      const g = createGhost(world, run);
+      if (!g) continue;
+      while (g.race.tick < race.tick) g.step();
+      g.prev = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+      snapshot(g.race.car, g.prev);
+      dailyGhosts.push(g);
+    }
+    while (dailyViews.length < dailyGhosts.length) { const v = createCarView({ quality: 'low', envMap, ghost: true }); v.root.visible = false; scene.add(v.root); dailyViews.push(v); }
+  } catch (e) { console.warn('daily ghosts', e); }
+}
+
+async function postDaily(result) {
+  result.note = API ? 'Posting to the daily board…' : 'Daily board offline';
+  menu.refresh();
+  if (!API) return;
+  try {
+    const og = await ogImage().catch((e) => { console.warn('og', e); return null; });
+    const res = await fetch(`${API}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ venue: venue.id, run: lastRun, score: race.dare?.score, day: TODAY, name: callsign, og }) });
+    const body = await res.json();
+    if (!res.ok && res.status !== 409) throw new Error(body.error);
+    submitted = body.id || null;
+    const board = await (await fetch(`${API}/board/${venue.id}.${current.id}/${TODAY}`)).json();
+    result.note = res.ok ? `Daily rank ${body.rank} of ${board.rows.length} · ${callsign}` : 'This exact run is already on the board';
+    result.title = 'DAILY BOARD';
+    result.rows = board.rows.slice(0, 8).map((r) => ({ label: `${r.rank}. ${r.name}`, value: r.score ?? fmt(r.total), tag: r.id === body.id ? 'YOU' : '', tone: r.id === body.id ? 'good' : '' }));
+  } catch (e) {
+    console.warn('daily', e);
+    result.note = 'Daily board offline';
+  }
+  menu.refresh();
+}
+
 function showResults(result, m, before) {
   hud.show(false);
   mode = 'results';
   menu.open('results', { results: result });
+  if (dailyRun) postDaily(result);
   garage.cut();
   garage.boot();
   if (m && (!before || m.id !== before.id)) audio.event('lap');
@@ -687,6 +757,7 @@ function tick() {
     return;
   }
   if (ghost) snapshot(ghost.race.car, gprev);
+  for (const g of dailyGhosts) { snapshot(g.race.car, g.prev); g.step(); }
   if (autoplay && current.circuit && !current.spur) botInput(race, simIn, 0.97);
   else if (autoplay || race.phase === 'finished') { if (!current.circuit || current.spur) autopilot(race, simIn, 1); }
   else Object.assign(simIn, input.state);
@@ -807,12 +878,13 @@ await post.compile(scene, camera);
 post.render(scene, camera);
 progress(1, 'Ready');
 const readyAt = performance.now();
-if (params.has('event')) { const ev = EVENTS.find((e) => e.id === params.get('event')); if (ev) { menu.open('board', { index: ev.card - 1 }); current = ev; } }
+if (params.has('event')) { const ev = EVENTS.find((e) => e.id === params.get('event')); if (ev) { menu.open('board', { index: ev.card }); current = ev; } }
+if (params.has('daily') && DAILY_EV) { menu.open('board', { index: 0 }); current = DAILY_EV; params.delete('daily'); history.replaceState(null, '', `?${params}${location.hash}`); }
 let resumePage = null;
 try { resumePage = sessionStorage.getItem(RESUME); sessionStorage.removeItem(RESUME); } catch { }
 if (resumePage === 'settings') menu.command('settings');
 garage.intro();
-if (linked && EVENTS.some((e) => e.id === linked.run.event)) { current = EVENTS.find((e) => e.id === linked.run.event); menu.open('board', { index: current.card - 1 }); }
+if (linked && EVENTS.some((e) => e.id === linked.run.event)) { current = EVENTS.find((e) => e.id === linked.run.event); menu.open('board', { index: current.card }); }
 if (params.has('autostart') || linked?.run.event === current.id) startRace(current);
 
 let last = performance.now(), acc = 0, time = 0, garageView = null, clipping = false;
@@ -862,6 +934,15 @@ function draw(dt, ticks = -1) {
     v.root.visible = rInterp.distanceToSquared(interp) < 500 * 500;
     if (v.root.visible) v.update(dt, e.car, time, rInterp.distanceTo(interp));
   }
+  const near = dailyGhosts.map((g, k) => [Math.hypot(g.race.car.x - interp.x, g.race.car.z - interp.z), k]).sort((x, y) => x[0] - y[0]);
+  near.forEach(([d, k], rank) => {
+    const v = dailyViews[k], g = dailyGhosts[k];
+    if (!v) return;
+    v.root.visible = !inGarage && mode === 'race' && rank < 8 && d > 3 && g.race.phase !== 'finished';
+    if (!v.root.visible) return;
+    pose(v.root, g.prev, g.race.car, a, rInterp);
+    v.update(dt, g.race.car, time);
+  });
   if (!inGarage && ghost && ghostView) {
     pose(ghostView.root, gprev, ghost.race.car, a, gInterp);
     ghostView.update(dt, ghost.race.car, time);
@@ -974,8 +1055,13 @@ async function makeClip(portrait) {
   }
 }
 async function ghostUrl() {
+  if (submitted) return `${location.origin}${location.pathname}#g=${submitted}`;
   const { encodeLink } = await import('./share.js');
   return `${location.origin}${location.pathname}#g=${await encodeLink(lastRun, venue.id)}`;
+}
+
+async function ogImage() {
+  return null;
 }
 $('sharePick').addEventListener('click', (e) => { const f = e.target.closest('button')?.dataset.fmt; if (f) makeClip(f === 'portrait'); });
 $('shareClose').addEventListener('click', closeShare);
