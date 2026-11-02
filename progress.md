@@ -1406,3 +1406,11 @@ The second compaction happened at the start of Phase 5. The handoff is at /priva
   - Bug found: `postDaily` read the score after `ogImage` had swapped in a partial replay, so the Worker rejected the run ("score does not match the replay"). The score is now captured first.
   - Evidence: a daily ramp run through `server/dev.mjs`: the image arrives as a 1200x630 JPEG (`docs/sheets/2026-11-02-og-ramp.jpg`: the car mid-drop over the run-up at golden hour), and `/r/<id>` carries `og:image` for it. A Worker test checks the card's tags, redirect and 404. `npm run test:server`: 6 of 6.
   - Not verified: the X and iMessage unfurl previews. They need the Worker at a public URL, which waits on the deploy.
+
+### Phase 5 gate (2026-11-02)
+- The Worker rejects a forged run (a time 1 s or 2 ticks faster, a score 100 higher, one edited input byte) with 422 and a replayed run with 409: `npm run test:server`, 6 of 6.
+- 1,000 submissions: `node server/load.mjs 1000`, 900 accepted, 100 forged rejected, 8.9 s, p99 10.7 ms. Met in-process only; the deployed Worker and D1 are untested.
+- `npm test`: 153 of 153. `node tools/exploits.mjs pad` and `launch`: PASS.
+- Open, needs the user: deploying the Worker (`server/README.md`), setting `<meta name="voltitude-api">`, then the X and iMessage unfurl checks.
+
+Next: Phase 6 (phone tier, touch, boot).
