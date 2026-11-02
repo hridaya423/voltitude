@@ -75,8 +75,9 @@ renderer.shadowMap.enabled = !params.has('noshadow');
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = true;
 renderer.info.autoReset = false;
-const post = createPost(renderer, { msaa: params.has('msaa') ? Number(params.get('msaa')) : 0, session: SESSION });
-const maxScale = Math.min(devicePixelRatio || 1, 2);
+const PHONE = params.has('tier') ? params.get('tier') === 'phone' : matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 900;
+const post = createPost(renderer, { msaa: params.has('msaa') ? Number(params.get('msaa')) : 0, session: SESSION, lite: PHONE, levels: PHONE ? 3 : 4 });
+const maxScale = PHONE ? 1 : Math.min(devicePixelRatio || 1, 2);
 let scale = Math.min(maxScale, Number(params.get('scale')) || maxScale);
 const minScale = Math.max(0.75, maxScale * 0.6);
 renderer.setPixelRatio(scale);
@@ -92,7 +93,7 @@ const fogDensity = { value: SESSION === 'golden' ? 0.000476 : 0.00034 };
 const { sky: skyTex, info: skyInfo, sunIrradiance } = await loadSky(SESSION, renderer);
 const skyMesh = createSky(skyTex, skyInfo.maxLuminance);
 scene.add(skyMesh);
-const sun = createCascades(scene, NIGHT ? '#9fb3e8' : SESSION === 'golden' ? '#ffb877' : '#ffe0bc', NIGHT ? 1.5 : 6.2, SUN_DIR, NIGHT);
+const sun = createCascades(scene, NIGHT ? '#9fb3e8' : SESSION === 'golden' ? '#ffb877' : '#ffe0bc', NIGHT ? 1.5 : 6.2, SUN_DIR, NIGHT, PHONE);
 
 progress(0.15, 'Building the course…');
 await frame();
@@ -100,7 +101,7 @@ const heightBin = await fetch(`assets/terrain/height/${venue.id}.bin`).then((r) 
 const world = buildWorld(heightBin ? new Uint8Array(heightBin) : null, venue);
 const { track, terrain } = world;
 const terrainTex = await loadTerrainTextures(renderer, venue).catch((e) => { console.warn('terrain textures', e); return null; });
-const terrainGroup = createTerrain(terrain, sunUniform, fogDensity, terrainTex, venue, track);
+const terrainGroup = createTerrain(terrain, sunUniform, fogDensity, terrainTex, venue, track, PHONE ? 4 : 6);
 scene.add(terrainGroup);
 await document.fonts.load('600 64px Michroma').catch(() => null);
 await document.fonts.load('600 30px Saira').catch(() => null);
@@ -116,7 +117,7 @@ if (track.closed) scene.add((await import('./render/circuit.js')).createCircuitP
 const venueArt = venue.id === 'airfield' ? (await import('./render/airfield.js')).createAirfield(world, sunUniform, fogDensity, renderer)
   : venue.id === 'launch' ? (await import('./render/launch.js')).createLaunchComplex(world, sunUniform, fogDensity, renderer, NIGHT) : null;
 if (venueArt) scene.add(venueArt.group);
-const stands = await createGrandstands(world, sunUniform, fogDensity, renderer);
+const stands = await createGrandstands(world, sunUniform, fogDensity, renderer, PHONE);
 const festival = createFestival(world, sunUniform, fogDensity, NIGHT, stands);
 const range = createRange(world, sunUniform, fogDensity, festival.used);
 if (track.spurs && Object.keys(track.spurs).length) scene.add((await import('./render/spur.js')).createSpurs(world, sunUniform, fogDensity).group);
@@ -149,7 +150,7 @@ await frame();
 const { createCarView, loadCar, PROBE_LAYER } = await import('./render/car.js');
 await loadCar();
 for (const o of [skyMesh, terrainGroup, course.group, venueArt?.group].filter(Boolean)) o.traverse((m) => { if (!m.isInstancedMesh) m.layers.enable(PROBE_LAYER); });
-const carView = createCarView({ quality: settings.quality, envMap, headlights: NIGHT });
+const carView = createCarView({ quality: PHONE ? 'low' : settings.quality, envMap, headlights: NIGHT });
 scene.add(carView.vapour.points);
 scene.add(carView.root);
 post.track(carView.root);
@@ -850,7 +851,7 @@ function followSun(p) {
 }
 
 const fixedCam = params.has('cam') ? params.get('cam').split(',').map(Number) : null;
-const perf = (window.__perf = { frames: [], scale: [], calls: 0, tris: 0, longest: 0, scene, camera });
+const perf = (window.__perf = { frames: [], scale: [], calls: 0, tris: 0, longest: 0, scene, camera, tier: PHONE ? 'phone' : 'desktop', bench: 0 });
 let ema = 16.7, slowFor = 0, fastFor = 0;
 function adaptResolution(ms) {
   if (params.has('fixedres')) return;
@@ -877,6 +878,14 @@ post.render(scene, camera);
 garage.setActive(true, scene, garageKeep);
 await post.compile(scene, camera);
 post.render(scene, camera);
+if (!PHONE && !params.has('tier')) {
+  const t0 = performance.now();
+  let n = 0;
+  const gl = renderer.getContext(), px = new Uint8Array(4);
+  while (performance.now() - t0 < 1000 && n < 30) { post.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); n++; }
+  perf.bench = (performance.now() - t0) / n;
+  if (perf.bench > 28) { post.lite = true; perf.tier = 'lite'; }
+}
 progress(1, 'Ready');
 const readyAt = performance.now();
 if (params.has('event')) { const ev = EVENTS.find((e) => e.id === params.get('event')); if (ev) { menu.open('board', { index: ev.card }); current = ev; } }

@@ -14,7 +14,7 @@ function mulberry(a) {
   };
 }
 
-export async function createGrandstands(world, sunUniform, fogDensity, renderer) {
+export async function createGrandstands(world, sunUniform, fogDensity, renderer, cards = false) {
   const { track, terrain } = world;
   const group = new THREE.Group();
   const white = panelMaterial('#e8e6e1', 0.5, 0.05, sunUniform, fogDensity, 'stands', 4);
@@ -28,7 +28,7 @@ export async function createGrandstands(world, sunUniform, fogDensity, renderer)
       if (track.U[i * 3 + 1] > 0.985 && !track.gap[i]) { sites.push([i, side, len]); break; }
     }
   }
-  const people = await createPeople(renderer, sunUniform, fogDensity).catch((e) => { console.warn('crowd', e); return null; });
+  const people = await createPeople(renderer, sunUniform, fogDensity, cards).catch((e) => { console.warn('crowd', e); return null; });
   const q = new THREE.Quaternion(), m = new THREE.Matrix4(), p = new THREE.Vector3(), place = new THREE.Vector3(), centre = new THREE.Vector3(), centres = [];
   for (const [i, side, len] of sites) {
     const k = i * 3;

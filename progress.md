@@ -1414,3 +1414,9 @@ The second compaction happened at the start of Phase 5. The handoff is at /priva
 - Open, needs the user: deploying the Worker (`server/README.md`), setting `<meta name="voltitude-api">`, then the X and iMessage unfurl checks.
 
 Next: Phase 6 (phone tier, touch, boot).
+
+## Session 2026-11-02 (cont.): Phase 6
+
+- Task 6.1: the phone tier. `PHONE` is a coarse pointer plus a short screen side under 900 px, overridden by `?tier=phone|desktop`. On a phone: pixel ratio 1, `createPost({ lite })` (no jitter, TAA, GTAO or car velocity pass; blur, aberration, heat and sharpen off; exposure, auto-exposure, LUT and three bloom levels kept), the LOD1 car, crowd as cards only (`createPeople(…, cards)`), four terrain tiles, and one shadow cascade to 110 m. `shadows.js` has a one-cascade shader path; the old patch referenced three shadow maps and would not compile with one. On desktop a 1 s benchmark at boot renders the garage with a `readPixels` sync per frame and switches post to lite above 28 ms (`__perf.tier = 'lite'`). This machine measures 3 ms. A plain `gl.finish()` did not sync and read 0.6 ms.
+  - Evidence: phone emulation at 844x390, DPR 3, touch. The Pad Lineup shows 256 draw calls and 2.39M triangles against desktop's 316 and 3.02M. Launch GP at 9 s shows 333 calls and 2.87M triangles. Sheet `docs/sheets/2026-11-02-phone-tier.jpg`: phone tier left, desktop right. The phone frame is aliased (no TAA) but reads. `npm test`: 153 of 153.
+  - Not measured: real phone frame times. Headless frames sit on the 16.7 ms vsync. The triangle count is high for a phone (flora and boulders are unchanged), so it is the first suspect if the iPhone 13 misses 30 fps.

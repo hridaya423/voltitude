@@ -379,7 +379,7 @@ function target(w, h, opts = {}) {
   return t;
 }
 
-export function createPost(renderer, { levels = 4, msaa = 4, session = 'day' } = {}) {
+export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', lite = false } = {}) {
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
   quad.frustumCulled = false;
   const qScene = new THREE.Scene();
@@ -467,6 +467,8 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day' } =
     });
   }
   return {
+    get lite() { return lite; },
+    set lite(v) { lite = v; reset = true; },
     uniforms: comp.uniforms,
     auto: adapt.uniforms,
     ao: gtao.uniforms,
@@ -494,10 +496,12 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day' } =
       shared.uCamWorld.value.copy(camera.matrixWorld);
       shared.uVP.value.copy(vp);
       shared.uPrevVP.value.copy(prevVP);
-      proj.elements[8] += jx; proj.elements[9] += jy;
+      if (!lite) { proj.elements[8] += jx; proj.elements[9] += jy; }
       renderer.setRenderTarget(scene);
       renderer.render(world, camera);
-
+      let cur = scene;
+      if (lite) for (const k of ['uBlur', 'uAberration', 'uHeat', 'uSharpen']) comp.uniforms[k].value = 0;
+      else {
       const mask = camera.layers.mask, clearAlpha = renderer.getClearAlpha(), clear = renderer.getClearColor(new THREE.Color()), autoClear = renderer.autoClear;
       camera.layers.set(3);
       writing = true;
@@ -528,7 +532,8 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day' } =
       aoBlur.uniforms.uTexel.value.set(1 / aoRT.width, 1 / aoRT.height);
       pass(aoBlur, aoBlurRT);
 
-      const cur = hist[frame & 1], prev = hist[(frame + 1) & 1];
+      cur = hist[frame & 1];
+      const prev = hist[(frame + 1) & 1];
       taa.uniforms.tCur.value = scene.texture;
       taa.uniforms.tHist.value = prev.texture;
       taa.uniforms.tVel.value = velRT.texture;
@@ -536,6 +541,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day' } =
       taa.uniforms.uTexel.value.set(1 / w, 1 / h);
       taa.uniforms.uReset.value = reset ? 1 : 0;
       pass(taa, cur);
+      }
       meter.uniforms.tSrc.value = cur.texture;
       pass(meter, meterRT);
       const now = performance.now(), dt = Math.min(0.1, (now - lastRender) / 1000);

@@ -165,7 +165,7 @@ async function loadBuffer(name) {
   return (await fetch(new URL(name, BASE))).arrayBuffer();
 }
 
-export async function createPeople(renderer, sunUniform, fogDensity) {
+export async function createPeople(renderer, sunUniform, fogDensity, cards = false) {
   const meta = await (await fetch(new URL('crowd.json', BASE))).json();
   const [bin, posBuf, nrmBuf] = await Promise.all([loadBuffer('crowd.bin'), loadBuffer('vat_pos.bin'), loadBuffer('vat_nrm.bin')]);
   const { width, height } = meta.vat;
@@ -261,7 +261,7 @@ export async function createPeople(renderer, sunUniform, fogDensity) {
 
   function update(camera) {
     for (const ch of chunks) {
-      const near = ch.center.distanceTo(camera.position) - 9 < NEAR;
+      const near = !cards && ch.center.distanceTo(camera.position) - 9 < NEAR;
       for (const m of ch.near) m.visible = near;
       ch.card.visible = !near;
     }

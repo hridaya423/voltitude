@@ -5,6 +5,7 @@ export const CASCADES = [
   { far: 90, size: 2048, bias: -0.0002, normal: 0.14 },
   { far: 280, size: 2048, bias: -0.0003, normal: 0.45 },
 ];
+const SINGLE = { far: 110, size: 2048, bias: -0.0003, normal: 0.3 };
 const FADE = 0.2;
 const PERIOD = [1, 2, 4];
 const PHASE = [0, 0, 1];
@@ -20,10 +21,15 @@ THREE.ShaderChunk.lights_fragment_begin = begin.slice(0, loop)
 		float cd = -vViewPosition.z;
 		float c0 = smoothstep( ${(CASCADES[0].far * (1 - FADE)).toFixed(1)}, ${CASCADES[0].far.toFixed(1)}, cd ), c1 = smoothstep( ${(CASCADES[1].far * (1 - FADE)).toFixed(1)}, ${CASCADES[1].far.toFixed(1)}, cd );
 		if ( UNROLLED_LOOP_INDEX == 0 ) {
+#if NUM_DIR_LIGHT_SHADOWS == 1
+			float w0 = 1.0 - smoothstep( ${(SINGLE.far * (1 - FADE)).toFixed(1)}, ${SINGLE.far.toFixed(1)}, cd );
+			float sh = w0 > 0.002 && receiveShadow ? w0 * ${cascade(0)} + 1.0 - w0 : 1.0;
+#else
 			float w0 = 1.0 - c0, w1 = c0 * ( 1.0 - c1 ), w2 = c0 * c1;
 			float sh = ( w0 > 0.002 && receiveShadow ? w0 * ${cascade(0)} : w0 )
 				+ ( w1 > 0.002 && receiveShadow ? w1 * ${cascade(1)} : w1 )
 				+ ( w2 > 0.002 && receiveShadow ? w2 * ${cascade(2)} : w2 );
+#endif
 			directLight.color *= sh;
 		} else directLight.visible = false;
 		}`).replace(direct, `if ( directLight.visible ) ${direct}`);
@@ -45,15 +51,16 @@ const corners = Array.from({ length: 8 }, () => new THREE.Vector3());
 const center = new THREE.Vector3(), right = new THREE.Vector3(), up = new THREE.Vector3(), fwd = new THREE.Vector3();
 const basis = new THREE.Matrix4(), inv = new THREE.Matrix4();
 
-export function createCascades(scene, color, intensity, dir, night) {
+export function createCascades(scene, color, intensity, dir, night, single = false) {
   const group = new THREE.Group();
   scene.add(group);
-  const count = night ? 1 : CASCADES.length;
+  const list = single ? [SINGLE] : CASCADES;
+  const count = night ? 1 : list.length;
   const lights = [];
   for (let i = 0; i < count; i++) {
     const l = new THREE.DirectionalLight(color, intensity);
     if (!night) {
-      const c = CASCADES[i];
+      const c = list[i];
       l.castShadow = true;
       l.shadow.autoUpdate = false;
       l.shadow.mapSize.set(c.size, c.size);
@@ -85,7 +92,7 @@ export function createCascades(scene, color, intensity, dir, night) {
       basis.lookAt(sunDir, new THREE.Vector3(), lightUp);
       inv.copy(basis).invert();
       lights.forEach((l, i) => {
-        const far = CASCADES[i].far;
+        const far = list[i].far;
         let k = 0;
         for (const d of [near, far]) {
           const hh = d * th, hw = hh * camera.aspect;
@@ -99,7 +106,7 @@ export function createCascades(scene, color, intensity, dir, night) {
         let r = 0;
         for (const c of corners) r = Math.max(r, c.distanceTo(center));
         r = Math.ceil(r * (i ? 1.06 : 1) * 4) / 4;
-        const texel = (2 * r) / CASCADES[i].size;
+        const texel = (2 * r) / list[i].size;
         center.applyMatrix4(inv);
         center.x = Math.round(center.x / texel) * texel;
         center.y = Math.round(center.y / texel) * texel;
