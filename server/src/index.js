@@ -85,7 +85,7 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 async function card(env, url, id) {
   const row = /^[0-9a-f]{12}$/.test(id) && await env.DB.prepare('SELECT venue, event, name, total, score, og IS NOT NULL AS og FROM runs WHERE id = ?').bind(id).first();
   if (!row) return new Response('not found', { status: 404 });
-  const game = env.GAME || 'https://voltitude.vercel.app/', to = `${game}#g=${id}`;
+  const game = env.GAME || 'https://voltitude.hridya.tech/', to = `${game}#g=${id}`;
   const result = row.score !== null ? `${row.score} points` : `${Math.floor(row.total / 7200)}:${((row.total % 7200) / 120).toFixed(3).padStart(6, '0')}`;
   const title = `${row.name} · ${result} on ${VENUES[row.venue].name}. Beat it.`;
   const image = row.og ? `${url.origin}/og/${id}.jpg` : `${game}assets/og.jpg`;

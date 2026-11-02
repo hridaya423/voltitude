@@ -5,7 +5,7 @@ Attach the 9:16 clips from the in-game Share clip button. Each post names its cl
 **1/6** [clip: The Lineup, portrait]
 A car that jumps a row of parked cars. In your browser, no install.
 Voltitude: one daily card, every ghost on it.
-https://voltitude.vercel.app/
+https://voltitude.hridya.tech/
 
 **2/6** [clip: The Ramp, portrait]
 The Ramp. Drive up the curl, let go at the lip, land it. Three tries. You score points for the landing angle and for the speed you keep.

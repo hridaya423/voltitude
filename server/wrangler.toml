@@ -12,4 +12,4 @@ database_name = "voltitude"
 database_id = "cd9097ac-92d2-42b4-9b80-50d528958d64"
 
 [vars]
-GAME = "https://voltitude.vercel.app/"
+GAME = "https://voltitude.hridya.tech/"
