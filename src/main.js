@@ -57,7 +57,9 @@ if (linked && VENUES[linked.venue] && linked.venue !== (params.get('venue') || s
 const venue = venueOf(params.get('venue') || settings.venue);
 const SESSION = ['golden', 'day', 'night'].find((s) => params.has(s)) || settings.session;
 const NIGHT = SESSION === 'night';
-const saveSettings = () => store(STORE, settings);
+const motionClass = () => document.documentElement.classList.toggle('reduced', !!settings.reduced);
+const saveSettings = () => { store(STORE, settings); motionClass(); };
+motionClass();
 
 const marks = (window.__boot = [['start', performance.now()]]);
 const progress = (k, text) => { marks.push([text, performance.now()]); $('loadFill').style.transform = `scaleX(${k})`; $('loadText').textContent = text; };
@@ -976,7 +978,7 @@ function draw(dt, ticks = -1) {
   flora.update(time);
   if (!inGarage && running) skids.update(carView.root.matrixWorld, c, dt);
   if (inGarage) {
-    if (menu.dirty || menu.listening) {
+    if (menu.dirty || menu.listening || garage.sliding) {
       garageView = menu.view();
       garage.draw(garageView, time);
       if (menu.dirty) $('menuLive').textContent = describe(garageView);

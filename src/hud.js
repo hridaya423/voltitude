@@ -62,7 +62,7 @@ export function createHud(world, settings) {
 
   return {
     els,
-    show(on) { els.hud.hidden = !on; },
+    show(on) { els.hud.classList.toggle('off', !on); },
     begin(event, targetText) {
       track = event.spur ? world.track.spurs[event.spur] : world.track;
       buildMap(event);

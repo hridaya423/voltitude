@@ -1467,3 +1467,11 @@ Next: Phase 7 (mark and type, HUD motion pass, trailer and launch page, launch).
     - Open, low: the generic fallback stacks have different metrics, a brief swap on the loading screen.
   - The swap is reversible. The variant sheet is in the sheet below, so another direction can be picked.
   - Evidence: sheet `docs/sheets/2026-11-02-mark-type.jpg` (variants, garage, HUD, clip burn-in, loading screen). `node tools/clip-test.mjs`: PASS. `npm test`: 155 of 155.
+
+- Task 7.2: HUD and hangar motion pass (polish depth: only the cuts).
+  - The HUD used `hidden` and cut in and out. It now toggles `.off`. The clock drops in from the top, then the card and the map slide in from their sides (50 ms later) and the dash rises (100 ms later): 360 ms translate, 240 ms fade, the project's `--ease`. On the way out the panels fade, and visibility follows 300 ms later, so hidden panels stay out of the accessibility tree. The individual `translate` property is used so the phone media queries' `transform: scale` stays intact.
+  - The share dialog rises in and the replay bug slides in from the right.
+  - Hangar: the camera already glides between pages, and cuts under reduced motion. The board's selected row jumped; the red highlight now slides between rows in 180 ms with an ease-out cubic (`slide` in `garage.js`). `garage.sliding` keeps the board redrawing until it lands.
+  - Reduced motion: the in-game setting never reached the CSS. `settings.reduced` now sets `html.reduced`, which drops the translates (fade only) and swaps the dialog animations for a fade. The OS media query already collapses durations to 1 ms. Checked: with `reducedMotion: 'reduce'`, `html` has `reduced` and the HUD card's off-state translate is `none`; without it, `-28px`.
+  - Evidence: sheet `docs/sheets/2026-11-02-motion.jpg`: HUD frames 0, 90, 180 and 500 ms after show, and the row highlight in mid-slide (captured with the duration stretched to 1.2 s through route injection, since a screenshot takes longer than 180 ms). `node tools/a11y-probe.mjs`: PASS, 105 text elements, 0 failing. `npm test`: 155 of 155.
+  - Not done: the results screen's rows and the settings tyre still change without motion. The text colour swaps at once while the highlight travels.

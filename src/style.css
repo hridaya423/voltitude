@@ -188,6 +188,24 @@ button { font: inherit; }
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
 }
 
+.hud-tl, .hud-clock, .map, .dash { transition: translate 360ms var(--ease), opacity 240ms var(--ease); }
+.hud-clock { transition-delay: 0ms; }
+.hud-tl, .map { transition-delay: 50ms; }
+.dash { transition-delay: 100ms; }
+.hud.off { visibility: hidden; transition: visibility 0s 300ms; }
+.hud.off :is(.hud-tl, .hud-clock, .map, .dash) { opacity: 0; transition-delay: 0ms; }
+.hud.off .hud-tl { translate: -28px 0; }
+.hud.off .hud-clock { translate: 0 -20px; }
+.hud.off .map { translate: 28px 0; }
+.hud.off .dash { translate: 0 28px; }
+.reduced .hud.off :is(.hud-tl, .hud-clock, .map, .dash) { translate: none; }
+.share:not([hidden]) { animation: rise 280ms var(--ease) both; }
+@keyframes rise { from { opacity: 0; translate: 0 16px; } }
+.replay-bug:not([hidden]) { animation: slide-in 320ms var(--ease) both; }
+@keyframes slide-in { from { opacity: 0; translate: 24px 0; } }
+.reduced .share:not([hidden]), .reduced .replay-bug:not([hidden]) { animation-name: fade-in; }
+@keyframes fade-in { from { opacity: 0; } }
+
 .share { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 2 * var(--gut))); z-index: 6; display: grid; gap: 16px; padding: 28px; border-radius: 16px; background: #0b0c10; border: 1px solid var(--hair); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6); color: var(--ink); font: 500 16px/1.4 var(--ui); }
 .share[hidden] { display: none; }
 .share h2 { margin: 0; font: 800 expanded 22px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; }

@@ -5,7 +5,7 @@ import { createPeople } from './people.js';
 import { skyUniforms, SKY_GLSL } from './sky.js';
 
 export const ANCHOR = new THREE.Vector3(0, 3000, 0);
-const TABLE_H = 0.08, CAR_Y = 0.59 + TABLE_H;
+const TABLE_H = 0.08, CAR_Y = 0.59 + TABLE_H, SLIDE = 0.18;
 const DOOR_W = 10.5, DOOR_H = 6.6;
 const BOARD_SIZE = [11, 11 * BOARD.h / BOARD.w], BOARD_AT = [0, 5.05, 11.2];
 const TYRE_SIZE = [1.6, 1.0], TYRE_AT = [-4.62, 1.5, 2.2];
@@ -320,6 +320,7 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
     draw();
   };
   const reduced = () => !!settings.reduced;
+  const slide = { page: '', at: 0, from: 0, to: 0, t0: 0 };
 
   const cam = { pos: new THREE.Vector3(), at: new THREE.Vector3(), fov: 40 };
   const from = { pos: new THREE.Vector3(), at: new THREE.Vector3(), fov: 40 };
@@ -363,8 +364,18 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
     },
     boot() { introT = 0; },
     cut() { cutNext = true; },
+    get sliding() { return slide.at !== slide.to; },
     flash() { flashK = 1; },
     draw(view, now) {
+      const b = view.board;
+      if (b.kind !== 'results') {
+        const page = `${b.kind}${b.venue?.id ?? ''}${b.rows.length}`;
+        if (slide.page !== page) Object.assign(slide, { page, at: b.index, from: b.index, to: b.index, t0: now });
+        else if (slide.to !== b.index) Object.assign(slide, { from: slide.at, to: b.index, t0: now });
+        const k = reduced() ? 1 : Math.min(1, (now - slide.t0) / SLIDE);
+        slide.at = slide.from + (slide.to - slide.from) * (1 - (1 - k) ** 3);
+        view = { ...view, board: { ...b, at: slide.at } };
+      }
       redraw('board', view.board, () => { hits.board = drawBoard(boardFace.g, view.board); boardFace.tex.needsUpdate = true; });
       redraw('floor', view.floor, () => { hits.floor = drawFloor(floorFace.g, glowFace.g, view.floor); floorFace.tex.needsUpdate = true; glowFace.tex.needsUpdate = true; });
       const tv = view.tyre.listening ? { ...view.tyre, blink: Math.floor(now * 3) } : view.tyre;

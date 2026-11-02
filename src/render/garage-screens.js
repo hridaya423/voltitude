@@ -83,6 +83,7 @@ function header(g, right) {
 }
 
 function row(g, x, y, w, h, selected) {
+  if (selected === null) return;
   if (selected) {
     g.fillStyle = C.red;
     rrect(g, x, y, w, h - 10, 14); g.fill();
@@ -99,7 +100,8 @@ function modes(g, b) {
   const n = b.rows.length, top = 196, rowH = Math.min(150, (770 - top) / n), lx = 64, lw = 780;
   b.rows.forEach((ev, i) => {
     const y = top + i * rowH, sel = i === b.index;
-    row(g, lx, y, lw, rowH, sel);
+    if (!i) row(g, lx, top + (b.at ?? b.index) * rowH, lw, rowH, true);
+    row(g, lx, y, lw, rowH, sel ? null : false);
     const mid = y + (rowH - 10) / 2, size = Math.max(30, Math.min(52, rowH * 0.36));
     put(g, ev.tag, lx + 78, mid + size * 0.36, { size: size * 0.62, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink3, align: 'center' });
     put(g, ev.name.toUpperCase(), lx + 130, mid + size * 0.36, { size, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink2, gap: 2, max: lw - 380 });
@@ -148,7 +150,8 @@ function pause(g, b) {
   const top = 380, rowH = 112, lw = 780;
   b.rows.forEach((r, i) => {
     const y = top + i * rowH, sel = i === b.index;
-    row(g, 64, y, lw, rowH, sel);
+    if (!i) row(g, 64, top + (b.at ?? b.index) * rowH, lw, rowH, true);
+    row(g, 64, y, lw, rowH, sel ? null : false);
     put(g, r.label.toUpperCase(), 130, y + 68, { size: 42, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink2, gap: 3 });
     if (r.key) chip(g, r.key, 64 + lw - 28, y + 76, 48, { color: sel ? '#fff' : C.ink3 });
     hits.push({ x: 64, y, w: lw, h: rowH, row: i });
