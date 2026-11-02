@@ -77,7 +77,7 @@ export function createAirfield(world, sunUniform, fogDensity, renderer) {
     c.width = 256; c.height = 512;
     const g = c.getContext('2d');
     g.fillStyle = '#e8e6df';
-    g.font = '700 300px Saira, sans-serif';
+    g.font = '700 300px Archivo, sans-serif';
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText(side < 0 ? txt[0] : txt[1], 128, 270);
     const tex = new THREE.CanvasTexture(c);

@@ -214,10 +214,10 @@ export function makeLabel(text, sub, accent) {
   g.fillStyle = '#0b0c10'; g.fillRect(0, 0, 1024, 160);
   g.fillStyle = accent; g.fillRect(0, 0, 14, 160);
   g.fillStyle = '#f2efe8';
-  g.font = '600 64px Michroma, sans-serif';
+  g.font = '800 expanded 64px Archivo, sans-serif';
   g.textBaseline = 'middle';
   g.fillText(text, 48, 70);
-  if (sub) { g.fillStyle = accent; g.font = '600 30px Saira, sans-serif'; g.fillText(sub, 50, 128); }
+  if (sub) { g.fillStyle = accent; g.font = '600 30px Archivo, sans-serif'; g.fillText(sub, 50, 128); }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;

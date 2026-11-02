@@ -1,4 +1,5 @@
 import { VENUES } from '../sim/venues.js';
+import { drawMark } from '../mark.js';
 
 export const BOARD = { w: 2048, h: 960 };
 export const TYRE = { w: 1280, h: 800 };
@@ -10,8 +11,9 @@ const C = {
   red: '#d1122d', redHot: '#ff4258', cyan: '#7fe3ff', orange: '#ff8a2a', good: '#5dff9b', bad: '#ff6b78',
   author: '#6ff0c4', gold: '#e9c45c', silver: '#c7ccd4', bronze: '#c98b5b', purple: '#b45cff', yellow: '#ffd23f',
 };
-const DISPLAY = "'Michroma', 'Eurostile', ui-sans-serif, sans-serif";
-const UI = "'Saira', ui-sans-serif, system-ui, sans-serif";
+const DISPLAY = "'Archivo', ui-sans-serif, sans-serif";
+const MONO = "'Martian Mono', ui-monospace, monospace";
+const UI = "'Archivo', ui-sans-serif, system-ui, sans-serif";
 const TONE = { good: C.good, bad: C.bad, purple: C.purple, green: C.good, yellow: C.yellow, gold: C.gold, silver: C.silver, bronze: C.bronze, author: C.author, '': C.ink2 };
 
 function put(g, str, x, y, { size = 36, fam = UI, weight = 600, color = C.ink, align = 'left', gap = 0, max = 0 } = {}) {
@@ -73,7 +75,8 @@ function clear(g, w, h, top = '#0b0d13', bottom = '#05060a') {
 }
 
 function header(g, right) {
-  put(g, 'VOLTITUDE', 64, 88, { size: 46, fam: DISPLAY, weight: 400, gap: 16 });
+  drawMark(g, 60, 42, 56);
+  put(g, 'VOLTITUDE', 128, 88, { size: 46, fam: DISPLAY, weight: '800 expanded', gap: 2 });
   put(g, right, BOARD.w - 64, 84, { size: 32, color: C.ink2, align: 'right', gap: 6, max: 1100 });
   g.fillStyle = C.hair;
   g.fillRect(64, 118, BOARD.w - 128, 2);
@@ -98,8 +101,8 @@ function modes(g, b) {
     const y = top + i * rowH, sel = i === b.index;
     row(g, lx, y, lw, rowH, sel);
     const mid = y + (rowH - 10) / 2, size = Math.max(30, Math.min(52, rowH * 0.36));
-    put(g, ev.tag, lx + 78, mid + size * 0.36, { size: size * 0.62, fam: DISPLAY, weight: 400, color: sel ? '#fff' : C.ink3, align: 'center' });
-    put(g, ev.name.toUpperCase(), lx + 130, mid + size * 0.36, { size, fam: DISPLAY, weight: 400, color: sel ? '#fff' : C.ink2, gap: 2, max: lw - 380 });
+    put(g, ev.tag, lx + 78, mid + size * 0.36, { size: size * 0.62, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink3, align: 'center' });
+    put(g, ev.name.toUpperCase(), lx + 130, mid + size * 0.36, { size, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink2, gap: 2, max: lw - 380 });
     if (ev.best) put(g, ev.best, lx + lw - 80, mid + 12, { size: 36, color: sel ? '#fff' : C.ink3, align: 'right' });
     dot(g, lx + lw - 40, mid, 15, ev.medal && ev.medal.id);
     hits.push({ x: lx, y, w: lw, h: rowH, row: i });
@@ -107,25 +110,25 @@ function modes(g, b) {
   const d = b.detail, rx = 920, rw = 1064;
   if (d) {
     put(g, d.kicker.toUpperCase(), rx, 180, { size: 30, weight: 700, color: C.redHot, gap: 8, max: rw });
-    put(g, d.name.toUpperCase(), rx, 262, { size: 60, fam: DISPLAY, weight: 400, gap: 3, max: rw });
+    put(g, d.name.toUpperCase(), rx, 262, { size: 60, fam: DISPLAY, weight: '800 expanded', gap: 3, max: rw });
     const lines = wrap(g, d.brief, rw, 38);
     lines.slice(0, 3).forEach((l, i) => put(g, l, rx, 330 + i * 50, { size: 38, weight: 500, color: C.ink2 }));
     d.ladder.forEach((m, i) => {
       const y = 510 + i * 56;
       dot(g, rx + 16, y - 12, 14, m.id);
       put(g, m.name.toUpperCase(), rx + 52, y, { size: 30, color: C.ink3, gap: 6 });
-      put(g, m.time, rx + 360, y + 2, { size: 38, fam: DISPLAY, weight: 400 });
+      put(g, m.time, rx + 360, y + 2, { size: 38, fam: MONO, weight: '500 semi-condensed' });
       if (m.got) put(g, 'CLEARED', rx + 700, y, { size: 28, color: C.good, gap: 6 });
     });
     if (d.bestLabel) {
       g.fillStyle = C.hair; g.fillRect(rx, 716, rw, 2);
       put(g, d.bestLabel, rx, 764, { size: 28, color: C.ink3, gap: 8 });
-      put(g, d.best || '—', rx + rw, 768, { size: 44, fam: DISPLAY, weight: 400, align: 'right' });
+      put(g, d.best || '—', rx + rw, 768, { size: 44, fam: MONO, weight: '500 semi-condensed', align: 'right' });
     }
     const cy = 786;
     g.fillStyle = C.red;
     rrect(g, rx, cy, rw, 76, 14); g.fill();
-    put(g, 'DRIVE', rx + 36, cy + 52, { size: 38, fam: DISPLAY, weight: 400, gap: 6, color: '#fff' });
+    put(g, 'DRIVE', rx + 36, cy + 52, { size: 38, fam: DISPLAY, weight: '800 expanded', gap: 6, color: '#fff' });
     chip(g, 'ENTER', rx + rw - 32, cy + 56, 48, { color: '#fff' });
     hits.push({ x: rx, y: cy, w: rw, h: 76, row: b.index });
   }
@@ -141,19 +144,19 @@ function modes(g, b) {
 function pause(g, b) {
   const hits = [];
   header(g, b.sub.toUpperCase());
-  put(g, b.title, 64, 310, { size: 112, fam: DISPLAY, weight: 400, gap: 6 });
+  put(g, b.title, 64, 310, { size: 112, fam: DISPLAY, weight: '800 expanded', gap: 6 });
   const top = 380, rowH = 112, lw = 780;
   b.rows.forEach((r, i) => {
     const y = top + i * rowH, sel = i === b.index;
     row(g, 64, y, lw, rowH, sel);
-    put(g, r.label.toUpperCase(), 130, y + 68, { size: 42, fam: DISPLAY, weight: 400, color: sel ? '#fff' : C.ink2, gap: 3 });
+    put(g, r.label.toUpperCase(), 130, y + 68, { size: 42, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink2, gap: 3 });
     if (r.key) chip(g, r.key, 64 + lw - 28, y + 76, 48, { color: sel ? '#fff' : C.ink3 });
     hits.push({ x: 64, y, w: lw, h: rowH, row: i });
   });
   b.lines.forEach((l, i) => {
     const y = 250 + i * 150;
     put(g, l.label.toUpperCase(), 1000, y, { size: 30, color: C.ink3, gap: 8 });
-    put(g, l.value, 1000, y + 76, { size: 76, fam: DISPLAY, weight: 400, max: 984 });
+    put(g, l.value, 1000, y + 76, { size: 76, fam: MONO, weight: '500 semi-condensed', max: 984 });
   });
   put(g, 'ESC  RESUME     ↑↓  CHOOSE     ENTER  CONFIRM', 64, 930, { size: 30, color: C.ink2, gap: 4 });
   return hits;
@@ -163,16 +166,16 @@ function results(g, b) {
   const hits = [];
   header(g, b.card.toUpperCase());
   if (b.pos || b.dare) {
-    put(g, b.dare ? `${b.line}` : `P${b.pos}`, 64, 380, { size: 200, fam: DISPLAY, weight: 400, color: b.pos === 1 ? '#fff' : C.ink });
+    put(g, b.dare ? `${b.line}` : `P${b.pos}`, 64, 380, { size: 200, fam: DISPLAY, weight: '800 expanded', color: b.pos === 1 ? '#fff' : C.ink });
     put(g, b.dare ? b.lineLabel || 'LINE REACHED' : `OF ${b.field}`, 64, 440, { size: 44, weight: 700, color: C.ink3, gap: 8 });
   }
   const mid = b.medal;
   if (!b.dare) {
     dot(g, 90, 520, 26, mid && mid.id);
-    put(g, mid ? `${mid.name.toUpperCase()}${mid.fresh ? ' MEDAL' : ''}` : 'NO MEDAL YET', 140, 536, { size: 42, fam: DISPLAY, weight: 400, color: mid ? C.ink : C.ink3, max: 560 });
+    put(g, mid ? `${mid.name.toUpperCase()}${mid.fresh ? ' MEDAL' : ''}` : 'NO MEDAL YET', 140, 536, { size: 42, fam: DISPLAY, weight: '800 expanded', color: mid ? C.ink : C.ink3, max: 560 });
   }
   put(g, b.label || 'TIME', 760, 180, { size: 28, color: C.ink3, gap: 8 });
-  put(g, b.time, 760, 280, { size: 76, fam: DISPLAY, weight: 400, max: 540 });
+  put(g, b.time, 760, 280, { size: 76, fam: MONO, weight: '500 semi-condensed', max: 540 });
   put(g, b.delta.text, 760, 350, { size: 40, weight: 700, color: TONE[b.delta.tone] || C.ink2, max: 540 });
   wrap(g, b.note || '', 540, 34).slice(0, 4).forEach((l, i) => put(g, l, 760, 420 + i * 46, { size: 34, weight: 500, color: C.ink2 }));
   put(g, b.title, 1400, 180, { size: 28, color: C.ink3, gap: 8 });
@@ -181,14 +184,14 @@ function results(g, b) {
     const c = Math.floor(i / per), y = 236 + (i % per) * rowH, x = 1400 + c * colW, size = cols > 1 ? 30 : 36;
     if ('dot' in r) dot(g, x + 12, y + rowH * 0.42, 9, r.dot);
     put(g, r.label, x + 34, y + rowH * 0.62, { size, weight: 500, color: C.ink2 });
-    put(g, r.value, x + colW - (cols > 1 ? 4 : 190), y + rowH * 0.62, { size, fam: DISPLAY, weight: 400, align: 'right' });
+    put(g, r.value, x + colW - (cols > 1 ? 4 : 190), y + rowH * 0.62, { size, fam: MONO, weight: '500 semi-condensed', align: 'right' });
     if (cols === 1 && r.tag) put(g, r.tag, x + colW, y + rowH * 0.62, { size: 30, color: TONE[r.tone] || C.ink3, align: 'right' });
   });
   g.fillStyle = C.hair; g.fillRect(64, 724, BOARD.w - 128, 2);
   const sw = (BOARD.w - 128) / Math.max(1, b.stats.length);
   b.stats.forEach((s, i) => {
     put(g, s.label.toUpperCase(), 64 + i * sw, 770, { size: 26, color: C.ink3, gap: 6 });
-    put(g, s.value, 64 + i * sw, 826, { size: 44, fam: DISPLAY, weight: 400, max: sw - 24 });
+    put(g, s.value, 64 + i * sw, 826, { size: 44, fam: MONO, weight: '500 semi-condensed', max: sw - 24 });
   });
   return hits;
 }
@@ -199,7 +202,7 @@ function resultActions(g, b, hits) {
     const x = 64 + i * (tw + gap), sel = i === b.index;
     g.globalAlpha = r.off ? 0.3 : 1;
     if (sel) { g.fillStyle = C.red; rrect(g, x, y, tw, 72, 14); g.fill(); } else { g.strokeStyle = C.hair; g.lineWidth = 3; rrect(g, x, y, tw, 72, 14); g.stroke(); }
-    put(g, r.label.toUpperCase(), x + 28, y + 48, { size: tw < 470 ? 28 : 34, fam: DISPLAY, weight: 400, color: sel ? '#fff' : C.ink2, gap: tw < 470 ? 2 : 4 });
+    put(g, r.label.toUpperCase(), x + 28, y + 48, { size: tw < 470 ? 28 : 34, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink2, gap: tw < 470 ? 2 : 4 });
     if (r.key) chip(g, r.key, x + tw - 26, y + 52, 44, { color: sel ? '#fff' : C.ink3 });
     g.globalAlpha = 1;
     if (!r.off) hits.push({ x, y, w: tw, h: 72, row: i });
@@ -217,7 +220,7 @@ export function drawTyre(g, t, time) {
   const { w, h } = TYRE;
   clear(g, w, h, '#0d0d12', '#050508');
   const keys = t.kind === 'keys';
-  put(g, keys ? 'CONTROLS' : 'SETTINGS', 56, 82, { size: 42, fam: DISPLAY, weight: 400, gap: 6 });
+  put(g, keys ? 'CONTROLS' : 'SETTINGS', 56, 82, { size: 42, fam: DISPLAY, weight: '800 expanded', gap: 6 });
   put(g, 'TYRE WARMER', w - 56, 76, { size: 28, color: C.ink3, align: 'right', gap: 8 });
   const heat = g.createLinearGradient(56, 0, w - 56, 0);
   heat.addColorStop(0, C.orange); heat.addColorStop(1, C.red);
@@ -328,7 +331,7 @@ export function drawFloor(g, glow, f) {
     for (const [cx, cy] of [[x + 8, 32], [x + bw - 8, 32], [x + 8, h - 32], [x + bw - 8, h - 32]]) g.fillRect(cx - 24, cy - 24, 48, 48);
     g.fillStyle = paint; g.strokeStyle = paint;
     const words = v.name.toUpperCase().split(' ');
-    words.forEach((word, k) => put(g, word, x + bw / 2, 128 + k * 84, { size: 72, fam: DISPLAY, weight: 400, color: paint, align: 'center', gap: 4, max: bw - 120 }));
+    words.forEach((word, k) => put(g, word, x + bw / 2, 128 + k * 84, { size: 72, fam: DISPLAY, weight: '800 expanded', color: paint, align: 'center', gap: 4, max: bw - 120 }));
     g.fillStyle = paint; g.strokeStyle = paint;
     trace(g, VENUES[v.id], x + 120, 250, bw - 240, 300);
     put(g, v.place.toUpperCase(), x + bw / 2, 624, { size: 40, color: paint, align: 'center', gap: 8 });
@@ -351,7 +354,7 @@ const CHANNELS = [['CELL TEMP', C.orange, 0.7, 1.3], ['THRUST', C.cyan, 1.9, 2.6
 export function drawTelemetry(g, data, now) {
   const { w, h } = TELE;
   clear(g, w, h, '#0a0d14', '#04050a');
-  put(g, 'PIT WALL', 40, 58, { size: 30, fam: DISPLAY, weight: 400, gap: 10 });
+  put(g, 'PIT WALL', 40, 58, { size: 30, fam: DISPLAY, weight: '800 expanded', gap: 10 });
   put(g, 'TEAM VOLTITUDE · ROCKET RANGE', 300, 56, { size: 24, color: C.ink3, gap: 6 });
   g.fillStyle = C.redHot;
   if (Math.floor(now * 1.5) % 2) { g.beginPath(); g.arc(w - 150, 46, 9, 0, Math.PI * 2); g.fill(); }
@@ -359,15 +362,15 @@ export function drawTelemetry(g, data, now) {
   g.fillStyle = C.hair; g.fillRect(40, 82, w - 80, 2);
   data.venues.forEach((v, i) => {
     const y = 136 + i * 62, [set, total] = v.note.split(' of ').map((n) => parseInt(n, 10));
-    put(g, v.name.toUpperCase(), 40, y, { size: 24, fam: DISPLAY, weight: 400, color: v.id === data.current ? C.ink : C.ink3, max: 300 });
+    put(g, v.name.toUpperCase(), 40, y, { size: 24, fam: DISPLAY, weight: '800 expanded', color: v.id === data.current ? C.ink : C.ink3, max: 300 });
     g.fillStyle = C.ink4; g.fillRect(40, y + 14, 320, 8);
     g.fillStyle = v.id === data.current ? C.yellow : C.ink3; g.fillRect(40, y + 14, 320 * (set / total || 0), 8);
     put(g, `${set}/${total}`, 400, y + 8, { size: 26, weight: 700, color: C.ink2, align: 'right' });
   });
   data.rows.slice(0, 5).forEach((ev, i) => {
     const y = 136 + i * 62;
-    put(g, ev.tag, 460, y, { size: 22, fam: DISPLAY, weight: 400, color: C.ink3 });
-    put(g, ev.name.toUpperCase(), 540, y, { size: 24, fam: DISPLAY, weight: 400, color: C.ink2, max: 250 });
+    put(g, ev.tag, 460, y, { size: 22, fam: DISPLAY, weight: '800 expanded', color: C.ink3 });
+    put(g, ev.name.toUpperCase(), 540, y, { size: 24, fam: DISPLAY, weight: '800 expanded', color: C.ink2, max: 250 });
     put(g, ev.best || '—', 900, y, { size: 28, weight: 700, color: ev.best ? C.ink : C.ink4, align: 'right' });
     dot(g, 930, y - 9, 10, ev.medal && ev.medal.id);
   });

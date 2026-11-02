@@ -23,7 +23,7 @@ function boardAtlas() {
   SPONSORS.forEach(([name, bg, ink], k) => {
     const y = k * 64;
     g.fillStyle = bg; g.fillRect(0, y, 1024, 64);
-    g.fillStyle = ink; g.font = '600 38px Michroma, Saira, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'center';
+    g.fillStyle = ink; g.font = '800 expanded 38px Archivo, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'center';
     for (const x of [256, 768]) g.fillText(name, x, y + 33);
     g.fillRect(511, y + 14, 2, 36);
   });

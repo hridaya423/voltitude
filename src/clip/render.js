@@ -1,4 +1,5 @@
 import { createClipEncoder } from './encode.js';
+import { drawMark } from '../mark.js';
 
 const BURN_S = 1.2;
 
@@ -8,21 +9,21 @@ function burnIn(g, w, h, card, k) {
   g.globalAlpha = Math.min(1, k * 3);
   g.fillStyle = 'rgba(8, 9, 13, 0.82)';
   g.beginPath(); g.roundRect(pad, y, w - pad * 2, plate, 28 * u); g.fill();
-  g.fillStyle = '#ff2a3a'; g.fillRect(pad + 48 * u, y + 58 * u, 44 * u, 5 * u);
+  drawMark(g, pad + 44 * u, y + 34 * u, 48 * u);
   g.fillStyle = 'rgba(255, 255, 255, 0.72)';
-  g.font = `600 ${30 * u}px Saira, sans-serif`;
+  g.font = `600 ${30 * u}px Archivo, sans-serif`;
   g.fillText(card.title.toUpperCase().split('').join(String.fromCharCode(8202)), pad + 110 * u, y + 70 * u);
   g.fillStyle = '#fff';
-  g.font = `400 ${120 * u}px Michroma, sans-serif`;
+  g.font = `500 semi-condensed ${110 * u}px "Martian Mono", monospace`;
   g.fillText(card.value, pad + 48 * u, y + 210 * u);
   g.fillStyle = 'rgba(255, 255, 255, 0.72)';
-  g.font = `500 ${34 * u}px Saira, sans-serif`;
+  g.font = `500 ${34 * u}px Archivo, sans-serif`;
   g.fillText(card.sub, pad + 48 * u, y + 280 * u);
-  g.font = `400 ${30 * u}px Michroma, sans-serif`;
+  g.font = `800 expanded ${30 * u}px Archivo, sans-serif`;
   g.textAlign = 'right';
   g.fillStyle = '#fff';
   g.fillText('VOLTITUDE', w - pad - 48 * u, y + 70 * u);
-  if (card.link) { g.font = `500 ${28 * u}px Saira, sans-serif`; g.fillStyle = 'rgba(255, 255, 255, 0.72)'; g.fillText(card.link, w - pad - 48 * u, y + 280 * u); }
+  if (card.link) { g.font = `500 ${28 * u}px Archivo, sans-serif`; g.fillStyle = 'rgba(255, 255, 255, 0.72)'; g.fillText(card.link, w - pad - 48 * u, y + 280 * u); }
   g.restore();
 }
 
@@ -41,7 +42,7 @@ export async function renderClip({ source, width, height, fps = 60, frames, step
   const flat = document.createElement('canvas');
   flat.width = width; flat.height = height;
   const g = flat.getContext('2d');
-  await document.fonts.load(`400 40px Michroma`).catch(() => {});
+  await Promise.all([document.fonts.load(`800 expanded 40px Archivo`), document.fonts.load(`500 semi-condensed 40px "Martian Mono"`)]).catch(() => {});
   const burnFrames = Math.round(BURN_S * fps);
   let renderMs = 0, encodeMs = 0;
   for (let i = 0; i < frames; i++) {

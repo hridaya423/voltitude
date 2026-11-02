@@ -58,3 +58,7 @@ The cheer, clap, phone-filming, flag-wave and gasp animations are keyed procedur
 ## Audio (`audio/`)
 
 Sound sources, authors and licences are listed in [`audio/CREDITS.md`](audio/CREDITS.md). Crowd recordings added for the broadcast layer (all Freesound, CC0): 480765 craigsmith, 267246 BerlinGameScene, 651645 Krizin, 130568 benfree, 324895 deleted_user_2104797, 439258 dreamstobecome, 777709 Sadiquecat. Team radio lines are macOS `say` (Daniel, en_GB) processed offline; start-light tones are synthesised.
+
+## Type and mark
+
+Archivo (Omnibus-Type) and Martian Mono (Evil Martians) load from Google Fonts. Both are under the SIL Open Font License 1.1. The mark (`mark.svg`, `icon.svg`, `src/mark.js`) is drawn for this project.

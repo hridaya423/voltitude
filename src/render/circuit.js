@@ -11,7 +11,7 @@ function boardTexture(text) {
   const g = c.getContext('2d');
   g.fillStyle = '#f2efe8'; g.fillRect(0, 0, 128, 96);
   g.fillStyle = '#d4202c'; g.fillRect(0, 0, 128, 14);
-  g.fillStyle = '#101216'; g.font = '700 56px Saira, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#101216'; g.font = '700 56px Archivo, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(text, 64, 56);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;

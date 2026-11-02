@@ -1447,3 +1447,23 @@ Next: Phase 6 (phone tier, touch, boot).
 - Open: a cold playtest by someone new, which needs a person.
 
 Next: Phase 7 (mark and type, HUD motion pass, trailer and launch page, launch).
+
+## Session 2026-11-02 (cont.): Phase 7
+
+- Task 7.1: the mark and the type.
+  - Mark: three directions drawn and rendered at 160, 32 and 16 px, in single colour and as a lockup.
+    - A, the lift V: a heavy V with a gap under its tip and the red light bar beneath. It reads at 16 px. The gap is the car hovering and the bar is the Roadster's light bar.
+    - B, a V over its shadow: read as a warning triangle. Rejected.
+    - C, a V over two thrust bars: smeared at small sizes. Rejected.
+    - A shipped. It is in `src/mark.js` (the canvas path), `assets/mark.svg` and the favicon `assets/icon.svg`. The lockup appears on the loading screen, the garage header and the clip burn-in.
+  - Type: Archivo replaces Michroma and Saira. Its width axis gives the expanded 800 display and normal-width UI text from one variable file. Martian Mono at 87.5% width replaces the display face for telemetry: the HUD clock and speed, garage times, the clip score. In CSS and canvas, `font: 800 expanded …` reaches the width axis without extra rules.
+  - Typography audit:
+    - Chrome loads Archivo as one variable face (weights 400 to 800, widths 62 to 125%).
+    - Canvas `expanded` measures 22% wider than normal, so the axis applies on canvas too.
+    - Fixed: body letterspacing on `.hint` and the fallback page's 0.32em tracking.
+    - Fixed: the clip renderer now waits for Martian Mono.
+    - The OFL licences are recorded in `assets/CREDITS.md`.
+    - Pass: no faux bold or italic (weights 400 to 800 are all served) and uppercase labels are tracked.
+    - Open, low: the generic fallback stacks have different metrics, a brief swap on the loading screen.
+  - The swap is reversible. The variant sheet is in the sheet below, so another direction can be picked.
+  - Evidence: sheet `docs/sheets/2026-11-02-mark-type.jpg` (variants, garage, HUD, clip burn-in, loading screen). `node tools/clip-test.mjs`: PASS. `npm test`: 155 of 155.

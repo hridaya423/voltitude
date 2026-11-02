@@ -94,8 +94,8 @@ function screenTexture() {
     g.strokeStyle = 'rgba(127,227,255,0.35)'; g.lineWidth = 2;
     for (let x = -288; x < 512; x += 36) { g.beginPath(); g.moveTo(x + (phase % 36), 288); g.lineTo(x + 288 + (phase % 36), 0); g.stroke(); }
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f4f2ee';
-    g.font = '600 46px Michroma, Saira, sans-serif'; g.fillText(lines[0], 256, 118);
-    g.fillStyle = '#7fe3ff'; g.font = '600 26px Saira, sans-serif'; g.fillText(lines[1], 256, 186);
+    g.font = '800 expanded 46px Archivo, sans-serif'; g.fillText(lines[0], 256, 118);
+    g.fillStyle = '#7fe3ff'; g.font = '600 26px Archivo, sans-serif'; g.fillText(lines[1], 256, 186);
     t.needsUpdate = true;
   };
   return { texture: t, draw };

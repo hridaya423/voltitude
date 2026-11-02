@@ -110,7 +110,7 @@ const bouldersP = createBoulders(world, (m) => skyFog(m, sunUniform, fogDensity)
 const floraP = createFlora(world, (m, f) => skyFog(m, sunUniform, fogDensity, false, f)).catch((e) => { console.warn('flora', e); return { group: new THREE.Group(), update() {} }; });
 const standsP = createGrandstands(world, sunUniform, fogDensity, renderer, PHONE);
 const carP = import('./render/car.js').then(async (m) => { await m.loadCar(!PHONE); return m; });
-const fontsP = Promise.all([document.fonts.load('600 64px Michroma'), document.fonts.load('600 30px Saira')]).catch(() => null);
+const fontsP = Promise.all([document.fonts.load('800 expanded 64px Archivo'), document.fonts.load('600 30px Archivo'), document.fonts.load('500 semi-condensed 30px "Martian Mono"')]).catch(() => null);
 const terrainTex = await texP;
 const terrainGroup = createTerrain(terrain, sunUniform, fogDensity, terrainTex, venue, track, PHONE ? 4 : 6);
 scene.add(terrainGroup);
