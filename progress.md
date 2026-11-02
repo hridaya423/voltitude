@@ -1532,3 +1532,20 @@ Next: Phase 7 (mark and type, HUD motion pass, trailer and launch page, launch).
 | 5. Jury | Launch page and hangar: critic 7.3, jury estimate about 8.4, with the caveats in `.jury/localhost-8790/scorecard.md`. |
 
 Still open with the user (one-way doors): `wrangler d1 create` and `wrangler deploy` (`server/README.md`), the domain behind the `voltitude.app` placeholders, posting the Show HN and X drafts, and messaging the three creators.
+
+## Session 2026-11-02 (cont.): trench and HUD polish (user feedback)
+
+The user said the trench looked sloppy and black, and the HUD was cluttered.
+- Trench and spur roads:
+  - Spurs now render through the main road's body (`roadBody`, split out of `createRoad`): textured asphalt, edge lines, curvature kerbs, white rails with caps, and lip chevrons. Before, they were a flat #2f3033 slab.
+  - The trench channel is now 6 m concrete panels with a shade variation per panel, ribs every 12 m and a coping beam. Warm LED strips run along both walls, low and high. Red and white warning bands mark both rolls.
+  - The old single stretched boxes, jagged buttresses and floor slab are gone. No sim change.
+  - Bug found: the main road and the spur road shared the program cache key `road-surface` with different `uGrid` array lengths (12 against 1), and three.js crashed uploading the uniform. The key now carries the grid length.
+- HUD:
+  - The medal tower (AUT/GLD/SLV/BRZ/YOU) is gone outside races. The target line and the delta already carry it. The tower now appears only in the Grand Prix, with real rivals.
+  - "CHECKPOINT n/m" is hidden, since the sector chips show progress. LAP, TRY and LINE stay.
+  - The minimap is hidden on spur events.
+  - "+WALL" and "+AIR" gas chips are dropped, because the state label already says WALL or AIR. The scoring chips stay.
+  - The state label floats above the speed plate, so the plate holds only speed and gas.
+- Evidence: sheet `docs/sheets/2026-11-02-trench-hud.jpg` (trench at 5 s and 10 s, Proving TT, Launch GP). `a11y-probe`: PASS, 105 elements, 0 failing. `npm test`: 155 of 155. Exploits on Launch: PASS.
+- Cloudflare Worker: not deployed. `wrangler whoami` says not logged in, and envsync has no Cloudflare token.

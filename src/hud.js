@@ -5,7 +5,7 @@ import { turns } from './sim/drive.js';
 
 const $ = (id) => document.getElementById(id);
 const TOWER_ROW = 27;
-const GAIN_LABEL = { near_miss: '+# CLOSE', clean: '+# CLEAN', perfect: '+# PERFECT', trick: '+# TRICK', gate: '+# GATE', air: '+AIR', wall: '+WALL', draft: '+DRAFT' };
+const GAIN_LABEL = { near_miss: '+# CLOSE', clean: '+# CLEAN', perfect: '+# PERFECT', trick: '+# TRICK', gate: '+# GATE', draft: '+DRAFT' };
 
 function setText(el, v) {
   if (el._v !== v) { el._v = v; el.textContent = v; }
@@ -68,6 +68,8 @@ export function createHud(world, settings) {
       buildMap(event);
       setText(els.card, event.id === 'full' ? 'FULL RUN' : event.circuit || event.spur ? event.name.toUpperCase() : `S${event.card - 1}  ${event.name.toUpperCase()}`);
       els.cpLabel.firstChild.textContent = event.dare === 'ramp' ? 'TRY' : event.kind === 'dare' ? 'LINE' : event.circuit ? 'LAP' : 'CHECKPOINT';
+      els.cpLabel.hidden = !event.circuit && event.kind !== 'dare';
+      els.map.style.display = event.spur ? 'none' : '';
       els.target.innerHTML = targetText || '';
       toggle(els.delta, 'on', false);
       els.lights.classList.remove('on', 'out');
@@ -86,6 +88,7 @@ export function createHud(world, settings) {
     },
     gasGain(source, amount) {
       els.gas.classList.remove('gain'); void els.gas.offsetWidth; els.gas.classList.add('gain');
+      if (!GAIN_LABEL[source]) return;
       let t = gainLabels.get(source);
       const live = !!t;
       if (live) {

@@ -203,7 +203,7 @@ function surfaceMaterial(renderer, sunUniform, fogDensity, grid, res) {
       .replace('#include <aomap_fragment>', `reflectedLight.indirectDiffuse += BRDF_Lambert(material.diffuseColor) * vec3(${FLOOD_RGB.join(', ')}) * ${(1000 / UNIT_LUX.night).toFixed(3)} * uNight * smoothstep(0.97, 0.9, inverseTransformDirection(normal, viewMatrix).y);
         #include <aomap_fragment>`);
   });
-  m.customProgramCacheKey = () => 'road-surface';
+  m.customProgramCacheKey = () => `road-surface-${grid.length}`;
   return m;
 }
 
@@ -279,9 +279,7 @@ function runoffMesh(track, list, bar, sunUniform, fogDensity, renderer, res) {
   return mesh;
 }
 
-export function createRoad(world, sunUniform, fogDensity, renderer, res = '2k') {
-  const { track, terrain } = world;
-  const group = new THREE.Group();
+export function roadBody(track, sunUniform, fogDensity, renderer, res = '2k') {
   const list = runs(track);
 
   const kerb = new Float32Array(track.n), lip = new Float32Array(track.n), line = new Float32Array(track.n);
@@ -320,6 +318,14 @@ export function createRoad(world, sunUniform, fogDensity, renderer, res = '2k') 
   };
   const caps = new THREE.Mesh(mergeGeometries([extrude(track, list, capProfile(1)), extrude(track, list, capProfile(-1))]), capMat);
   caps.castShadow = true;
+
+  return { list, bar, surface, shell, rails, caps };
+}
+
+export function createRoad(world, sunUniform, fogDensity, renderer, res = '2k') {
+  const { track, terrain } = world;
+  const group = new THREE.Group();
+  const { list, bar, surface, shell, rails, caps } = roadBody(track, sunUniform, fogDensity, renderer, res);
 
   const ledAt = track.sectors[0].i + 10;
   const startLed = new THREE.Mesh(

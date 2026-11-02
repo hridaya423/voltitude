@@ -1,19 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
-import { extrude, runs, panelMaterial } from './road.js';
+import { roadBody, panelMaterial } from './road.js';
 import { skyFog } from './sky.js';
 import { merged } from './venue-kit.js';
 
-const SLAB = 0.7, RAIL = 1.1, POST = 0.5, BAY = 4;
-
-function deckParts(track, list, wall) {
-  const top = extrude(track, list, [(w) => [w, 0], (w) => [-w, 0]]);
-  const under = extrude(track, list, [(w) => [-w, 0], (w) => [-w - 0.3, -SLAB], (w) => [w + 0.3, -SLAB], (w) => [w, 0]]);
-  const rails = [1, -1].map((s) => extrude(track, list, s > 0
-    ? [(w, i) => [w, 0], (w, i) => [w, wall(i)], (w, i) => [w + 0.3, wall(i)], (w, i) => [w + 0.3, -SLAB]]
-    : [(w, i) => [-w - 0.3, -SLAB], (w, i) => [-w - 0.3, wall(i)], (w, i) => [-w, wall(i)], (w, i) => [-w, 0]]));
-  return { top, under, rails };
-}
+const SLAB = 0.7, POST = 0.5, BAY = 4, PANEL = 6;
 
 function supports(track, height, from, to) {
   const out = [];
@@ -58,53 +49,81 @@ function chevrons(track, from, to) {
   return out;
 }
 
-function tunnel(track, height) {
-  const out = [];
+function tunnel(track) {
+  const walls = [], ribs = [], leds = [], warn = [];
   const { P, T, R, roof, halfW } = track;
   let a = 0;
   while (a < track.n && !roof[a]) a++;
+  if (a >= track.n) return { walls, ribs, leds, warn };
   let b = a;
   while (b + 1 < track.n && roof[b + 1]) b++;
-  if (a >= track.n) return out;
-  const k = a * 3, len = Math.hypot(P[b * 3] - P[k], P[b * 3 + 2] - P[k + 2]), w = halfW[a], wallH = 2 * w + 0.6;
-  const yaw = Math.atan2(T[k], T[k + 2]), cx = (P[k] + P[b * 3]) / 2, cz = (P[k + 2] + P[b * 3 + 2]) / 2, y = P[k + 1];
-  const put = (g, lat, up) => out.push(g.rotateY(yaw).translate(cx + R[k] * lat, y + up, cz + R[k + 2] * lat));
-  for (const s of [-1, 1]) put(new THREE.BoxGeometry(1.2, wallH + 1.4, len), s * (w + 0.9), wallH / 2 - 0.7);
-  put(new THREE.BoxGeometry(2 * w + 3, 1.2, len * 0.42), 0, -1.2);
-  for (let d = -len / 2 + 6; d < len / 2; d += 12) for (const s of [-1, 1]) {
-    const g = new THREE.BoxGeometry(2.2, wallH + 2.6, 1.6);
-    out.push(g.rotateY(yaw).translate(cx + R[k] * s * (w + 1.8) + T[k] * d, y + wallH / 2, cz + R[k + 2] * s * (w + 1.8) + T[k + 2] * d));
+  const k = a * 3, len = Math.hypot(P[b * 3] - P[k], P[b * 3 + 2] - P[k + 2]), w = halfW[a], wallH = 2 * w + 0.4;
+  const yaw = Math.atan2(T[k], T[k + 2]), y = P[k + 1];
+  const at = (lat, d, up) => [P[k] + R[k] * lat + T[k] * d, y + up, P[k + 2] + R[k + 2] * lat + T[k + 2] * d];
+  const put = (list, g, lat, d, up, tint) => {
+    g.rotateY(yaw).translate(...at(lat, d, up));
+    if (tint) {
+      const c = new THREE.Color(tint), n = g.attributes.position.count;
+      g.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: n * 3 }, (_, j) => [c.r, c.g, c.b][j % 3]), 3));
+    }
+    list.push(g);
+  };
+  const off = w + 1.2;
+  for (let d = 0, n = 0; d < len; d += PANEL, n++) for (const s of [-1, 1]) {
+    const shade = 0.86 + 0.1 * Math.abs(Math.sin(n * 12.9898 + s * 4.1));
+    put(walls, new THREE.BoxGeometry(1.2, wallH + 1.2, PANEL - 0.12), s * (off + 0.6), d + PANEL / 2, wallH / 2 - 0.6, new THREE.Color(shade, shade * 0.98, shade * 0.95));
   }
-  const mid = (a + b) >> 1, m = mid * 3, top = y + wallH + 0.6;
-  for (const [dl, dt] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) out.push(new THREE.BoxGeometry(1.4, 34, 1.4).translate(P[m] + R[m] * dl * (w + 1.8) + T[m] * dt * 6, top + 17, P[m + 2] + R[m + 2] * dl * (w + 1.8) + T[m + 2] * dt * 6));
-  for (let h = 8; h <= 34; h += 8) out.push(new THREE.BoxGeometry(2 * w + 5, 0.8, 13.4).rotateY(yaw).translate(P[m], top + h, P[m + 2]));
+  for (let d = 0; d <= len; d += PANEL * 2) for (const s of [-1, 1]) put(ribs, new THREE.BoxGeometry(1.0, wallH + 1.6, 0.8), s * (off + 1.6), d, wallH / 2 - 0.4);
+  for (const s of [-1, 1]) {
+    put(ribs, new THREE.BoxGeometry(2.4, 0.5, len), s * (off + 1.0), len / 2, wallH + 0.25);
+    for (const up of [0.55, wallH - 0.55]) for (let d = 1; d < len - 2; d += 4) put(leds, new THREE.BoxGeometry(0.12, 0.14, 2.6), s * (off - 0.02), d + 1.3, up);
+  }
+  for (const [from, to] of rolls(track, a, b)) {
+    const d0 = (from - a) * track.step, d1 = (to - a) * track.step;
+    for (let d = d0; d < d1; d += 3) for (const s of [-1, 1]) {
+      const red = Math.floor((d - d0) / 3) % 2 === 0;
+      put(warn, new THREE.BoxGeometry(0.05, 1.1, 2.9), s * (off - 0.03), d + 1.5, wallH / 2, red ? '#c8231c' : '#ece8de');
+    }
+  }
+  return { walls, ribs, leds, warn };
+}
+
+function rolls(track, a, b) {
+  const out = [];
+  let from = -1;
+  for (let i = a; i <= b + 1; i++) {
+    const tilted = i <= b && Math.abs(track.U[i * 3 + 1]) < 0.985;
+    if (tilted && from < 0) from = i;
+    if (!tilted && from >= 0) { out.push([from, i]); from = -1; }
+  }
   return out;
 }
 
-export function createSpurs(world, sunUniform, fogDensity) {
+export function createSpurs(world, sunUniform, fogDensity, renderer, res) {
   const group = new THREE.Group();
-  const deck = panelMaterial('#2f3033', 0.82, 0.02, sunUniform, fogDensity, 'spur-deck', 4);
-  const concrete = panelMaterial('#b3ada2', 0.9, 0, sunUniform, fogDensity, 'spur-concrete', 4);
+  const concrete = panelMaterial('#c4bdb1', 0.88, 0, sunUniform, fogDensity, 'spur-concrete', 4);
+  concrete.vertexColors = true;
+  const rib = panelMaterial('#8f8a82', 0.8, 0.05, sunUniform, fogDensity, 'spur-rib', 4);
   const steel = new THREE.MeshStandardMaterial({ color: '#3a3e45', roughness: 0.45, metalness: 0.75 });
   const paint = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide });
+  const led = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.7, 2.1), toneMapped: false });
   for (const m of [steel, paint]) skyFog(m, sunUniform, fogDensity);
-  const tops = [], unders = [], rails = [], posts = [], marks = [];
+  const posts = [], marks = [], walls = [], ribs = [], leds = [];
   for (const track of Object.values(world.track.spurs || {})) {
+    const body = roadBody(track, sunUniform, fogDensity, renderer, res);
+    for (const m of [body.surface, body.shell, body.rails, body.caps]) { m.frustumCulled = false; group.add(m); }
     const at = Object.fromEntries(track.sectors.map((s) => [s.name, s.i]));
-    const list = runs(track);
-    const parts = deckParts(track, list, () => RAIL);
-    tops.push(parts.top); unders.push(parts.under); rails.push(...parts.rails);
     if (at.Curl !== undefined) {
       posts.push(...supports(track, world.terrain.height, at.Curl, track.n - 1));
       marks.push(...chevrons(track, at.Curl, at.Ceiling ?? track.n - 1));
     }
-    unders.push(...tunnel(track, world.terrain.height));
+    const t = tunnel(track);
+    walls.push(...t.walls); ribs.push(...t.ribs); leds.push(...t.leds); marks.push(...t.warn);
   }
-  if (!tops.length) return { group };
-  merged(group, tops, deck, true);
-  merged(group, unders, concrete, true);
-  merged(group, rails, concrete, true);
-  merged(group, posts, steel, true);
+  if (walls.length) merged(group, walls, concrete, true);
+  if (ribs.length) merged(group, ribs, rib, true);
+  if (posts.length) merged(group, posts, steel, true);
+  if (leds.length) group.add(new THREE.Mesh(mergeGeometries(leds), led));
   if (marks.length) group.add(new THREE.Mesh(mergeGeometries(marks), paint));
   return { group };
 }

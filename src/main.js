@@ -133,7 +133,7 @@ if (venueArt) scene.add(venueArt.group);
 const stands = await standsP;
 const festival = createFestival(world, sunUniform, fogDensity, NIGHT, stands);
 const range = createRange(world, sunUniform, fogDensity, festival.used);
-if (track.spurs && Object.keys(track.spurs).length) scene.add((await import('./render/spur.js')).createSpurs(world, sunUniform, fogDensity).group);
+if (track.spurs && Object.keys(track.spurs).length) scene.add((await import('./render/spur.js')).createSpurs(world, sunUniform, fogDensity, renderer, PHONE ? '1k' : '2k').group);
 scene.add(facility.group, stands.group, festival.group, range.group);
 const dust = createDust(terrain.height);
 const skids = createSkids();
@@ -370,14 +370,9 @@ function updateField() {
   hud.tower(rows);
 }
 
-function updateTower(i, t) {
-  if (current.circuit) { updateField(); return; }
-  const rows = rivals(current).map((r) => ({ id: r.id, code: r.code, t: i < 0 ? r.splits[r.splits.length - 1] : r.splits[i] }));
-  const me = { id: 'me', code: 'YOU', t: i < 0 ? Infinity : t };
-  rows.push(me);
-  rows.sort((x, y) => x.t - y.t || (x.id === 'me' ? -1 : y.id === 'me' ? 1 : 0));
-  for (const r of rows) r.gap = r.id === 'me' ? (i < 0 ? '' : fmt(t).replace(/^0:/, '')) : i < 0 ? '' : fmtDelta(r.t - t);
-  hud.tower(rows);
+function updateTower() {
+  if (current.circuit) updateField();
+  else hud.tower([]);
 }
 
 let bestLap = 0, lapRef = null, lapBase = 0, lastSeed = 1;
@@ -463,7 +458,7 @@ function startRace(ev = current, daily = false) {
   if (ev.circuit) hud.els.target.textContent = ev.kind === 'dare' ? (book[ev.id]?.best ? `BEST ${book[ev.id].best}` : '') : ref ? `BEST ${fmt(ref.t)}` : '';
   hud.sectorsBegin(ev.kind === 'dare' ? 0 : ev.circuit ? ev.perLap : ev.cps.length);
   hud.tower([]);
-  updateTower(-1, 0);
+  updateTower();
   audio.start();
   if (line) setTimeout(() => audio.radio(line), 150);
   audio.mute(false);
@@ -678,7 +673,7 @@ function handleEvents() {
         hud.sector(e.index, color);
         const ref = ghostRun(current)?.splits;
         if (ref && ref[e.index] !== undefined) hud.delta(e.t - ref[e.index], color === 'purple');
-        updateTower(e.index, e.t);
+        updateTower();
         const last = e.index === current.cps.length - 2;
         audio.radio(color === 'purple' ? 'purple' : last ? 'last_sector' : color === 'green' ? 'green' : Math.random() < 0.4 ? 'yellow' : '');
         break;
