@@ -1503,3 +1503,32 @@ Next: Phase 7 (mark and type, HUD motion pass, trailer and launch page, launch).
     - Fixed after scoring: floor-pad labels crowding the borders, and no pitch line on the landing.
     - Open: legend size and contrast, a sparse detail panel, minimap clipping on phone landscape, a sitemap and 404 at deploy.
   - Evidence: sheets `docs/sheets/2026-11-02-launch-page.jpg` and the trailer contact sheets (scratchpad). `npm test`: 155 of 155.
+
+- Task 7.4: launch.
+  - Dailies: the seven authored cards (`src/sim/daily.js`, from 2026-11-09) were checked. Each one resolves to a real event: Lineup, Airfield TT, Ramp, Proving TT, Trench, Launch TT, Lineup. Day eight falls through to the rotation.
+  - Drafts, not posted:
+    - `docs/launch/show-hn.md`, on the deterministic sim and the server-side replay check.
+    - `docs/launch/x-thread.md`, six posts naming the 9:16 clips to attach.
+  - Seeded ghost links: `docs/launch/ghost-links.md` holds three author ghosts (The Trench 0:22.208, Proving TT 3:58.358, Launch TT 3:21.625).
+    - Each one was encoded, decoded and replayed through the Worker's `resimulate`, and matches to the tick.
+    - The trench link opened in the game on the bare URL. It reloaded onto the Launch Complex, started The Trench and loaded the ghost.
+    - The TT links are 23k to 27k characters. Short `/r/<id>` links wait on the Worker deploy.
+    - Choosing and messaging the three creators is a message to people, so it waits for the user.
+
+### Launch gate (design section 12), 2026-11-02
+
+| Gate | Result |
+|---|---|
+| 1. Blind clip test (five people) | Open: needs people. The 30 s trailer and the game's 9:16 clips are ready to show. |
+| 2. Cold playtest (five strangers) | Open: needs people. |
+| 3. Share test (three people, own phones) | Open: needs phones and people. The export passes in Chrome (`clip-test`: H.264 + AAC, −13.5 LUFS). |
+| 4a. `npm test` | PASS, 155 of 155. `npm run test:server`: PASS, 6 of 6. |
+| 4b. Exploits | PASS on Proving, Airfield, Launch and The Pad. |
+| 4c. AI bench (`ai-bench 20`) | Proving PASS on every tier. **Launch FAIL on every tier, check `air`.** Lap, held passes, contacts and stuck all pass. VOG skips the air line in at least one race of 20 (fewest 0, 1.0 to 1.1 per race). Air lines came in at `af292d9`, before this session, and that gate ran only six races. Not fixed: rival AI is re-simulated inside recorded Grand Prix ghosts, so a driver change needs a SIM_VERSION bump. |
+| 4d. Perf, desktop (`perf.mjs`, Launch GP night, 60 s) | **FAIL**: 74 to 132 frames over 20 ms per run, 4 to 7 long tasks, the longest 547 to 587 ms. p50 7.3 ms, p99 20 ms. The session's start commit `f95c671` fails the same way (131 to 180 frames over 20 ms, longest task 474 to 509 ms), so this is not a regression. The spikes cluster at boot and from 36 to 46 s into the race. Headless frames are uncapped. |
+| 4e. Perf, phone tier (844x390, DPR 3, on this Mac) | **FAIL**: 12 frames over 20 ms, 1 long task of 107 ms. p99 11.8 ms, 288 draw calls, 2.07M triangles. A real iPhone 13 and Pixel 6 are unmeasured. |
+| 4f. Boot times | **FAIL**: desktop 6.4 s at 50 Mbps (target 3 s), phone 12.4 s on Fast 4G with 4x CPU (target 5 s). See Task 6.3. |
+| 4g. The Worker rejects a forged run | PASS: a faster time, a higher score and an edited input byte each get 422, and a duplicate gets 409 (`test:server`). Load test: 1,000 submissions in 8.9 s, p99 10.7 ms, in process only. |
+| 5. Jury | Launch page and hangar: critic 7.3, jury estimate about 8.4, with the caveats in `.jury/localhost-8790/scorecard.md`. |
+
+Still open with the user (one-way doors): `wrangler d1 create` and `wrangler deploy` (`server/README.md`), the domain behind the `voltitude.app` placeholders, posting the Show HN and X drafts, and messaging the three creators.
