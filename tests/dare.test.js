@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, eventsFor, stepRace, createInput } from '../src/sim/race.js';
-import { placeCar } from '../src/sim/drive.js';
+import { placeCar, steerTo } from '../src/sim/drive.js';
+import { autopilot } from '../src/sim/bot.js';
 import { lineupBoxes, lineupHit, LINEUP as KINDS } from '../src/sim/lineup.js';
 import { HEART } from '../src/sim/course.js';
 
@@ -19,7 +20,7 @@ test('the pad lists its dare first and keeps the circuit events', () => {
 test('a dare race has one entry and a dare state', () => {
   const race = createRace(pad, { event: LINEUP });
   assert.equal(race.entries.length, 1);
-  assert.deepEqual(race.dare, { count: 1, score: 0, mult: 1, cleared: 0, armed: false, over: false, endAt: 0, near: [] });
+  assert.deepEqual(race.dare, { count: 1, score: 0, mult: 1, cleared: 0, armed: false, wide: false, resetAt: 0, over: false, endAt: 0, near: [] });
   assert.equal(race.car.gas, 1);
 });
 
@@ -156,6 +157,51 @@ test('a recorded dare replays to the same line and score, so a clip shows what h
   for (let t = 0; t < 120 * 100; t++) ghost.step();
   assert.deepEqual(ghost.race.dare, race.dare);
   assert.equal(ghost.race.car.x, race.car.x);
+});
+
+function lineupRun(script, secs) {
+  const race = createRace(pad, { event: LINEUP }), inp = createInput(), events = [];
+  for (let t = 0; t < 120 * secs && race.phase !== 'finished'; t++) {
+    if (race.phase === 'racing') script(inp, race.car, race);
+    stepRace(race, inp);
+    for (const e of race.events) events.push({ ...e, at: race.raceTick, hint: race.car.hint, speed: race.car.speed });
+    race.events.length = 0;
+  }
+  return { race, events };
+}
+
+test('the Lineup starts centred on the straight, and throttle alone with no steering clears line one', () => {
+  const start = createRace(pad, { event: LINEUP }).car;
+  assert.equal(start.hint, (lip - 250 + pad.track.lap) % pad.track.lap);
+  assert.equal(start.lat, 0);
+  assert.equal(start.speed, 0);
+  const { events } = lineupRun((inp) => { inp.throttle = 1; }, 12);
+  const clear = events.find((e) => e.type === 'clear');
+  assert.equal(clear?.count, 1);
+  assert.ok(clear.at < 120 * 8, `first clear at tick ${clear.at}`);
+});
+
+test('after a clear the car is back on the run-up within 150 ticks, rolling at 30 m/s', () => {
+  const { events } = lineupRun((inp) => { inp.throttle = 1; }, 12);
+  const clear = events.find((e) => e.type === 'clear'), retry = events.find((e) => e.type === 'retry');
+  assert.ok(retry && retry.at - clear.at <= 150, `retry ${retry?.at}, clear ${clear.at}`);
+  assert.equal(retry.hint, (lip - 250 + pad.track.lap) % pad.track.lap);
+  assert.equal(retry.speed, 30);
+});
+
+test('the autopilot clears four lines in under a minute', () => {
+  const { race } = lineupRun((inp, c, r) => autopilot(r, inp, 1), 90);
+  assert.equal(race.phase, 'finished');
+  assert.ok(race.dare.score >= 10, `score ${race.dare.score}`);
+  assert.ok(race.raceTick < 120 * 60, `ended at ${(race.raceTick / 120).toFixed(1)} s`);
+});
+
+test('a jump that leaves the lip beside the row scores nothing and goes back to the run-up', () => {
+  const { race, events } = lineupRun((inp, c) => { inp.throttle = 1; inp.steer = steerTo(c, pad.track, 4, 0, 0); }, 12);
+  assert.ok(events.some((e) => e.type === 'wide'), `events: ${[...new Set(events.map((e) => e.type))]}`);
+  assert.equal(events.filter((e) => e.type === 'clear' || e.type === 'clip').length, 0);
+  assert.equal(race.dare.score, 0);
+  assert.equal(race.dare.count, 1);
 });
 
 const RAMP = EVENTS.find((e) => e.id === 'ramp');
