@@ -1666,3 +1666,29 @@ Worked on `advisor/integration` after plan 012. No change under `src/sim`, `rl` 
 - M, phone throttle reads GO; touch screenshot on a GP shows LIFT, BOOST, BRAKE, GO.
 - Gate: `npm test` 157/157, `npm run test:server` 6/6, cold boot smoke exit 0 with no console errors (the plan 012 shader error is gone), Pad ramp autopilot to results exit 0, `git diff --stat 9ee19cc -- src/sim rl server` empty, comment count in `src/main.js` and `src/audio.js` unchanged at 0.
 - Open: the TT label checks only the player's save. With a linked friend ghost on a TT, `ghostRun` returns the friend's run and the label says AUTHOR LAP (or BEST when the player also has a run). The plan did not cover that case.
+
+## Session 2026-11-10: sim rules batch (plan 002), SIM_VERSION 15
+
+Worked on `advisor/integration` after plans 012 and 001. `SIM_VERSION` 14 → 15. Nothing pushed or deployed. Status: BLOCKED on steps 6 and 7; every other step landed.
+
+- Baseline at N=5 differs from the plan: Launch fails Elite `contacts` (3.8 against ≤ 3) and passes `air` on every tier. The plan's `air` failure is from the 20-race run (gate 4c above). The sim was unchanged since `9ee19cc`, so this is the known small-sample contact noise. Launch after the batch: the same single failure, Elite `contacts` 3.8.
+- Step 2, flip input: `inp.flip` (bit 8 of the packed flags) bypasses the landing assist. Keyboard brake without throttle, gamepad stick past 0.85, touch brake or a full dare swipe set it. Tests: `with landing assist on, held pitch tilts and the flip input flips`, `the flip input survives packing`.
+- Step 3, air control on an empty tank: test `an empty tank still rotates the car in the air` (fails on the old code).
+- Step 4, hop buffer 12 ticks and coyote 8 ticks: test `a hop pressed just before touchdown fires on touchdown`, lift pressed 0.35 m up. Old peak −0.01 m, new 1.06 m. The plan's 3 m bar is unreachable: landing at 4.6 m/s cancels half the 9.2 m/s hop, so the test asks for 0.8 m. The full-tank hover test now starts its car already falling (`c.air = 60`), because the coyote window hops a car spawned in mid-air on tick 0.
+- Step 5, hard landing ×0.9: test `a hard landing costs about 10% of the speed` compares a 3 m drop rolled 0.9 rad (hard) with a level 3 m drop (perfect): 40.89 vs 40.93 m/s before. The plan's 25 m drop lands clean (22 m/s), and a 32 m hard drop already lost 10.3% to impact physics. Measured horizontal speed 0.5 s after touching down at 40 m/s: level 3 m 40.93, rolled 3 m hard 40.89, 20 m clean 33.78, 32 m hard 36.67. Before this step the HUD's −10% matched nothing consistent.
+- Step 6, BLOCKED: no `WALL_HIT` in [0.3, 0.5] keeps 62% of a 20° hit at 60 m/s over 0.5 s (0.5 → 53%, 0.4 → 59%, 0.3 → 60%, 1 → 43%, 0 → 84%). Reverted; `WALL_HIT` stays 1.
+- Step 7, BLOCKED: at `yawRate` 3.4 the Proving exploit `flight off an air line` fails (widest 1.0 m past the edge, baseline 5 m). It passes at 2.4, 2.8 and 3.0. Reverted in `ccf95fc`. Spin per 2.2 s flight (24 m drop): 4.82 rad at 2.4, 6.55 rad at 3.4; one spin needs 5.38.
+- Step 8, pinned player respawns after 60 still ticks: test `a car pinned against a wall respawns within 180 ticks of stopping`. Before 240 ticks, after 81.
+- Step 9, manual reset gives no gas: `reset returns the car to the last checkpoint` asserts gas 0. `tests/racing.test.js` `respawn keeps the gas level, with a floor of 0.15` used the manual reset; it now triggers the automatic respawn with `race.respawnIn = 1`.
+- Step 10, Time Trial breach adds the gained time: `track limits: a race and a time trial both add the time gained to the finish`. The lap stays marked INVALID (cannot be the best lap); record and medal count. Results note shows `x.x s track limits`.
+- Step 11, Rookie tier 0.88 and default: r = 1.082 of Elite under the step 7 sim, 1.077 after its revert; band `[1.047, 1.107]`. Easy measured 1.034. Settings screenshot shows `Difficulty ‹ ROOKIE ›` on a fresh profile.
+- Author times (s), before → after: Proving TT 238.358 → 238.358, Airfield TT 233.733 → 233.733, Launch TT 201.625 → 201.625, Launch Trench 22.208 → 22.208, The Pad TT 112.550 → 112.550. All `respawns 0`. With step 7 in, Proving moved to 238.642 and Airfield to 233.700; no event moved more than 2% in either bake.
+- Gates: `npm test` 163/163 (157 before; the plan asked for 166, and the step 6 and 7 tests did not land). `npm run test:server` 6/6. Exploits PASS on proving, airfield, launch, pad. `ai-bench 5 proving` PASS on all four tiers (lap 1.077 / 1.034 / 1.007 / 0.963). Smoke: Proving TT autopilot to results exit 0, `Results. Time 4:03.617. First time on the board.`; Pad Lineup exit 0, `Score 10. Line 5.`
+- Open for the owner:
+  - Redeploy the Worker (`npx wrangler deploy` in `server/`). Until then every daily submission is rejected with a 422 and the game shows "Daily board offline".
+  - Version 14 rows stay in D1 with times the new physics cannot reproduce, and their ghosts will not load. Decide whether to clear them.
+  - Local records reset: the save key is `voltitude.save.v15`.
+  - `docs/launch/ghost-links.md` carries three version-14 runs and is stale.
+  - The flip input is not taught yet; plan 005 adds the hint.
+  - Steps 6 and 7 need a decision: a `WALL_HIT` below 0.3, or a yaw rate at or below 3.0 (or a change to the exploit case). Either one is another sim change and another version bump.
+  - Plans 004 and 009 expect this plan's line changes in `race.js` and `drive.js`; they are in, except `WALL_HIT` and `yawRate`.
