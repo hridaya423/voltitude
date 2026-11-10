@@ -150,7 +150,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
 
 const AIR_PAD = 40;
 const HOP_BUFFER = 12, HOP_COYOTE = 8;
-const WALL_HIT = 1, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
+const WALL_HIT = 0.3, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
 const WALL_TOP = 1.16;
 const TYRE_MU = 1, TYRE_WRECK = 45, TYRE_SPIN = 0.5;
 

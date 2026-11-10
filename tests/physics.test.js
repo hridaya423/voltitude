@@ -109,6 +109,8 @@ test('a scrape along the wall costs speed in proportion to its angle, and a hard
   const slow = wallScrape(90, 20, 1.5);
   assert.ok(slow.speed < 3, `a head-on hit at 20 m/s leaves ${slow.speed.toFixed(1)} m/s`);
   assert.ok(wallScrape(90, 30, 1.5).wrecked, 'a head-on hit at 30 m/s wrecks');
+  const graze = wallScrape(20, 60, 0.5).speed / 60;
+  assert.ok(graze > 0.57 && graze < 0.65, `a 20 deg hit at 60 m/s keeps ${(100 * graze).toFixed(0)}%`);
 });
 
 test('a car facing the wrong way beside the wall steers away from it and turns around', () => {
