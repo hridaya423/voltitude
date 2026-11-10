@@ -107,9 +107,9 @@ export function createHud(world, settings) {
       t.timer = setTimeout(() => { t.remove(); gainLabels.delete(source); }, live ? 970 : 1100);
     },
     hint(html) {
-      els.hint.innerHTML = html;
-      toggle(els.hint, 'on', true);
-      hintTimer = 4.5;
+      if (html) els.hint.innerHTML = html;
+      toggle(els.hint, 'on', !!html);
+      hintTimer = html ? 4.5 : 0;
     },
     sectorsBegin(n) {
       els.sectors.innerHTML = '<i></i>'.repeat(n);

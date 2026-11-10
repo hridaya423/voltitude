@@ -1,16 +1,20 @@
 import { lineFor } from './sim/driver.js';
 
 const GAP = 720, LIMIT = 3;
+const near = (r, c, e) => e !== r && e.prog - r.prog > 4 && e.prog - r.prog < 25 && Math.abs(e.car.lat - c.lat) < 1.6;
 const RULES = [
-  ['reset', (r, c, s) => !r.dare && r.raceTick - s.movedAt > 45],
-  ['gas', (r, c) => c.gas < 0.02],
-  ['air', (r, c) => c.mode === 0 && c.air > 24],
-  ['lift', (r, c, s, seen) => c.mode === 0 && c.air > 36 && seen.air > 0],
-  ['flip', (r, c, s, seen) => c.mode === 0 && c.air > 60 && seen.lift > 0],
-  ['boost', (r, c, s) => c.mode !== 0 && r.raceTick > 360 && c.speed > 25 && c.gas > 0.5 && !s.boosted && (!s.line || c.speed + 8 < s.line.cap[(c.hint + Math.round(c.speed * 3)) % r.world.track.lap])],
-  ['slide', (r, c, s) => s.brakes >= 3 && !s.slid && c.mode !== 0 && c.brake > 0.3 && c.speed > 20],
-  ['hop', (r, c, s) => c.mode !== 0 && c.gas > 0.3 && !s.hopped && r.entries.some((e) => e !== r && e.prog - r.prog > 4 && e.prog - r.prog < 25 && Math.abs(e.car.lat - c.lat) < 1.6 && c.speed - e.car.speed > 5)],
+  ['reset', (r, c, s) => !r.dare && r.raceTick - s.movedAt > 45, (r, c) => c.mode !== 0 && c.speed < 2],
+  ['gas', (r, c) => c.gas < 0.02, (r, c) => c.gas < 0.05],
+  ['air', (r, c) => c.mode === 0 && c.air > 24, (r, c) => c.mode === 0],
+  ['lift', (r, c, s, seen) => c.mode === 0 && c.air > 36 && seen.air > 0, (r, c) => c.mode === 0],
+  ['flip', (r, c, s, seen) => c.mode === 0 && c.air > 60 && seen.lift > 0, (r, c) => c.mode === 0],
+  ['boost', (r, c, s) => c.mode !== 0 && r.raceTick > 360 && c.speed > 25 && c.gas > 0.5 && !s.boosted && (!s.line || c.speed + 8 < s.line.cap[(c.hint + Math.round(c.speed * 3)) % r.world.track.lap]), (r, c) => c.mode !== 0 && !c.boosting],
+  ['slide', (r, c, s) => s.brakes >= 3 && !s.slid && c.mode !== 0 && c.brake > 0.3 && c.speed > 20, (r, c) => c.mode !== 0 && !c.slide && c.speed > 15],
+  ['hop', (r, c, s) => c.mode !== 0 && c.gas > 0.3 && !s.hopped && r.entries.some((e) => near(r, c, e) && c.speed - e.car.speed > 5), (r, c) => c.mode !== 0 && c.hopT === 0 && r.entries.some((e) => near(r, c, e))],
 ];
+const HOLD = Object.fromEntries(RULES.map(([id, , hold]) => [id, hold]));
+
+export const hintHolds = (id, r) => r.phase === 'racing' && HOLD[id](r, r.car);
 
 export function createHints() {
   let race = null, s = null;

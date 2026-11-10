@@ -28,7 +28,7 @@ import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
 import { stylePoints } from './style.js';
-import { createHints, placeCall } from './hints.js';
+import { createHints, hintHolds, placeCall } from './hints.js';
 import { fmt, fmtDelta, lapReview } from './time.js';
 import { createMenu, pauseView, describe, dareResults, rampResults, dareMedal, DARE_MEDALS } from './menu.js';
 import { dailyFor, dayOf } from './sim/daily.js';
@@ -737,11 +737,14 @@ const HINT_HTML = {
   gas: () => 'Tank empty. Near misses, clean landings, slides and drafting refill it',
 };
 const nextHint = createHints();
+let hintOn = null;
 function hints() {
+  if (hintOn && !hintHolds(hintOn, race)) { hintOn = null; hud.hint(null); }
   const id = touch?.on ? null : nextHint(race, save.hints);
   if (!id) return;
   save.hints[id] = (save.hints[id] || 0) + 1;
   persist();
+  hintOn = id;
   hud.hint(HINT_HTML[id]());
 }
 

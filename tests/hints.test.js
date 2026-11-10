@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput } from '../src/sim/race.js';
 import { lineFor } from '../src/sim/driver.js';
-import { createHints, brakeCue, wrongWay, placeCall } from '../src/hints.js';
+import { createHints, hintHolds, brakeCue, wrongWay, placeCall } from '../src/hints.js';
 import { placeCar } from '../src/sim/drive.js';
 
 const world = loadWorld('proving');
@@ -125,4 +125,41 @@ test('a pack that passes a stopped car calls each place once, never the same pla
   assert.ok(raw.length > calls.length, `raw ${raw} calls ${JSON.stringify(calls)}`);
   for (let i = 1; i < calls.length; i++) assert.notEqual(calls[i][1], calls[i - 1][1]);
   assert.deepEqual(calls.filter(([c]) => c === 'lost').map(([, p]) => p), [6, 8]);
+});
+
+function lives(script, secs, w = world, event = TT) {
+  const race = createRace(w, { event }), inp = createInput(), next = createHints(), seen = {}, out = [];
+  let on = null;
+  for (let t = 0; t < 120 * secs; t++) {
+    script(race, inp);
+    stepRace(race, inp);
+    race.events.length = 0;
+    if (on && !hintHolds(on.id, race)) { on.end = race.raceTick; on.mode = race.car.mode; on.boosting = race.car.boosting; on = null; }
+    const id = next(race, seen);
+    if (id) { seen[id] = (seen[id] || 0) + 1; on = { id, at: race.raceTick, held: hintHolds(id, race) }; out.push(on); }
+  }
+  return out;
+}
+
+test('every hint holds when it is shown, and the air verbs clear on the landing tick', () => {
+  const out = [...lives((race, inp) => botInput(race, inp, 1), 100), ...lives((race, inp) => { inp.throttle = 1; }, 40), ...lives((race, inp) => { inp.throttle = 1; }, 30, airfield, RUNWAY)];
+  assert.ok(out.length >= 4, out.map((h) => h.id).join());
+  for (const h of out) assert.ok(h.held, `${h.id} at ${h.at}`);
+  const air = out.filter((h) => ['air', 'lift', 'flip'].includes(h.id));
+  assert.ok(air.length >= 2);
+  for (const h of air) assert.ok(h.end > h.at && h.mode !== 0, `${h.id} ${h.at} to ${h.end}`);
+  for (const h of out.filter((h) => h.id === 'boost' && h.end)) assert.ok(h.boosting || h.mode === 0, `boost cleared at ${h.end}`);
+});
+
+test('each state hint drops once its state ends', () => {
+  const car = (o) => ({ mode: 1, speed: 30, gas: 0.5, boosting: false, slide: 0, hopT: 0, lat: 0, ...o });
+  const race = (c, rival) => ({ phase: 'racing', car: c, prog: 100, entries: rival ? [{ prog: 110, car: { lat: 0.5 } }] : [] });
+  const holds = (id, c, rival) => hintHolds(id, race(c, rival));
+  for (const id of ['air', 'lift', 'flip']) { assert.ok(holds(id, car({ mode: 0 }))); assert.ok(!holds(id, car({ mode: 1 }))); }
+  assert.ok(holds('reset', car({ speed: 0.5 }))); assert.ok(!holds('reset', car({ speed: 8 })));
+  assert.ok(holds('gas', car({ gas: 0.01 }))); assert.ok(!holds('gas', car({ gas: 0.2 })));
+  assert.ok(holds('boost', car())); assert.ok(!holds('boost', car({ boosting: true }))); assert.ok(!holds('boost', car({ mode: 0 })));
+  assert.ok(holds('slide', car())); assert.ok(!holds('slide', car({ slide: 1 }))); assert.ok(!holds('slide', car({ speed: 5 })));
+  assert.ok(holds('hop', car(), true)); assert.ok(!holds('hop', car({ hopT: 0.2 }), true)); assert.ok(!holds('hop', car()));
+  assert.ok(!hintHolds('air', { ...race(car({ mode: 0 })), phase: 'finished' }));
 });
