@@ -6,7 +6,7 @@ import { GAIN, earn, flushGains, landingGain } from './gas.js';
 import { trackLimits, MIN_GAIN, PACE } from './limits.js';
 import { lineupBoxes, lineupHit } from './lineup.js';
 
-export const SIM_VERSION = 19;
+export const SIM_VERSION = 20;
 export const TIERS = Object.freeze({ rookie: 0.88, easy: 0.94, pro: 0.98, elite: 1 });
 export const COUNTDOWN = 240, SOLO_COUNTDOWN = 160;
 export const lightTick = (n) => -220 + 40 * (n - 1);
