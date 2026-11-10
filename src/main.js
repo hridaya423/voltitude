@@ -26,6 +26,7 @@ import { createChaseCamera, createBroadcastCamera } from './render/camera.js';
 import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
+import { createHints } from './hints.js';
 import { fmt, fmtDelta } from './time.js';
 import { createMenu, pauseView, describe, dareResults, rampResults } from './menu.js';
 import { dailyFor, dayOf } from './sim/daily.js';
@@ -467,7 +468,6 @@ function startRace(ev = current, daily = dailyRun && ev === current) {
   audio.start();
   if (line) setTimeout(() => audio.radio(line), 150);
   audio.mute(false);
-  hintAt = 0;
 }
 
 function pause() {
@@ -635,29 +635,22 @@ function finish() {
   }, m, before);
 }
 
-const HINTS = {
-  proving: ['gp', 'tt', 'pr'].map((ev) => ({ ev, at: 2150, use: 'air', html: () => `In the air: ${key('throttle')}${key('brake')} tilt the nose. Land on your wheels` })),
-  airfield: ['gp', 'tt', 'pr'].map((ev) => ({ ev, at: 150, use: 'boost', html: () => `Hold ${key('boost')} to fire the rear thrusters` })),
-}[venue.id] || [];
-let hintAt = 0, hoverHint = false;
+const HINT_HTML = {
+  boost: () => `Hold ${key('boost')} to fire the rear thrusters`,
+  air: () => `In the air: ${onPad() ? '<kbd>LS</kbd>' : key('throttle') + key('brake')} tilt the nose. Land on your wheels`,
+  lift: () => `Hold ${key('lift')} in the air to hover`,
+  flip: () => `${onPad() ? 'Push <kbd>LS</kbd> all the way' : `Hold ${key('brake')} alone`} to flip. ${key('rollLeft')}${key('rollRight')} roll`,
+  hop: () => `Tap ${key('lift')} on the ground to hop over a rival`,
+  reset: () => `${key('reset')} puts you back on the road`,
+  gas: () => 'Tank empty. Near misses, clean landings and drafting refill it',
+};
+const nextHint = createHints();
 function hints() {
-  if (!race || race.phase !== 'racing') return;
-  if (!hoverHint && race.car.mode === 0 && race.car.air > 36 && (save.hints.lift || 0) < 3) {
-    hoverHint = true;
-    save.hints.lift = (save.hints.lift || 0) + 1;
-    persist();
-    hud.hint(`Hold ${key('lift')} to hover`);
-  }
-  for (const h of HINTS) {
-    if (h.at <= hintAt || race.car.hint < h.at || race.car.hint > h.at + 60) continue;
-    if (current.id !== h.ev && current.id !== 'full') continue;
-    const k = h.use || h.at;
-    if ((save.hints[k] || 0) >= 3) continue;
-    save.hints[k] = (save.hints[k] || 0) + 1;
-    persist();
-    hud.hint(h.html());
-    hintAt = h.at;
-  }
+  const id = touch?.on ? null : nextHint(race, save.hints);
+  if (!id) return;
+  save.hints[id] = (save.hints[id] || 0) + 1;
+  persist();
+  hud.hint(HINT_HTML[id]());
 }
 
 function handleEvents() {
