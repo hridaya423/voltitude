@@ -14,7 +14,7 @@ const SHOTS = [
   { name: 'loop', query: 'venue=proving&event=tt&golden', over: `if (c.hint > 1380 && c.hint < 2080 && c.gas > 0.05) i.boost = 1;`, until: 'race.raceTick > 1200 && c.hint >= 2075', after: 0, seconds: 12 },
   { name: 'gp-night', query: 'venue=launch&event=gp&night', over: `if (race.raceTick > 0 && ${STRAIGHT} && c.gas > 0.2) i.boost = 1;`, until: 'race.raceTick > 120 * 13', after: 0, seconds: 11 },
   { name: 'hairpin', query: 'venue=airfield&event=tt&golden', until: 'race.raceTick > 1200 && c.hint >= 1190', after: 90, seconds: 9 },
-  { name: 'slide', query: 'venue=proving&event=tt&day', over: 'const k = race.world.track.curv[c.hint]; if (c.mode !== 0 && Math.abs(k) > 0.02 && c.speed > 18) { i.slide = 1; i.steer = 0.7 * Math.sign(k); i.throttle = 1; i.brake = 0; }', until: 'seen("gas_gain:slide") > 0 && Math.abs(race.world.track.curv[c.hint]) < 0.004', after: 60, seconds: 8 },
+  { name: 'slide', query: 'venue=proving&event=tt&day', over: 'const k = race.world.track.curv[c.hint]; if (c.mode !== 0 && Math.abs(k) > 0.006 && c.speed > 18) { i.slide = 1; i.steer = 0.8 * Math.sign(k); i.throttle = 1; i.brake = 0; }', until: 'race.raceTick > 1200 && c.hint >= 1130', after: 30, seconds: 8 },
   { name: 'landing', query: 'venue=pad&event=hl&day', chase: true, until: 'seen("land:perfect") > 0', after: 200, seconds: 7 },
   { name: 'near-miss', query: 'venue=pad&event=lineup&day', chase: true, until: 'seen("near_miss") > 0 && c.mode === 1', after: 200, seconds: 7 },
   { name: 'wreck', query: 'venue=pad&event=hl&day', chase: true, over: 'if (c.mode === 0 && c.air > 20) { i.roll = 1; i.pitch = 0; }', until: 'seen("wreck") > 0', after: 200, seconds: 7 },
