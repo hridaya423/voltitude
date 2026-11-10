@@ -247,6 +247,10 @@ function carQuat(c, out) {
   return out.setFromRotationMatrix(_m.makeBasis(_x, _y, _z));
 }
 function snapshot(c, o) { o.p.set(c.x, c.y, c.z); carQuat(c, o.q); }
+function bodyGap(c, p, q) {
+  const x = q.x - p.x, y = q.y - p.y, z = q.z - p.z;
+  return Math.hypot(Math.max(0, Math.abs(x * c.fx + y * c.fy + z * c.fz) - 2.3), Math.max(0, Math.abs(x * c.rx + y * c.ry + z * c.rz) - 1), Math.max(0, Math.abs(x * c.ux + y * c.uy + z * c.uz) - 0.6));
+}
 function pose(obj, p, c, a, out) {
   out.set(c.x, c.y, c.z).sub(p.p).multiplyScalar(a).add(p.p);
   obj.position.copy(out);
@@ -975,7 +979,7 @@ function draw(dt, ticks = -1) {
     const v = rivalViews[k], e = race.entries[k + 1];
     if (!e) { v.root.visible = false; continue; }
     pose(v.root, rprev[k], e.car, a, rInterp);
-    v.root.visible = rInterp.distanceToSquared(interp) < 500 * 500;
+    v.root.visible = rInterp.distanceToSquared(interp) < 500 * 500 && bodyGap(e.car, rInterp, camera.position) > 2;
     if (v.root.visible) v.update(dt, e.car, time, rInterp.distanceTo(interp));
   }
   const near = dailyGhosts.map((g, k) => [Math.hypot(g.race.car.x - interp.x, g.race.car.z - interp.z), k]).sort((x, y) => x[0] - y[0]);
