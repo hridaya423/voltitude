@@ -59,7 +59,7 @@ function createDebris() {
 }
 
 export function createCarFx(night, depth) {
-  const smoke = createSmoke(night), sparks = createSparks(depth), debris = createDebris(), shock = createShock();
+  const smoke = createSmoke(night, 4096), sparks = createSparks(depth), debris = createDebris(), shock = createShock();
   const group = new THREE.Group();
   group.add(smoke.points, debris.mesh, shock);
   const overlay = new THREE.Scene();
@@ -148,12 +148,12 @@ export function createCarFx(night, depth) {
         const launch = burn > 0 && c.throttle > 0.5 && c.speed < 22 ? 0.45 : 0, lock = c.brake > 0.85 && c.speed > 30 ? 0.3 : 0;
         const k = ground ? Math.max(slide, launch, lock) : 0, tone = c.mode === 2 ? 0.15 : 1;
         for (let w = 2; w < 4; w++) {
-          acc[w] = k > 0.05 ? acc[w] + dt * k * 130 : 0;
+          acc[w] = k > 0.05 ? acc[w] + dt * k * (c.slide ? 420 : 160) : 0;
           while (acc[w] >= 1) {
             acc[w]--;
             wheel(w);
             const b = Math.random() * dt;
-            smoke.emit(p.x - c.vx * b + R(0.3), p.y + 0.2, p.z - c.vz * b + R(0.3), c.vx * 0.3 + R(2.5), 0.5 + Math.random() * 1.2, c.vz * 0.3 + R(2.5), time - b, 2.6 + k * 2.4, tone, 1.6 + k * 1.6);
+            smoke.emit(p.x - c.vx * b + R(0.3), p.y + 0.2, p.z - c.vz * b + R(0.3), c.vx * 0.3 + R(5), 1 + Math.random() * 2.2, c.vz * 0.3 + R(5), time - b, 4 + k * 5, tone, 2.4 + k * 2.6);
           }
         }
         acc[0] = ground && c.fan > 0.2 ? acc[0] + dt * c.fan * 200 : 0;
