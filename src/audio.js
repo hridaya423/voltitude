@@ -597,6 +597,7 @@ export function createAudio(settings) {
       }
       case 'near_miss': cheer('stunt'); commentary('near_miss'); break;
       case 'final_lap': commentary('final_lap'); break;
+      case 'leading': commentary('leading'); break;
       case 'fastest': commentary('fastest_lap'); break;
       case 'ui': play('ui', 0.7); break;
       case 'respawn': play('respawn', 0.8); streak = 0; break;

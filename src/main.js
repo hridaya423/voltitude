@@ -151,7 +151,7 @@ scene.add(fireworks.points);
 const finishAtPos = new THREE.Vector3();
 const standGap = (h) => stands.sites.reduce((m, i) => Math.min(m, Math.abs(i - h)), Infinity);
 const cheerNear = (v, kind = 'stunt') => { if (standGap(race.car.hint) < 260) { if (kind === 'gasp') stands.gasp(0.8); else stands.cheer(v); if (v >= 0.5) audio.cheer(kind); } };
-let said = new Set(), raceCount = 0, gasLowAt = -1e9, boostWas = false, armedWas = false, liftWas = false, kerbAt = -1;
+let said = new Set(), raceCount = 0, gasLowAt = -1e9, boostWas = false, armedWas = false, liftWas = false, kerbAt = -1, gasWas = 1, leadAt = 0;
 const sayOnce = (id) => { if (!said.has(id)) { said.add(id); audio.radio(id); } };
 
 progress(0.35, 'Lighting the sky…');
@@ -1033,7 +1033,10 @@ function draw(dt, ticks = -1) {
       if (c.mode === 1 && c.uy < -0.5) sayOnce('inverted');
       else if (c.mode === 1 && c.uy < 0.3) sayOnce('wall');
       if (c.boosting && c.gas < 0.2 && time - gasLowAt > 20) { gasLowAt = time; audio.radio('gas_low'); }
+      if (c.gas >= 1 && gasWas < 1) sayOnce('gas_full');
+      if (race.entries.length > 1 && race.pos === 1) { if (!leadAt) leadAt = time; else if (time - leadAt > 15 && !said.has('leading')) { said.add('leading'); audio.event('leading'); } } else leadAt = 0;
     }
+    gasWas = c.gas;
   }
   audio.crowd(inGarage ? 0.25 : 1);
   if (mode === 'race') hud.update(dt, race, camera, ghost ? gInterp : null, interp);
