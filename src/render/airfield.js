@@ -3,6 +3,7 @@ import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/B
 import { panelMaterial, makeLabel } from './road.js';
 import { skyFog } from './sky.js';
 import { lightPoints, roofRuns, merged } from './venue-kit.js';
+import { wallKit, bankWall } from './spur.js';
 
 export const RUNWAY = { half: 45, z0: -820, z1: 930, y: 1.32 };
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1);
@@ -209,6 +210,11 @@ export function createAirfield(world, sunUniform, fogDensity, renderer) {
     T.add(beam);
     group.add(T);
   }
+
+  const kit = wallKit(sunUniform, fogDensity), bank = bankWall(track, terrain.height);
+  merged(group, bank.walls, kit.concrete, true);
+  merged(group, bank.ribs, kit.rib, true);
+  merged(group, bank.leds, kit.led, false);
 
   const lp = lights.build();
   group.add(lp);
