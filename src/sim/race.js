@@ -8,7 +8,7 @@ import { lineupBoxes, lineupHit } from './lineup.js';
 
 export const SIM_VERSION = 16;
 export const TIERS = Object.freeze({ rookie: 0.88, easy: 0.94, pro: 0.98, elite: 1 });
-export const COUNTDOWN = 240;
+export const COUNTDOWN = 240, SOLO_COUNTDOWN = 160;
 export const lightTick = (n) => -220 + 40 * (n - 1);
 const CP_RADIUS = 45;
 const GRID_SLOT = 5;
@@ -93,7 +93,7 @@ export function createRace(venueWorld, { event, assist = true, seed = 1, tier = 
   const world = event.spur ? { ...venueWorld, track: venueWorld.track.spurs[event.spur] } : venueWorld;
   const { track } = world;
   const race = initEntry({
-    world, event, assist, seed, tier, tick: 0, raceTick: -COUNTDOWN, phase: 'countdown',
+    world, event, assist, seed, tier, tick: 0, raceTick: -(event.kind === 'gp' ? COUNTDOWN : SOLO_COUNTDOWN), phase: 'countdown',
     events: [], gasPending: {}, index: 0, swaps: 0, passes: 0, contacts: 0, finished: 0, identity: PLAYER,
   }, world, event, event.kind === 'gp' ? GRID_SLOT : 0);
   race.entries = [race];

@@ -426,3 +426,13 @@ test('the bot drives across the start line seam and the car stays on the road', 
   assert.equal(race.laps.length, 1);
   assert.equal(race.car.mode, 1);
 });
+
+test('solo events count down in 160 ticks, a Grand Prix in 240', () => {
+  for (const [id, ticks, lights] of [['tt', 160, [3, 4, 5]], ['pr', 160, [3, 4, 5]], ['gp', 240, [1, 2, 3, 4, 5]]]) {
+    const race = createRace(world, { event: byId(id) }), inp = createInput(), seen = [];
+    let n = 0;
+    while (race.phase === 'countdown') { stepRace(race, inp); n++; for (const e of race.events) if (e.type === 'light') seen.push(e.n); race.events.length = 0; }
+    assert.equal(n, ticks, id);
+    assert.deepEqual(seen, lights, id);
+  }
+});
