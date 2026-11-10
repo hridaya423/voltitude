@@ -10,7 +10,7 @@ Recommended order: 012, 001, 002, 003, 004, 005, 006, 007, 008, 009, then the tw
 |------|-------|----------|--------|------------|--------|
 | 001 | Make the game tell the truth: bug sweep with no sim change | P1 | M | — | DONE |
 | 002 | Fix the sim rules that fight the player (one version bump) | P1 | M | 001 | BLOCKED (steps 6, 7) |
-| 003 | Make speed and weight visible | P1 | M | 001 | TODO |
+| 003 | Make speed and weight visible | P1 | M | 001 | DONE |
 | 004 | Cut the dead time around failing and retrying | P1 | S | 001, 002 | TODO |
 | 005 | Put a new player in the car and teach every verb | P1 | M | 001 | TODO |
 | 006 | Turn The Lineup into back-to-back jumps | P1 | M | 001, 002, 004 | TODO |

@@ -1692,3 +1692,14 @@ Worked on `advisor/integration` after plans 012 and 001. `SIM_VERSION` 14 → 15
   - The flip input is not taught yet; plan 005 adds the hint.
   - Steps 6 and 7 need a decision: a `WALL_HIT` below 0.3, or a yaw rate at or below 3.0 (or a change to the exploit case). Either one is another sim change and another version bump.
   - Plans 004 and 009 expect this plan's line changes in `race.js` and `drive.js`; they are in, except `WALL_HIT` and `yawRate`.
+
+## Session 2026-11-10: speed and weight (plan 003)
+
+Worked on `advisor/integration` after plan 002. Render, audio and post-process only; `git diff da24892 -- src/sim rl` is empty. Nothing pushed or deployed. Status: DONE.
+
+- Steps 1-5: `tests/camera.test.js` (4 tests; 3 failed on the old camera, as the plan expects), then FOV 46°→64° with half compensation and a 0.3 m drop, the speed rumble, the blur and motor-pitch ramps to 115 m/s, and the body lean gains.
+- Gates: `node --test tests/camera.test.js` 4/4. `npm test` 167/167 (163 before). Step 6 smoke: exit 0, no errors, speed 39.7 m/s, fov 52.9°, err 0.69, back 6.67 m.
+- Frames: `/tmp/plan003/before` and `/tmp/plan003/after` (plan's Proving TT golden at 1, 5 and 12 s). `/tmp/plan003/before-moments` and `/tmp/plan003/after-moments` (Proving GP autopilot: low, medium, corner, landing, boost). `/tmp/plan003/before-boosted` and `/tmp/plan003/after-boosted` (Airfield GP with forced boost and throttle, for the 200 mph frame). Side-by-side pairs in `/tmp/plan003/pairs`. All under `/tmp`, so they do not survive a reboot.
+- Seen: the car is smaller at speed and more of the track is in view. The horizon stays level, and the car stays clear of the HUD speed plate. Mid-speed blur is weaker than before (the ramp is longer). Rival positions differ between runs, so the before and after frames are not the same moment.
+- Found: in the after "landing" frame, rival FER sat between the camera and the player's car, with the camera inside its body. The chase camera has never collided with rivals. The player's car never came within 4.5 m of the camera, before or after (70 s of Proving GP each). Not a plan 003 regression; not fixed.
+- Open for the owner: drive a lap and judge the 64° top FOV and the rumble.

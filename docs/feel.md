@@ -141,6 +141,14 @@ Measured on the same autopilot run of The Lineup on The Pad. The values are came
 - **A clip.** Change: the wreck treatment, which is bump 1.2, a 0.08 s camera stall, a gasp near the stands and a (1, 0.6, 320 ms) rumble. On top of that, the music runs through a low-pass that drops to 450 Hz for 0.5 s and opens again over about 0.25 s. The sim change: the car bounces back at 15% of its speed and ignores the player's input until the dare ends. Before, a car that clipped at 20 m/s rolled on through the vehicle, and throttle carried it 36 m past the clip. After, it stops beside the vehicle (frame: scratchpad `hud2/3-clipped.png`, 3 mph). `tests/dare.test.js` checks it.
 - Not judged by ear: the new sounds and the low-pass were placed from the existing samples and were not recorded or checked with earshot this session.
 
+### 7. Speed reads to top speed
+
+- Change: the chase camera's field of view runs 46° at rest to 64° at 115 m/s (linear, +5° boosting, −2° on the breath after a boost) instead of 40° to 46°. The pull-in that kept the car the same size now compensates half the widening (`sqrt` of the zoom), so the car shrinks as speed builds, and the camera drops 0.3 m at top speed. A grounded speed rumble adds `((speed − 55) / 60)² × 0.1` to the shake above 55 m/s; it is zero in the air and under reduced motion, which still pins the view at 44°. Blur and aberration ramp over 25 to 110 m/s instead of 20 to 75. The motor pitch rises over 0 to 115 m/s instead of 0 to 85. The body lean gains are about three times larger: 2.5° of dive at 1 g of braking, 1.9° of roll at 1.3 g of cornering.
+- Why: in captured frames 40 mph and 150 mph looked alike. Every speed cue stopped growing well below the 254 mph top speed, and the camera pull-in cancelled the field-of-view change.
+- Measured: `tests/camera.test.js` settles the camera at fixed speeds: 46.0° at rest, 56.7° at 68 m/s, 63.9° at 114 m/s; the car's on-screen size at top speed is 0.83 of its size at rest (1.00 before). In the game (Proving TT autopilot, 7 s after load), 39.7 m/s gives 52.9° FOV, 0.69° from the formula, with the camera 6.67 m from the car. Over 70 s of Proving GP autopilot, before and after, the camera never came closer than 4.5 m to the car.
+- Frames: `/tmp/plan003/before*` and `/tmp/plan003/after*`, side by side in `/tmp/plan003/pairs`. At 200 mph the car is visibly smaller and more road and wall stream past. At mid speed the blur is weaker than before, because the ramp is longer.
+- Not judged by a driver: whether 64° is too wide on a large monitor, and whether the rumble is felt. Both are single constants (`18` in `wantFov`, `0.1` in `rush`).
+
 ## Not changed
 
 - **Time scale.** See the audit: a hit-pause would read as a dropped frame and freeze the field.
