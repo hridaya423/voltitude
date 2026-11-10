@@ -36,12 +36,13 @@ function feedAudio(enc, buf) {
   }
 }
 
-export async function renderClip({ source, width, height, fps = 60, frames, step, card, audio = null, onProgress }) {
-  const enc = await createClipEncoder({ width, height, fps, audio: audio && { channels: audio.numberOfChannels, sampleRate: audio.sampleRate } });
+export async function renderClip({ source, width, height, fps = 60, frames, step, card, audio = null, onProgress, bitrate }) {
+  const enc = await createClipEncoder({ width, height, fps, bitrate, audio: audio && { channels: audio.numberOfChannels, sampleRate: audio.sampleRate } });
   if (enc.audio) feedAudio(enc, audio);
   const flat = document.createElement('canvas');
   flat.width = width; flat.height = height;
   const g = flat.getContext('2d');
+  g.imageSmoothingQuality = 'high';
   await Promise.all([document.fonts.load(`800 expanded 40px Archivo`), document.fonts.load(`500 semi-condensed 40px "Martian Mono"`)]).catch(() => {});
   const burnFrames = Math.round(BURN_S * fps);
   let renderMs = 0, encodeMs = 0;

@@ -7,8 +7,9 @@ const SLOTS = 8;
 
 export function boardTexture(text, label = '') {
   const c = document.createElement('canvas');
-  c.width = 128; c.height = 96;
+  c.width = 256; c.height = 192;
   const g = c.getContext('2d');
+  g.scale(2, 2);
   g.fillStyle = '#f2efe8'; g.fillRect(0, 0, 128, 96);
   g.fillStyle = '#d4202c'; g.fillRect(0, 0, 128, label ? 22 : 14);
   g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -17,6 +18,7 @@ export function boardTexture(text, label = '') {
   g.fillText(text, 64, label ? 60 : 56);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
   return t;
 }
 

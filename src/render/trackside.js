@@ -18,8 +18,9 @@ const _x = new THREE.Vector3(), _y = new THREE.Vector3(), _z = new THREE.Vector3
 
 function boardAtlas() {
   const c = document.createElement('canvas');
-  c.width = 1024; c.height = 64 * ROWS;
+  c.width = 2048; c.height = 128 * ROWS;
   const g = c.getContext('2d');
+  g.scale(2, 2);
   SPONSORS.forEach(([name, bg, ink], k) => {
     const y = k * 64;
     g.fillStyle = bg; g.fillRect(0, y, 1024, 64);
@@ -29,7 +30,7 @@ function boardAtlas() {
   });
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
+  t.anisotropy = 16;
   return t;
 }
 

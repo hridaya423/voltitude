@@ -36,6 +36,7 @@ import { createGarage } from './render/garage.js';
 import { createFestival } from './render/festival.js';
 
 const params = new URLSearchParams(location.search);
+const HQ = params.get('capture') === 'hq';
 const $ = (id) => document.getElementById(id);
 const STORE = 'voltitude.settings.v2', SAVE = `voltitude.save.v${SIM_VERSION}`;
 
@@ -1167,7 +1168,8 @@ function draw(dt, ticks = -1) {
   if (NIGHT) facility.floodLight(sun.lights[0], inGarage ? null : interp);
   else for (const l of sun.lights) l.intensity = inGarage ? 6.2 : sunIrradiance;
   const sp = Math.min(1, Math.max(0, Math.min((c.speed - 20) / 55, 0.75 + (c.speed - 60) / 220)));
-  pu.uBlur.value = settings.reduced ? 0 : sp * 0.7 + (c.boosting ? 0.25 : 0);
+  pu.uBlur.value = settings.reduced ? 0 : (sp * 0.7 + (c.boosting ? 0.25 : 0)) * (clipping && HQ ? 0.5 : 1);
+  pu.uGrain.value = clipping && HQ ? 0 : 0.016;
   pu.uHeat.value = NIGHT ? 0 : SESSION === 'golden' ? 0.5 : 1;
   skyUniforms.uCloud.value = SESSION === 'day' && !inGarage ? 0.55 : 0;
   skyUniforms.uCloudT.value = time;
@@ -1285,6 +1287,10 @@ $('shareLink').addEventListener('click', async () => {
   shareEls().note.textContent = ok ? 'Ghost link copied. Anyone who opens it races your run.' : url;
 });
 
+function shadowRes(size) {
+  for (const l of sun.lights) if (l.castShadow) { l.userData.size ??= l.shadow.mapSize.x; l.shadow.mapSize.setScalar(size || l.userData.size); l.shadow.map?.dispose(); l.shadow.map = null; l.shadow.needsUpdate = true; }
+}
+
 async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
   if (!lastRun || clipping) return null;
   const [width, height] = portrait ? [1080, 1920] : [1920, 1080];
@@ -1305,8 +1311,9 @@ async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
     chase.snap();
     if (ghostView) ghostView.root.visible = false;
     ghost = null;
-    renderer.setPixelRatio(1);
+    renderer.setPixelRatio(HQ ? 2 : 1);
     renderer.setSize(width, height, false);
+    if (HQ) shadowRes(4096);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     const frames = Math.round(Math.min(seconds * 120, lastRun.total - from + 120) / 2);
@@ -1323,13 +1330,14 @@ async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
     }
     const { mixClip } = await import('./clip/audio.js');
     const audio = await mixClip({ seconds: frames / fps, cues, speeds, fps }).catch((e) => { console.warn('clip audio', e); return null; });
-    return { ...(await renderClip({ source: renderer.domElement, width, height, fps, frames, card, audio, onProgress, step: () => draw(1 / fps, 2) })), cues };
+    return { ...(await renderClip({ source: renderer.domElement, width, height, fps, frames, card, audio, onProgress, bitrate: HQ ? 80e6 : undefined, step: () => draw(1 / fps, 2) })), cues };
   } finally {
     replay = null;
     race = was.race;
     mode = was.mode;
     renderer.setPixelRatio(scale);
     renderer.setSize(innerWidth, innerHeight, false);
+    if (HQ) shadowRes(0);
     camera.aspect = was.aspect;
     camera.updateProjectionMatrix();
     clipping = false;

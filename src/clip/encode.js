@@ -1,10 +1,9 @@
-const CODECS = [['avc1.640028', 'avc'], ['avc1.42E01E', 'avc'], ['vp09.00.31.08', 'vp9']];
+const CODECS = [['avc1.640028', 'avc'], ['avc1.42E01E', 'avc'], ['vp09.00.31.08', 'vp9']], HIGH = [['avc1.640033', 'avc'], ...CODECS];
 const KEY_EVERY = 60;
 
-export async function probe(width, height, fps = 60) {
+export async function probe(width, height, fps = 60, bitrate = Math.round(12e6 * (width * height) / (1920 * 1080))) {
   if (typeof VideoEncoder === 'undefined') return null;
-  const bitrate = Math.round(12e6 * (width * height) / (1920 * 1080));
-  for (const [codec, mux] of CODECS) {
+  for (const [codec, mux] of bitrate > 20e6 ? HIGH : CODECS) {
     const r = await VideoEncoder.isConfigSupported({ codec, width, height, framerate: fps, bitrate }).catch(() => null);
     if (r?.supported) return { codec, mux, config: r.config };
   }
@@ -13,9 +12,9 @@ export async function probe(width, height, fps = 60) {
 
 const AAC = (audio) => ({ codec: 'mp4a.40.2', numberOfChannels: audio.channels, sampleRate: audio.sampleRate, bitrate: 128000 });
 
-export async function createClipEncoder({ width, height, fps = 60, audio = null }) {
+export async function createClipEncoder({ width, height, fps = 60, audio = null, bitrate }) {
   if (audio && !(typeof AudioEncoder !== 'undefined' && (await AudioEncoder.isConfigSupported(AAC(audio)).catch(() => null))?.supported)) audio = null;
-  const picked = await probe(width, height, fps);
+  const picked = await probe(width, height, fps, bitrate);
   if (!picked) throw new Error('This browser cannot encode video');
   const { Muxer, ArrayBufferTarget } = await import('@rl/vendor/mp4-muxer-5.2.2/mp4-muxer.mjs');
   const target = new ArrayBufferTarget();
