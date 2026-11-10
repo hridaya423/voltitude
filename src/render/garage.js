@@ -308,6 +308,8 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
   const base = [260, night ? 700 : 420, 460];
   const level = [1, 0.2, 0.2], want = [1, 0.2, 0.2];
   const spots = [...studio.map(([l]) => l), ...lights];
+  group.visible = false;
+  for (const l of spots) l.visible = false;
 
   const raycaster = new THREE.Raycaster();
   const faces = [board, tyre, decal];
