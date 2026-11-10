@@ -233,7 +233,8 @@ varying vec2 vUv;
 void main() {
   vec2 s = vec2(0.0);
   for (int y = 0; y < ${METER_H}; y++) for (int x = 0; x < ${METER_W}; x++) s += texture2D(tMeter, (vec2(x, y) + 0.5) / vec2(${METER_W}.0, ${METER_H}.0)).rg;
-  float ev = clamp(log2(uKey / uExposure) - s.x / s.y, uMin, uMax) * uOn;
+  float raw = log2(uKey / uExposure) - s.x / s.y;
+  float ev = clamp(max(raw, min(uMin, raw + 1.0)), uMin - 1.5, uMax) * uOn;
   float prev = texture2D(tPrev, vec2(0.5)).r;
   float k = uReset > 0.5 ? 1.0 : 1.0 - exp(-uDt * (ev > prev ? 1.4 : 2.8));
   gl_FragColor = vec4(prev + (ev - prev) * k, 0.0, 0.0, 1.0);
