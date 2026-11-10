@@ -258,7 +258,7 @@ function pose(obj, p, c, a, out) {
   obj.quaternion.copy(p.q).slerp(carQuat(c, _q), a);
 }
 
-const PAD_KEYS = { throttle: 'RT', brake: 'LT', boost: 'B', lift: 'A', rollLeft: 'LB', rollRight: 'RB', reset: 'Y', restart: 'BACK' };
+const PAD_KEYS = { throttle: 'RT', brake: 'LT', boost: 'B', lift: 'A', slide: 'X', rollLeft: 'LB', rollRight: 'RB', reset: 'Y', restart: 'BACK' };
 const onPad = () => input.state.device === 'gamepad';
 const key = (a) => `<kbd>${onPad() ? PAD_KEYS[a] : keyLabel((settings.keys[a] || [])[0])}</kbd>`;
 function medalDot(m) { return `<i class="medal ${m ? m.id : ''}"></i>`; }
