@@ -1976,3 +1976,38 @@ Worked on `advisor/trailer`. No change under `src/`, the sim or the server. Noth
 - The PC did not answer on 192.168.0.173 (no route). It answered on its Tailscale address 100.90.237.82 (`mmhv`), with the same host keys as the stored `win-pc` entry. Used `ssh -o HostName=100.90.237.82 -o HostKeyAlias=192.168.0.173 win-pc`; `~/.ssh/config` is unchanged.
 - Hero: `assets/hero.mp4` is now trailer 7.85–16.35 s (8.5 s, 720p, 30 fps, no audio, 1.07 MB), cut to cut so the loop seam is a hard cut. The poster stays `assets/og.jpg`: it is the OG card, not a frame of the hero. On port 8795 at 1440x900 the hero played behind the lockup (`currentTime` advancing, `duration` 8.5) and paused when loading finished.
 - Evidence: `docs/sheets/2026-11-10-trailer-recut.jpg`, one frame every 0.5 s of the final render.
+
+## Session 2026-11-10 (cont.): polish round 3 (advisor/polish-3)
+
+Worked on `advisor/polish-3`, cut from `advisor/integration` at 375d3a0. No change under `src/sim`, `rl` or `server`. Nothing merged or pushed. Pairs in `docs/sheets/2026-11-polish-3/`.
+
+### Part A
+
+- A1 camera: the frame (`dir`, `upS`) and the world-space offset each lagged about 0.25 s; the Proving loop turns the car at 3.1 rad/s, so the camera rose 6 m above the roof and looked along −up. When the car's up vector turns faster than 0.8 rad/s or tilts past about 37°, the chase camera now follows the car's frame tightly (`rig`), and the look point leads along the path's pitch (`lead`, capped at 0.3). Probe through the loop: camera 6.3 m behind and 1.8–2.9 m up the whole way (before: 0.4 m ahead, 6 m up at the top). New test `tests/camera.test.js` (synthetic 16 m loop at 50 m/s: camera behind, forward within 41° of the car's, car and the road 8 m and 15 m ahead inside the view). Ramp curl, Trench roll, Launch bowl and Airfield hairpin: same or better in frames.
+- Found while doing A1: `loop()` could step a negative `dt` (first rAF timestamp up to 1.3 s older than the clock read after boot, under load). The camera smoothing then diverged to NaN for good. Reproduced on `advisor/integration` with six games loading at once. `ms` is clamped at 0.
+- A2 Ramp sky: the flat white after the lip was the old camera rolling inverted into the sunlit cloud deck (15–22% of pixels near white for about 1 s). With A1 the view stays on the ground and horizon. The climb keeps one 0.23 s patch of up to 10% near white; that is the sunlit white car and ramp walls. A highlight percentile cap (luma, then min channel) could not separate it from the normal golden Airfield sun glow, and forcing exposure 0.7 EV lower removed almost none of it, so `post.js` metering is unchanged.
+- A3 rival edges: two causes. The car pass stored perspective depth in a half-float target; past about 12 m the velocity pass's depth match failed and rivals fell back to static reprojection. It now stores linear view depth. And TAA dilation took the largest neighbour velocity; it now takes the closest-depth neighbour.
+- A4 bowl infield: `mastSites` skips banked samples, so the bowl had no floodlights. At night each banked run over 40 m gets three masts at its centre of curvature aimed outward.
+- A5 squiggles: mostly the road shader's tar seal lines (now 30% dark on 30% of segments). Skid marks: brake-lock term removed, threshold 4.2 m/s of slip (fan-held bowl peaks at 3.0, a held slide 5.8–6.5), oldest 60% of the ring fade. Lap 3 on Launch: 4096 marks with about 1000 in the bowl before; 832 with 12 after.
+- A6: the results line starts empty and `postRun` sets "First time on the board" only when the server accepts the run. One existing test assertion changed (`tests/menu.test.js`, dare first run now has an empty delta).
+- A7: slide smoke 420 puffs/s per rear wheel at full slip while slide is held, 4–9 m puffs living 2.4–5 s, thrown sideways and up; smoke pool 4096.
+
+### Part B
+
+- Shot list and timings: `trailer/REVIEW.md`. 30.0 s, 1920x1080, 60 fps. Longest shot 3.0 s (the loop).
+- B1: the JUMP shot now starts 0.4 s before take-off (`near-miss` 5.05).
+- B2: GO AGAIN enters at 24.80, on a white flash, 0.35 s before touchdown at 25.15. In pass 1 it entered at 24.2; that was fixed and re-rendered.
+- B3: `slide`, `loop`, `ramp`, `gp-night` and `trench` were re-shot after Part A. The slide shot steers into the curve until hint 1130 (`tools/trailer-clips.mjs`), giving 2.5 s of held slide with thick smoke.
+- B4: the URL is 72 px Martian Mono, about 13.5 px tall at 360 px wide. The end card carries the game's `finish` sting (CC0).
+- B5: the saved time went to the wreck debris, the night boost pack (2.9 s) and the loop (3.0 s).
+- Mix: −14.2 LUFS, −1.6 dBFS peak, LRA 1.9 LU. Measured, not heard.
+- Render: Strobe on the PC, two passes. The Windows folder was deleted afterwards.
+- Hero: `assets/hero.mp4` is trailer 11.3–19.7 s (slide, night boost, loop): 8.4 s, 1.06 MB, cut to cut.
+- Share copy: `trailer/out/voltitude-trailer-share.mp4`, 32 MB, gitignored.
+- Evidence: `docs/sheets/2026-11-10-trailer-recut-2.jpg`.
+
+### Gates
+
+- Perf, Launch night, 60 s, interleaved: base p99 11.7 and 11.8 ms, polish-3 11.8 and 10.8 ms. p50 6.6–6.8 ms on both.
+- `first-start` exits 0 on proving and on launch at night (port 8795).
+- `npm test` 206/206, `npm run test:server` 13/13. `git diff --stat advisor/integration -- src/sim rl server` is empty.
