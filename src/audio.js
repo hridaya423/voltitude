@@ -6,7 +6,7 @@ const LOOPS = ['motor_z1', 'motor_z2', 'motor_z3', 'motor_hum', 'thrust_hiss', '
 const BURSTS = ['burst_a', 'burst_b', 'burst_c', 'burst_d'];
 const COMMENT_CHANCE = { contact: 0.4, near_miss: 0.5, overtake: 0.7, kerb: 0.15 };
 const MUSIC_TRIM = 0.78;
-const STINGS = { go: ['start', 1], check: ['bank', 0.6], perfect: ['rampEnd', 1], clip: ['bail', 1], finish: ['rampEnd', 1.2], clear: ['lineup', 1] };
+const STINGS = { go: ['start', 1], check: ['bank', 0.6], clean: ['bank', 0.6], perfect: ['rampEnd', 1], clip: ['bail', 1], finish: ['rampEnd', 1.2], clear: ['lineup', 1] };
 const MDUCK = { count: [0.2, 0.3], go: [0.3, 0.7], check: [0.25, 0.45], boost: [0.2, 0.4], slot: [0.3, 0.7], clip: [0.5, 0.8], impact: [0.35, 0.5], finish: [0.4, 1.2], respawn: [0.3, 0.6] };
 const CHEER = { stunt: [['cheer_a', 'cheer_b'], 0.7, 0.35], pb: [['pb'], 0.8, 0.8], gasp: [['gasp_a', 'gasp_b'], 0.7, 0], applause: [['applause'], 0.65, 0.5] };
 const STAND_REF = 28;
@@ -565,6 +565,7 @@ export function createAudio(settings) {
       case 'miss': play('miss', 0.95); duckFor(0.7, 0.5); streak = 0; break;
       case 'boost': play('whoosh1', 0.6, 1.25); play('shimmer', 0.45, 1, 0.05); play('check_b', 0.3, 1.15, 0.18); break;
       case 'gate': play('whoosh2', 0.55, 1.3); play('check_b', 0.45, 1.5, 0.04); break;
+      case 'clean': play('check_b', 0.7, 0.9); play('whoosh2', 0.3, 1.2, 0.02); break;
       case 'slot': play('slot', 0.85, 1 + v); play('shimmer', 0.4, 1.1, 0.08); play('check_a', 0.4, 0.78 * 2, 0.22); duckFor(0.65, 1.1); break;
       case 'clip': {
         play('clip', 0.9); play('impact_a', 0.6, 0.92); duckFor(0.6, 0.35); streak = 0;
@@ -594,7 +595,7 @@ export function createAudio(settings) {
         commentary('contact');
         break;
       }
-      case 'near_miss': cheer('gasp'); commentary('near_miss'); break;
+      case 'near_miss': cheer('stunt'); commentary('near_miss'); break;
       case 'final_lap': commentary('final_lap'); break;
       case 'fastest': commentary('fastest_lap'); break;
       case 'ui': play('ui', 0.7); break;

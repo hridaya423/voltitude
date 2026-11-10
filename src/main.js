@@ -725,7 +725,7 @@ function handleEvents() {
         const names = e.tricks.length ? [...new Set(e.tricks)].map((t) => { const n = e.tricks.filter((x) => x === t).length; return (n > 1 ? `${n}× ` : '') + t.toUpperCase(); }).join(' + ') : '';
         if (e.quality !== 'hard') cheerNear(e.tricks.length ? 0.9 : e.quality === 'perfect' ? 0.5 : 0.25);
         if (e.quality === 'perfect') { hud.toast(names || 'PERFECT LANDING', 'good'); audio.event('perfect'); input.rumble(0.45, 0.6, 160); chase.bump(0.3); chase.punch(-0.6); }
-        else if (e.quality === 'clean') { hud.toast(names || 'CLEAN', 'white'); audio.event('check'); input.rumble(0.3, 0.3, 140); chase.bump(0.2); chase.punch(-0.3); }
+        else if (e.quality === 'clean') { hud.toast(names || 'CLEAN', 'white'); audio.event('clean'); input.rumble(0.3, 0.3, 140); chase.bump(0.2); chase.punch(-0.3); }
         else { hud.toast('HARD LANDING', 'red', '−10% SPEED'); audio.event('impact'); input.rumble(0.9, 0.4, 220); chase.bump(0.9); chase.stall(0.05); }
         if (e.tricks.length) usage.roll++;
         if (e.quality === 'hard') audio.radio('hard');
