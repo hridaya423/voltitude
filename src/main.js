@@ -1101,7 +1101,7 @@ async function ogImage() {
   const [width, height] = [1200, 630], at = peakTick(lastRun);
   const out = Object.assign(document.createElement('canvas'), { width, height }), g2 = out.getContext('2d');
   clipping = true;
-  const was = { mode, aspect: camera.aspect };
+  const was = { mode, aspect: camera.aspect, race };
   try {
     replay = createGhost(world, lastRun);
     while (replay.race.phase === 'countdown' || replay.race.raceTick < at - 40) replay.step();
@@ -1124,6 +1124,7 @@ async function ogImage() {
     return btoa(bin);
   } finally {
     replay = null;
+    race = was.race;
     mode = was.mode;
     renderer.setPixelRatio(scale);
     renderer.setSize(innerWidth, innerHeight, false);
@@ -1156,7 +1157,7 @@ async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
   const fps = 60, ev = current, d = race.dare;
   const card = d ? { title: ev.name, value: `${d.score}`, sub: `${venue.name} · ${ev.dare === 'ramp' ? `${d.tries.length} tries` : `line ${d.count}`}` } : { title: ev.name, value: fmt(lastRun.total), sub: venue.name };
   clipping = true;
-  const was = { mode, aspect: camera.aspect };
+  const was = { mode, aspect: camera.aspect, race };
   try {
     replay = createGhost(world, lastRun);
     const from = Math.max(0, lastRun.total - seconds * 120);
@@ -1190,6 +1191,7 @@ async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
     return { ...(await renderClip({ source: renderer.domElement, width, height, fps, frames, card, audio, onProgress, step: () => draw(1 / fps, 2) })), cues };
   } finally {
     replay = null;
+    race = was.race;
     mode = was.mode;
     renderer.setPixelRatio(scale);
     renderer.setSize(innerWidth, innerHeight, false);
