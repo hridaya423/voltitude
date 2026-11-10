@@ -43,7 +43,7 @@ They were applied from what is already known about them. They were not re-watche
 | Input | Hold Shift. |
 | Response | Rear thrust while gas lasts. The gas bar burns down with a bright edge. |
 | Context | Straights and air-line approaches. Gas is earned from near misses, clean landings, gates, drafting and air. |
-| Polish: camera | FOV +3° eased in at 3.3/s and back +0.4 m. On release, a 0.3 s "breath" of −1.5°. Post blur +0.25, chromatic aberration +0.012. **No onset accent.** |
+| Polish: camera | FOV +3° eased in at 3.3/s and back +0.4 m. On release, a 0.3 s "breath" of −1.5°. Post blur +0.25. Onset: camera back 0.6 m and +1.5° (see 9). |
 | Polish: shake | None. |
 | Polish: sound | `ignite_gas` plus `burst_long` on ignition, ducking for 0.8 s. Roar and low loops, a music duck, and `vent` on release. |
 | Polish: rumble | **None.** |
@@ -155,6 +155,12 @@ Measured on the same autopilot run of The Lineup on The Pad. The values are came
 - Why: a held steering key settled the car 5 degrees off its path at every speed, so there was no way to throw the car into a corner. Plan 010.
 - Measured (`tools/slide-lab.mjs`, flat ground, 3 s of full steer): the body angle goes from 7 to 9 degrees to 16 to 19 degrees between 30 and 80 m/s, and the car keeps 84% to 90% of its speed. A left-right flick peaks at 44 degrees and is caught in under 2.5 s. No case spins.
 - Not judged by a driver: whether lock × 2.5 feels right on a pad at part stick.
+
+### 9. Physical effects only (polish round 4)
+
+- Change: the screen-space speed lines and the near-miss streaks are gone. Speed reads from the field of view, the world motion blur, the grounded speed rumble and the far-road heat haze. The boost plume is now soft sprites along each rear jet: a white-hot core that turns pale blue, 0.3 m long at idle and up to about 1.2 m on boost, with a slight flicker and faint fixed shock diamonds. Heat shimmer distorts the frame behind the nozzles (`uExhaust` in `src/render/post.js`), and the world motion blur is masked there so the jets do not smear. A small warm pool lights the road just behind the car. The violet road glow, the chromatic kick and the boost aberration are removed. The boost onset now pushes the camera back 0.6 m and widens the field of view by 1.5°, both decaying at 4/s (`punch`). A near miss swings the camera about 0.25 m away from the rival on a spring (`nudge`). The landing ring is replaced by a wider, faster dust burst. The wall-ride glow pool is replaced by a faint glow from the down thrusters, smaller dust and dark grit. The wreck and boost-pad white flashes are removed; the wreck throws fewer, lower sparks and smaller debris.
+- Why: the owner said the boost looked like "a shitty anime". Each effect was checked against one test: would a real camera see it if it filmed a real car.
+- Evidence: `docs/sheets/2026-11-polish-4/`.
 
 ## Not changed
 

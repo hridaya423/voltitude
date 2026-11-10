@@ -315,7 +315,7 @@ export function createSparks(depth, count = 1024) {
         vec2 d = (h.xy / h.w - b.xy / b.w) * uRes;
         float len = length(d);
         vec2 n = len > 1e-3 ? vec2(-d.y, d.x) / len : vec2(0.0, 1.0);
-        c.xy += n * position.y * (1.6 + 2.4 * vA) * (position.x > 0.5 ? 1.0 : 0.35) * uRes.y / 720.0 / uRes * 2.0 * c.w;
+        c.xy += n * position.y * (1.0 + 1.3 * vA) * (position.x > 0.5 ? 1.0 : 0.35) * uRes.y / 720.0 / uRes * 2.0 * c.w;
         vY = position.y;
         gl_Position = vA > 0.0 && h.w > 0.1 && b.w > 0.1 ? c : vec4(0.0, 0.0, 2.0, 1.0);
       }`,
@@ -324,7 +324,7 @@ export function createSparks(depth, count = 1024) {
       void main() {
         if (gl_FragCoord.z > texture2D(tDepth, gl_FragCoord.xy / uRes).r + 2e-5) discard;
         float e = 1.0 - abs(vY);
-        vec3 c = mix(vec3(1.0, 0.32, 0.06), vec3(1.0, 0.86, 0.55), vA * vA) * (2.5 + 9.0 * vA * vA);
+        vec3 c = mix(vec3(1.0, 0.32, 0.06), vec3(1.0, 0.86, 0.55), vA * vA) * (2.0 + 6.0 * vA * vA);
         gl_FragColor = vec4(c * e * e, 1.0);
       }`,
     transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,

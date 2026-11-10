@@ -11,30 +11,21 @@ const NOZ = [...REAR_EXIT, ...CAR.NOZZLES.down, ...CAR.NOZZLES.lateral];
 const WING = { lift: 0.13, stow: -10.5, deploy: 7, brake: 26 };
 const REFLECT = { medium: { size: 256 }, high: { size: 256 } };
 
+const SPRITES = 14;
+
 function plumeGeometry(count) {
-  const base = [], dir = [], rad = [], along = [], nid = [], idx = [];
-  const seg = 12, d = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3();
+  const base = [], dir = [], quad = [], idx = [];
   NOZ.slice(0, count).forEach((n, k) => {
-    d.fromArray(n.dir).normalize();
-    a.set(0, 1, 0); if (Math.abs(d.y) > 0.9) a.set(1, 0, 0);
-    a.cross(d).normalize(); b.crossVectors(d, a);
-    for (const s of [0.075, 0.05, 0.025]) {
-      const o = along.length;
-      for (let r = 0; r <= 1; r++) for (let i = 0; i < seg; i++) {
-        const t = (i / seg) * Math.PI * 2;
-        base.push(...n.pos); dir.push(d.x, d.y, d.z);
-        rad.push((a.x * Math.cos(t) + b.x * Math.sin(t)) * s, (a.y * Math.cos(t) + b.y * Math.sin(t)) * s, (a.z * Math.cos(t) + b.z * Math.sin(t)) * s);
-        along.push(r); nid.push(k);
-      }
-      for (let i = 0; i < seg; i++) { const j = (i + 1) % seg; idx.push(o + i, o + j, o + seg + i, o + j, o + seg + j, o + seg + i); }
+    for (let layer = 0; layer < 2; layer++) for (let i = 0; i < SPRITES; i++) {
+      const o = base.length / 3;
+      for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { base.push(...n.pos); dir.push(...n.dir); quad.push(x, y, i / (SPRITES - 1), k + layer * 0.5); }
+      idx.push(o, o + 1, o + 2, o, o + 2, o + 3);
     }
   });
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(base, 3));
   g.setAttribute('dir', new THREE.Float32BufferAttribute(dir, 3));
-  g.setAttribute('rad', new THREE.Float32BufferAttribute(rad, 3));
-  g.setAttribute('along', new THREE.Float32BufferAttribute(along, 1));
-  g.setAttribute('nid', new THREE.Float32BufferAttribute(nid, 1));
+  g.setAttribute('quad', new THREE.Float32BufferAttribute(quad, 4));
   g.setIndex(idx);
   return g;
 }
@@ -43,31 +34,37 @@ function createPlume(lite) {
   const mat = new THREE.ShaderMaterial({
     uniforms: { uPow: { value: new Float32Array(NOZ.length) }, uLen: { value: new Float32Array(NOZ.length) }, uBoost: { value: 0 }, uTime: { value: 0 }, uColor: { value: COLD } },
     vertexShader: /* glsl */ `
-      attribute vec3 dir; attribute vec3 rad; attribute float along; attribute float nid;
-      uniform float uPow[${NOZ.length}]; uniform float uLen[${NOZ.length}]; uniform float uBoost;
-      varying float vT; varying float vP; varying float vN; varying float vR;
+      attribute vec3 dir; attribute vec4 quad;
+      uniform float uPow[${NOZ.length}]; uniform float uLen[${NOZ.length}];
+      varying vec2 vQ; varying float vT; varying float vP; varying float vN; varying float vE; varying float vL;
       void main() {
-        int k = int(nid + 0.5);
-        float len = uLen[k];
-        vT = along; vP = uPow[k]; vN = nid; vR = length(rad) / 0.075;
-        vec3 p = position + dir * along * len + rad * (1.0 + along * (k < 4 ? 1.4 + 1.2 * uBoost : 2.4));
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+        int k = int(quad.w);
+        float t = quad.z, len = uLen[k], env = fract(quad.w) > 0.25 ? 1.0 : 0.0;
+        vQ = quad.xy; vT = t; vP = uPow[k]; vN = float(k); vE = env; vL = len;
+        float r = k < 4 ? mix(mix(0.05, 0.06, t), mix(0.07, 0.2, t), env) : mix(0.06, 0.2, t) * (1.0 + env);
+        vec4 mv = modelViewMatrix * vec4(position + normalize(dir) * (0.04 + t * len), 1.0);
+        mv.xy += quad.xy * r;
+        gl_Position = vP < 0.01 ? vec4(0.0, 0.0, 2.0, 1.0) : projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */ `
-      uniform float uBoost; uniform float uTime; uniform vec3 uColor; varying float vT; varying float vP; varying float vN; varying float vR;
+      uniform float uBoost; uniform float uTime; uniform vec3 uColor;
+      varying vec2 vQ; varying float vT; varying float vP; varying float vN; varying float vE; varying float vL;
       void main() {
-        if (vP < 0.01) discard;
+        float d = dot(vQ, vQ);
+        if (d > 1.0) discard;
         float rear = step(vN, 3.5), hot = uBoost * rear;
-        float fade = pow(1.0 - clamp(vT, 0.0, 1.0), mix(1.6 + 1.4 * rear, 1.1, hot));
-        float flick = 0.85 + 0.15 * sin(uTime * 90.0 + vN * 7.0);
-        float bands = mix(1.0, 0.7 + 0.3 * sin(vT * 34.0 - uTime * 40.0), hot);
-        vec3 flame = mix(vec3(1.0, 0.95, 1.0), mix(vec3(0.75, 0.35, 1.0), vec3(0.25, 0.55, 1.0), vT), smoothstep(0.2, 0.9, vR + vT * 0.6));
-        vec3 c = mix(uColor, flame, hot) * fade * flick * bands * vP * mix(0.55 - 0.4 * rear, 3.2 - vR * 1.6, hot);
-        gl_FragColor = vec4(c, 1.0);
+        float soft = exp(-d * 3.5) * (1.0 - d);
+        float flick = 0.9 + 0.06 * sin(uTime * 37.0 + vN * 5.0) + 0.04 * sin(uTime * 71.0 + vN * 11.0);
+        float diamonds = 1.0 + 0.35 * (1.0 - vE) * (1.0 - vT) * smoothstep(0.5, 1.0, cos(vT * vL * 24.0));
+        vec3 jet = mix(mix(vec3(1.0, 0.96, 0.9), vec3(0.75, 0.86, 1.0), vT), vec3(0.45, 0.66, 1.0), vE);
+        float fall = pow(1.0 - vT, 1.3) * mix(0.9, 0.08, vE);
+        vec3 cold = uColor * pow(1.0 - vT, 1.6) * mix(0.16, 0.04, vE);
+        gl_FragColor = vec4(mix(cold, jet * fall * diamonds, hot) * soft * flick * vP, 1.0);
       }`,
-    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
   });
   const mesh = new THREE.Mesh(plumeGeometry(lite ? 4 : NOZ.length), mat);
+  mesh.userData.fx = true;
   if (lite) mesh.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, -0.1, -3), 1.8);
   else mesh.frustumCulled = false;
   return mesh;
@@ -270,13 +267,13 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
   const wingBase = wing && { y: wing.position.y };
   let wingK = 0, wingBrake = 0;
   if (wing) wing.visible = false;
-  let plume = null, head = null, glow = null, fanGlow = null;
+  let plume = null, head = null, glow = null;
   const uDust = { value: 0 }, uCar = { value: new THREE.Matrix4() };
   const vapour = ghost || lite ? null : createVapour(), puff = new Float32Array(NOZ.length), vp = new THREE.Vector3(), vd = new THREE.Vector3();
   if (!ghost) {
     plume = createPlume(lite);
     holder.add(plume);
-    if (!lite) { glow = groundGlow('#8052ff', 4.4, 9, -5.2, headlights ? 0.9 : 1.6, 3.2); fanGlow = groundGlow('#5cc8ff', 5.2, 5.6, -0.2, headlights ? 0.5 : 2.4, 3.2); holder.add(glow, fanGlow); }
+    if (!lite) { glow = groundGlow('#ffb27e', 1.9, 2.2, -2.9, headlights ? 1.4 : 0.2, 5); holder.add(glow); }
     if (mats.paint) { mats.paint.envMapIntensity = 1.2; mats.paint.clearcoatRoughness = Math.max(mats.paint.clearcoatRoughness, 0.06); if (!lite) grime(mats.paint, uDust, uCar); }
     if (mats.glass) { mats.glass.envMapIntensity = 2.2; mats.glass.roughness = 0.04; mats.glass.metalness = 0; mats.glass.color.set('#07090c'); }
     if (headlights) {
@@ -292,8 +289,10 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
   }
   const fire = new Float32Array(NOZ.length);
   let spin = 0, lastSpeed = 0, aLong = 0, aLat = 0, bob = 0, brakeGlow = 0;
+  const heat = { a: new THREE.Vector3(), b: new THREE.Vector3(), k: 0 };
   return {
     root: holder,
+    heat,
     vapour,
     reflect(renderer, scene, viewer, indoors) {
       if (mats.paint) mats.paint.envMapIntensity = indoors ? 0.3 : 1.2;
@@ -313,12 +312,13 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
       }
       if (shadow) shadow.visible = !air;
       const pitch = air ? c.wp / 3.8 : 0, roll = air ? c.wr / 4.6 : 0, yaw = air ? c.wy / 2.4 : 0;
-      const rear = Math.min(1, c.throttle * 0.55 + (c.boosting ? 0.9 : 0));
       fire[4] = Math.max(0, pitch) * 0.6 + Math.max(0, -roll) * 0.6;
       fire[5] = Math.max(0, pitch) * 0.6 + Math.max(0, roll) * 0.6;
       fire[6] = Math.max(0, -pitch) * 0.6 + Math.max(0, -roll) * 0.6;
       fire[7] = Math.max(0, -pitch) * 0.6 + Math.max(0, roll) * 0.6;
       fire[8] = Math.max(0, -yaw) * 0.9; fire[9] = Math.max(0, yaw) * 0.9;
+      const fan = air ? 0 : Math.min(1, Math.max(0, (c.fan - 0.15) * 2.5)) * 0.3;
+      for (let k = 4; k < 8; k++) fire[k] = Math.max(fire[k], fan);
       if (c.lifting || c.hopT > 0.4) {
         for (let k = 4; k < 8; k++) fire[k] = 1;
         if (air) { fire[8] = Math.max(fire[8], c.steer); fire[9] = Math.max(fire[9], -c.steer); }
@@ -357,17 +357,22 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
       if (plume) {
         const u = plume.material.uniforms, P = u.uPow.value, L = u.uLen.value;
         u.uBoost.value += ((c.boosting ? 1 : 0) - u.uBoost.value) * Math.min(1, dt * 8);
-        for (let k = 0; k < 4; k++) { P[k] += ((c.boosting ? 1 : 0) - P[k]) * Math.min(1, dt * 12); L[k] = 0.3 + 0.3 * rear + u.uBoost.value * (2.2 + 0.25 * Math.sin(time * 53 + k * 2.1)); }
+        for (let k = 0; k < 4; k++) { P[k] += ((c.boosting ? 1 : 0) - P[k]) * Math.min(1, dt * 12); L[k] = 0.3 + u.uBoost.value * (0.82 + 0.05 * Math.sin(time * 23 + k * 2.1) + 0.03 * Math.sin(time * 61 + k)); }
         for (let k = 4; k < NOZ.length; k++) { const w = Math.min(1, fire[k]); P[k] += (w - P[k]) * Math.min(1, dt * (w > P[k] ? 30 : 10)); L[k] = 0.35 + (k < 8 ? 1.1 : 0.7) * P[k]; }
         u.uTime.value = time;
-        if (glow) { glow.material.uniforms.uK.value = u.uBoost.value * glow.userData.gain * (air ? 0 : 1) * (0.9 + 0.1 * Math.sin(time * 41)); fanGlow.material.uniforms.uK.value += ((air ? 0 : Math.min(1, Math.max(0, (c.fan - 0.15) * 2.5))) * fanGlow.userData.gain - fanGlow.material.uniforms.uK.value) * Math.min(1, dt * 8); }
+        if (glow) glow.material.uniforms.uK.value = u.uBoost.value * glow.userData.gain * (air ? 0 : 1) * (0.94 + 0.06 * Math.sin(time * 37));
         if (lite) plume.visible = dist < 160 && (c.boosting || P[0] > 0.02);
       }
       if (!lite) { holder.updateMatrixWorld(); uCar.value.copy(chassis.matrixWorld).invert(); }
+      if (plume) {
+        heat.k = plume.material.uniforms.uBoost.value;
+        heat.a.set(0, -0.1, -2.35).applyMatrix4(holder.matrixWorld);
+        heat.b.set(0, -0.05, -3.4 - plume.material.uniforms.uLen.value[0]).applyMatrix4(holder.matrixWorld);
+      }
       if (vapour && plume) {
         const P = plume.material.uniforms.uPow.value;
         for (let k = 0; k < NOZ.length; k++) {
-          puff[k] = P[k] > 0.05 ? puff[k] + dt * P[k] * (k < 4 ? 110 : 70) : 0;
+          puff[k] = P[k] > 0.05 ? puff[k] + dt * P[k] * (k < 4 ? 0 : 70) : 0;
           while (puff[k] >= 1) {
             puff[k]--;
             vp.fromArray(NOZ[k].pos).applyMatrix4(holder.matrixWorld);

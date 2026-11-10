@@ -155,7 +155,8 @@ scene.add(fireworks.points);
 const finishAtPos = new THREE.Vector3();
 const standGap = (h) => stands.sites.reduce((m, i) => Math.min(m, Math.abs(i - h)), Infinity);
 const cheerNear = (v, kind = 'stunt') => { if (standGap(race.car.hint) < 260) { if (kind === 'gasp') stands.gasp(0.8); else stands.cheer(v); if (v >= 0.5) audio.cheer(kind); } };
-let said = new Set(), raceCount = 0, gasLowAt = -1e9, boostWas = false, boostKick = 0, rushL = 0, rushR = 0, armedWas = false, liftWas = false, kerbAt = -1, gasWas = 1, leadAt = 0;
+const heatA = new THREE.Vector3(), heatB = new THREE.Vector3();
+let said = new Set(), raceCount = 0, gasLowAt = -1e9, boostWas = false, armedWas = false, liftWas = false, kerbAt = -1, gasWas = 1, leadAt = 0;
 const sayOnce = (id) => { if (!said.has(id)) { said.add(id); audio.radio(id); } };
 
 progress(0.35, 'Lighting the sky…');
@@ -802,7 +803,7 @@ function handleEvents() {
         break;
       }
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
-      case 'near_miss': rush(e); audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
+      case 'near_miss': nudge(e); audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
       case 'track_limits': hud.toast('TRACK LIMITS', 'orange', `+${e.gain.toFixed(1)} S · TOTAL ${race.penalty.toFixed(1)} S`); audio.event('miss'); break;
       case 'clear': {
         clears.push(e);
@@ -823,7 +824,7 @@ function handleEvents() {
       case 'retry': wreckToast?.remove(); if (!settings.reduced) post.uniforms.uFlash.value = 0.3; chase.snap(); snapshot(race.car, prev); break;
       case 'gate': (spurGates[current.spur] || gates).pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
-      case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
+      case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); chase.punch(0.6); break;
       case 'land': {
         const names = e.tricks.length ? [...new Set(e.tricks)].map((t) => { const n = e.tricks.filter((x) => x === t).length; return (n > 1 ? `${n}× ` : '') + t.toUpperCase(); }).join(' + ') : '';
         if (e.quality !== 'hard') cheerNear(e.tricks.length ? 0.9 : e.quality === 'perfect' ? 0.5 : 0.25);
@@ -836,7 +837,7 @@ function handleEvents() {
         else if (e.quality === 'perfect' && Math.random() < 0.35) audio.radio('perfect');
         break;
       }
-      case 'wreck': if (!settings.reduced) post.uniforms.uFlash.value = 0.5; cheerNear(0.2, 'gasp'); if (standGap(race.car.hint) < 260) audio.cheer('gasp'); audio.radio('wreck'); wreckToast = hud.toast('WRECKED', 'red'); audio.event('clip', 1); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
+      case 'wreck': cheerNear(0.2, 'gasp'); if (standGap(race.car.hint) < 260) audio.cheer('gasp'); audio.radio('wreck'); wreckToast = hud.toast('WRECKED', 'red'); audio.event('clip', 1); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
       case 'scrape': audio.event(e.angle > 0.35 ? 'impact' : 'scrape', e.v); input.rumble(Math.min(1, e.v / 15) * (e.angle > 0.35 ? 1 : 0.4), 0.3, 120); if (e.angle > 0.35) chase.bump(0.25); break;
       case 'impact': audio.event('impact'); input.rumble(Math.min(1, e.v / 20), 0.4, 160); chase.bump(Math.min(1, e.v / 15)); break;
       case 'respawn': wreckToast?.remove(); hud.toast('RESET', 'white'); if (!settings.reduced) post.uniforms.uFlash.value = 0.3; audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
@@ -866,10 +867,17 @@ function handleEvents() {
   race.events.length = 0;
 }
 
-function rush(e) {
+function exhaustHeat(pu, inGarage) {
+  const h = carView.heat, a = heatA.copy(h.a).project(camera), b = heatB.copy(h.b).project(camera);
+  const d = camera.position.distanceTo(h.a);
+  const on = !inGarage && h.k > 0.01 && a.z < 1 && b.z < 1 && d > 1;
+  pu.uExhaustK.value.set(on ? h.k : 0, on ? 0.6 / (d * Math.tan(camera.fov * Math.PI / 360)) / 2 : 0);
+  pu.uExhaust.value.set(a.x * 0.5 + 0.5, a.y * 0.5 + 0.5, b.x * 0.5 + 0.5, b.y * 0.5 + 0.5);
+}
+
+function nudge(e) {
   const o = race.entries[e.other]?.car, c = race.car, s = o ? (o.x - c.x) * c.rx + (o.y - c.y) * c.ry + (o.z - c.z) * c.rz : 0;
-  if (s >= 0) rushR = 1;
-  if (s <= 0) rushL = 1;
+  if (s && !settings.reduced) chase.nudge(-Math.sign(s));
 }
 
 function tick() {
@@ -878,7 +886,7 @@ function tick() {
   if (mode === 'replay') {
     const seen = [];
     replay.step(seen);
-    for (const e of seen) { carFx.event(e, race.car, e.type === 'contact' ? race.entries[e.other]?.car : null); if (e.type === 'near_miss') rush(e); }
+    for (const e of seen) { carFx.event(e, race.car, e.type === 'contact' ? race.entries[e.other]?.car : null); if (e.type === 'near_miss') nudge(e); }
     if (race.dare) lineup.set(race.dare.count);
     if (!clipping && race.phase === 'finished' && ++replayEnd > 300) startReplay();
     return;
@@ -1130,7 +1138,7 @@ function draw(dt, ticks = -1) {
   c.clearance = c.mode === 0 ? 6 : 0; c.contact = c.mode !== 0; c.wy = c.yawRate; c.bank = 0; c.impact = 0;
   audio.listen(camera);
   c.kerb = c.mode !== 0 && Math.abs(c.lat) > race.world.track.halfW[c.hint] - 1.7;
-  if (mode === 'race' && c.boosting && !boostWas) { boostKick = 1; chase.punch(1); input.rumble(0.15, 0.6, 200); }
+  if (mode === 'race' && c.boosting && !boostWas) { chase.punch(1); input.rumble(0.15, 0.6, 200); }
   boostWas = c.boosting;
   if (mode === 'race' && race.dare?.armed && !armedWas) { chase.punch(0.5); audio.event('lip'); input.rumble(0.3, 0.5, 160); }
   armedWas = !!race.dare?.armed;
@@ -1163,10 +1171,8 @@ function draw(dt, ticks = -1) {
   pu.uHeat.value = NIGHT ? 0 : SESSION === 'golden' ? 0.5 : 1;
   skyUniforms.uCloud.value = SESSION === 'day' && !inGarage ? 0.55 : 0;
   skyUniforms.uCloudT.value = time;
-  boostKick *= Math.exp(-dt * 5); rushL *= Math.exp(-dt * 3.5); rushR *= Math.exp(-dt * 3.5);
-  pu.uAberration.value = settings.reduced ? 0 : (c.boosting ? 0.012 : 0) + sp * 0.004 + boostKick * 0.05;
-  pu.uWind.value = settings.reduced || inGarage || broadcastCam ? 0 : c.boosting ? Math.min(1, Math.max(0, (c.speed - 45) / 15)) : Math.min(0.8, Math.max(0, (c.speed - 62) / 12));
-  pu.uRush.value.set(settings.reduced || inGarage || broadcastCam ? 0 : rushL, settings.reduced || inGarage || broadcastCam ? 0 : rushR);
+  pu.uAberration.value = settings.reduced ? 0 : sp * 0.004;
+  exhaustHeat(pu, inGarage);
   pu.uTime.value = time;
   pu.uFlash.value *= Math.exp(-dt * 6);
   carView.reflect(renderer, scene, camera, inGarage);

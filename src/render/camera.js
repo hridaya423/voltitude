@@ -6,7 +6,7 @@ const WRECK_BACK = 11, WRECK_UP = 4, WRECK_ORBIT = 0.35, CLEAR = 1.5;
 export function createChaseCamera(camera, height) {
   const pos = new THREE.Vector3(), look = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), upS = new THREE.Vector3(0, 1, 0);
   const want = new THREE.Vector3(), wantLook = new THREE.Vector3(), dir = new THREE.Vector3(0, 0, 1), tmp = new THREE.Vector3(), vel = new THREE.Vector3();
-  let fov = 70, shake = 0, init = false, t = 0, blend = 1, stall = 0, back = 7, breath = 0, wasBoost = false, hover = 0, kick = 0;
+  let fov = 70, shake = 0, init = false, t = 0, blend = 1, stall = 0, back = 7, breath = 0, wasBoost = false, hover = 0, kick = 0, sway = 0, swayV = 0;
   const offS = new THREE.Vector3(), lookS = new THREE.Vector3();
   const fromOff = new THREE.Vector3(), toOff = new THREE.Vector3(), aim = new THREE.Vector3();
   let fromFov = 70, fromShift = 0;
@@ -18,6 +18,7 @@ export function createChaseCamera(camera, height) {
     bump(v) { shake = Math.min(1, shake + v * 0.6); },
     stall(s) { stall = Math.max(stall, s); },
     punch(v) { kick = Math.max(-1.5, Math.min(1.5, kick + v)); },
+    nudge(s) { swayV += s * 2.6; },
     update(dt, p, c, opts) {
       t += dt;
       if (blend >= 1 && camera.filmOffset !== 0) { camera.filmOffset *= Math.exp(-dt * 3); if (Math.abs(camera.filmOffset) < 0.01) camera.filmOffset = 0; camera.updateProjectionMatrix(); }
@@ -59,7 +60,10 @@ export function createChaseCamera(camera, height) {
         offS.lerp(want, 1 - Math.exp(-dt * tight(9, 80)));
         lookS.lerp(wantLook, 1 - Math.exp(-dt * tight(14, 80)));
       }
-      pos.copy(p).add(offS);
+      kick *= Math.exp(-dt * 4);
+      swayV += (-60 * sway - 11 * swayV) * dt; sway += swayV * dt;
+      pos.copy(p).add(offS).addScaledVector(dir, opts.reduced ? 0 : -0.6 * kick);
+      if (sway) pos.x += c.rx * sway, pos.y += c.ry * sway, pos.z += c.rz * sway;
       look.copy(p).add(lookS);
       for (let s = 1; s <= 4; s++) {
         const f = s / 4;
@@ -89,8 +93,7 @@ export function createChaseCamera(camera, height) {
       const wantFov = 46 + 18 * sv + (c.boosting ? 5 : 0) - (breath > 0 ? 2 : 0);
       const target = opts.reduced ? 44 : wantFov;
       fov += (target - fov) * (1 - Math.exp(-dt * (target > fov ? 3.3 : 2)));
-      kick *= Math.exp(-dt * 5);
-      const shown = fov + (opts.reduced ? 0 : 4 * kick);
+      const shown = fov + (opts.reduced ? 0 : 1.5 * kick);
       if (blend < 1) {
         blend = Math.min(1, blend + dt / 1.4);
         const e = blend < 0.5 ? 4 * blend * blend * blend : 1 - Math.pow(-2 * blend + 2, 3) / 2;

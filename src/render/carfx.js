@@ -4,19 +4,6 @@ import { createSmoke, createSparks } from './fx.js';
 
 const CONTACT = -0.57, CHUNKS = 32;
 
-function createShock() {
-  const mat = new THREE.ShaderMaterial({
-    uniforms: { uK: { value: 0 } },
-    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: 'uniform float uK; varying vec2 vUv; void main() { float r = length(vUv - 0.5) * 2.0; float k = exp(-pow((r - 0.86) / 0.07, 2.0)) + 0.25 * exp(-pow((r - 0.7) / 0.05, 2.0)); gl_FragColor = vec4(vec3(0.6, 0.95, 1.0) * k * uK, 1.0); }',
-    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
-  });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat);
-  mesh.matrixAutoUpdate = false;
-  mesh.frustumCulled = false;
-  return mesh;
-}
-
 function createDebris() {
   const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.05, 0.34), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.45, metalness: 0.3 }), CHUNKS);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -50,7 +37,7 @@ function createDebris() {
         pos[j] += vel[j] * dt; pos[j + 1] += vel[j + 1] * dt; pos[j + 2] += vel[j + 2] * dt;
         if (pos[j + 1] < floor[i]) { pos[j + 1] = floor[i]; vel[j + 1] *= -0.35; vel[j] *= 0.6; vel[j + 2] *= 0.6; spin[j + 1] *= 0.6; spin[j + 2] *= 0.6; }
         spin[j] += spin[j + 1] * dt;
-        m.compose(p.set(pos[j], pos[j + 1], pos[j + 2]), q.setFromEuler(e.set(spin[j], spin[j] * 0.7 + i, spin[j + 2] * age)), s.setScalar(k * (0.6 + (i % 4) * 0.3)));
+        m.compose(p.set(pos[j], pos[j + 1], pos[j + 2]), q.setFromEuler(e.set(spin[j], spin[j] * 0.7 + i, spin[j + 2] * age)), s.setScalar(k * (0.4 + (i % 4) * 0.18)));
         mesh.setMatrixAt(i, m);
       }
       mesh.instanceMatrix.needsUpdate = true;
@@ -59,15 +46,14 @@ function createDebris() {
 }
 
 export function createCarFx(night, depth) {
-  const smoke = createSmoke(night, 4096), sparks = createSparks(depth), debris = createDebris(), shock = createShock();
+  const smoke = createSmoke(night, 4096), sparks = createSparks(depth), debris = createDebris();
   const group = new THREE.Group();
-  group.add(smoke.points, debris.mesh, shock);
+  group.add(smoke.points, debris.mesh);
   const overlay = new THREE.Scene();
   overlay.add(sparks.mesh);
-  const local = new THREE.Matrix4();
   const p = new THREE.Vector3(), o = new THREE.Vector3(), acc = new Float32Array(4);
   const R = (a) => (Math.random() - 0.5) * a;
-  let time = 0, wasAir = false, vyAir = 0, hopWas = 0, burn = 0, side = 1, mat = null, wake = 0, wakeK = 0, shockT = 9;
+  let time = 0, wasAir = false, vyAir = 0, hopWas = 0, burn = 0, side = 1, mat = null, wake = 0, wakeK = 0;
   const wheel = (k) => p.set(CAR.WHEELS[k][0], CONTACT, CAR.WHEELS[k][2]).applyMatrix4(mat);
   const origin = () => o.set(mat.elements[12], mat.elements[13], mat.elements[14]);
   function ring(c, n, speed, grow, tone, life, lift = 0.3) {
@@ -110,13 +96,13 @@ export function createCarFx(night, depth) {
           break;
         }
         case 'land': {
-          if (e.quality === 'perfect') { wake = 0.4; wakeK = 1.5; shockT = 0; ring(c, 40, 12, 2, 1, 0.9, 0.1); }
+          if (e.quality === 'perfect') { wake = 0.4; wakeK = 1.5; ring(c, 64, 15, 2.6, 0.45, 1.1, 0.15); }
           if (e.quality === 'hard') { origin(); spray(c, 36, o.x - c.ux * 0.5, o.y - c.uy * 0.5, o.z - c.uz * 0.5, 0, 0.4, 0, 5); }
           break;
         }
         case 'wreck': {
           origin();
-          for (let i = 0; i < 3; i++) spray(c, 30, o.x, o.y, o.z, R(2), 0.6, R(2), 9);
+          for (let i = 0; i < 2; i++) spray(c, 22, o.x, o.y, o.z, R(2), 0.3, R(2), 5);
           ring(c, 30, 7, 3.4, 1.85, 2.4, 1.5);
           debris.burst(o.x, o.y, o.z, c.vx, c.vy, c.vz);
           break;
@@ -156,21 +142,19 @@ export function createCarFx(night, depth) {
             smoke.emit(p.x - c.vx * b + R(0.3), p.y + 0.2, p.z - c.vz * b + R(0.3), c.vx * 0.3 + R(5), 1 + Math.random() * 2.2, c.vz * 0.3 + R(5), time - b, 4 + k * 5, tone, 2.4 + k * 2.6);
           }
         }
-        acc[0] = ground && c.fan > 0.2 ? acc[0] + dt * c.fan * 200 : 0;
+        acc[0] = ground && c.fan > 0.2 ? acc[0] + dt * c.fan * 130 : 0;
         while (acc[0] >= 1) {
           acc[0]--;
           const sd = Math.random() < 0.5 ? -1 : 1, up = 1 + Math.random() * 2.5, out = 2 + Math.random() * 4, b = Math.random() * dt, f = R(4);
           origin();
-          smoke.emit(o.x + c.rx * sd * 1.2 + c.fx * f - c.ux * 0.45 - c.vx * b, o.y + c.ry * sd * 1.2 + c.fy * f - c.uy * 0.45 - c.vy * b, o.z + c.rz * sd * 1.2 + c.fz * f - c.uz * 0.45 - c.vz * b,
-            c.vx * 0.6 + c.ux * up + c.rx * sd * out, c.vy * 0.6 + c.uy * up + c.ry * sd * out, c.vz * 0.6 + c.uz * up + c.rz * sd * out, time - b, 3.6, 0.4, 1.2);
+          p.set(o.x + c.rx * sd * 1.2 + c.fx * f - c.ux * 0.45 - c.vx * b, o.y + c.ry * sd * 1.2 + c.fy * f - c.uy * 0.45 - c.vy * b, o.z + c.rz * sd * 1.2 + c.fz * f - c.uz * 0.45 - c.vz * b);
+          smoke.emit(p.x, p.y, p.z,
+            c.vx * 0.6 + c.ux * up + c.rx * sd * out, c.vy * 0.6 + c.uy * up + c.ry * sd * out, c.vz * 0.6 + c.uz * up + c.rz * sd * out, time - b, 1.3, 0.3, 0.9);
+          if (Math.random() < 0.5) smoke.emit(p.x, p.y, p.z, c.vx * 0.8 + c.rx * sd * out * 1.6, c.vy * 0.8 + c.ry * sd * out * 1.6, c.vz * 0.8 + c.rz * sd * out * 1.6, time - b, 0.5, 1.75, 0.45);
         }
         acc[1] = c.wallT > 0 && c.speed > 8 ? acc[1] + dt * Math.min(360, c.speed * 7) : 0;
         while (acc[1] >= 1) { acc[1]--; flank(c); spray(c, 1, p.x, p.y, p.z, -c.rx * side, 0.2, -c.rz * side, 3); }
       }
-      shockT += running ? dt : 0;
-      const sk = Math.min(1, shockT / 0.4);
-      shock.visible = sk < 1;
-      if (shock.visible) { const r = 3 + 16 * (1 - (1 - sk) * (1 - sk)); shock.matrix.copy(mat).multiply(local.makeScale(r, 1, r).setPosition(0, -0.46, 0)); shock.material.uniforms.uK.value = 2.5 * (1 - sk) * (1 - sk); }
       debris.update(running ? dt : 0);
       smoke.update(t, pixelScale, origin());
       sparks.update(t, width, height);
