@@ -57,8 +57,9 @@ void main() {
   float d = texture2D(tDepth, vUv).r;
   if (d > 0.99999) { gl_FragColor = vec4(1.0, 1e4, 0.0, 1.0); return; }
   vec3 P = viewPos(vUv, d);
-  vec3 Pr = vp(vUv + vec2(uFullTexel.x, 0.0)), Pl = vp(vUv - vec2(uFullTexel.x, 0.0));
-  vec3 Pu = vp(vUv + vec2(0.0, uFullTexel.y)), Pd = vp(vUv - vec2(0.0, uFullTexel.y));
+  vec2 e = uFullTexel * max(1.0, floor(0.5 + 1.0 / (1080.0 * max(uFullTexel.x, uFullTexel.y))));
+  vec3 Pr = vp(vUv + vec2(e.x, 0.0)), Pl = vp(vUv - vec2(e.x, 0.0));
+  vec3 Pu = vp(vUv + vec2(0.0, e.y)), Pd = vp(vUv - vec2(0.0, e.y));
   vec3 dx = abs(Pr.z - P.z) < abs(P.z - Pl.z) ? Pr - P : P - Pl;
   vec3 dy = abs(Pu.z - P.z) < abs(P.z - Pd.z) ? Pu - P : P - Pd;
   vec3 N = normalize(cross(dx, dy));
