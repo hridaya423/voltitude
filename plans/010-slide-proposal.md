@@ -1,5 +1,13 @@
 # Proposal 010: a car that can slide
 
+**Shipped** on `advisor/slide-and-bank` with SIM_VERSION 20, on the recommendations below. The owner had not driven the spike.
+
+- `SLIDE.lock = 2.5`. Key F, pad X (button 2). Boost is on pad B (button 1) only. Rivals do not slide.
+- Gas source `slide` at 0.08 a second, the wall rate, while slide is held on the ground above 15 degrees of body slip and 20 m/s. Style pays 25 points a second.
+- A `slide` hint after the third braking zone, unless the player already slid. The garage legend lists `F slide`.
+- No limit on the fan-held walls: in scripted runs a slide on the banks, the walls and into the jumps never spun, launched or gained speed.
+- Two new exploit cases, `slide held` and `slide weave`. Both pass on all four venues.
+
 The prototype is on the branch `spike/010-slide` (three commits on top of `fd4ae57`). It is not merged and `SIM_VERSION` stays 18.
 
 ## 1. What was built

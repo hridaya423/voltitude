@@ -1,5 +1,9 @@
 # Proposal 011: more of the lap on walls and in the air
 
+**Shipped** on `advisor/slide-and-bank` with SIM_VERSION 20: rank 1 only, the `8e43999` variant. The Hangars hairpin is banked to 45 degrees and the Hangars sector flag is 30 m on, on the flat exit. Airfield lap map: lap 80.6 to 76.8 s, wall 0% to 2.8%. Ranks 2 to 7 are still open.
+
+The props that left the corner were not a bug. `festivalSites` (`src/render/festival.js`) skips every track sample whose road up-vector is below 0.95, which is a bank over about 18 degrees. The 22 banked samples give no sites, so the containers and tank pair at the apex and the festival tents move to other sites. The totals do not change: 39 range props and 111 festival sites before and after.
+
 The prototype is on the branch `spike/011-airfield-bank`, five commits on top of `014db02` (the lap map). It is not merged. `SIM_VERSION` stays 18. The tests, `circuit.js`, `drive.js`, `driver.js`, `line.js`, `race.js`, `server/` and `assets/ghosts/` are unchanged on the branch.
 
 Each variant is a separate commit, so the owner can check out any one of them:

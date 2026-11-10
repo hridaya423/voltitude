@@ -17,8 +17,8 @@ Recommended order: 012, 001, 002, 003, 004, 005, 006, 007, 008, 009, then the tw
 | 007 | Give rewards a ladder and the HUD its missing calls | P2 | M | 001, 005 | DONE |
 | 008 | Add a one-lap Hot Lap event to every circuit | P2 | M | 001, 002 | DONE |
 | 009 | Retune the gas economy and add a style score | P2 | M | 002 | DONE |
-| 010 | Design spike: a car that can slide | P3 | M | 002 | SPIKE DONE, owner questions open ([proposal](010-slide-proposal.md), branch `spike/010-slide`) |
-| 011 | Design spike: put more of the lap on walls and in the air | P3 | L | 009 | SPIKE DONE, owner to choose track changes ([proposal](011-stunt-share-proposal.md), branch `spike/011-airfield-bank`) |
+| 010 | Design spike: a car that can slide | P3 | M | 002 | SHIPPED on `advisor/slide-and-bank`, SIM_VERSION 20: lock × 2.5, F and pad X, slide gas and style ([proposal](010-slide-proposal.md)) |
+| 011 | Design spike: put more of the lap on walls and in the air | P3 | L | 009 | Rank 1 SHIPPED on `advisor/slide-and-bank`, SIM_VERSION 20: the Airfield Hangars hairpin at 45 degrees. Ranks 2 to 7 open ([proposal](011-stunt-share-proposal.md)) |
 | 012 | Stop the first race of a session from freezing | P1 | S | — | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | SPIKE DONE (with a link to the proposal) | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)

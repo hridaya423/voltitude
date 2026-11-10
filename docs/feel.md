@@ -149,6 +149,13 @@ Measured on the same autopilot run of The Lineup on The Pad. The values are came
 - Frames: `/tmp/plan003/before*` and `/tmp/plan003/after*`, side by side in `/tmp/plan003/pairs`. At 200 mph the car is visibly smaller and more road and wall stream past. At mid speed the blur is weaker than before, because the ramp is longer.
 - Not judged by a driver: whether 64° is too wide on a large monitor, and whether the rumble is felt. Both are single constants (`18` in `wantFov`, `0.1` in `rush`).
 
+### 8. Hold to slide
+
+- Change: holding the slide key (F, pad X) opens the steering lock to `min(0.55, steerLimit × 2.5)` (`SLIDE` in `src/sim/drive.js`). Tyre grip and the counter-steer term are unchanged. A held slide on the ground above 15 degrees of body slip and 20 m/s pays 0.08 tanks a second and 25 style points a second.
+- Why: a held steering key settled the car 5 degrees off its path at every speed, so there was no way to throw the car into a corner. Plan 010.
+- Measured (`tools/slide-lab.mjs`, flat ground, 3 s of full steer): the body angle goes from 7 to 9 degrees to 16 to 19 degrees between 30 and 80 m/s, and the car keeps 84% to 90% of its speed. A left-right flick peaks at 44 degrees and is caught in under 2.5 s. No case spins.
+- Not judged by a driver: whether lock × 2.5 feels right on a pad at part stick.
+
 ## Not changed
 
 - **Time scale.** See the audit: a hit-pause would read as a dropped frame and freeze the field.
