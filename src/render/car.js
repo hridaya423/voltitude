@@ -331,9 +331,9 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
         lastSpeed = c.speed;
         bob += dt;
         chassis.rotation.set(
-          Math.max(-0.05, Math.min(0.05, -aLong * 0.0016 + c.brake * 0.02)) + Math.sin(bob * 1.7) * 0.003,
+          Math.max(-0.085, Math.min(0.085, -aLong * 0.0045 + c.brake * 0.02)) + Math.sin(bob * 1.7) * 0.003,
           0,
-          Math.max(-0.045, Math.min(0.045, aLat * 0.0007)) + Math.sin(bob * 1.3 + 1) * 0.004,
+          Math.max(-0.07, Math.min(0.07, aLat * 0.0026)) + Math.sin(bob * 1.3 + 1) * 0.004,
         );
         chassis.position.y = Math.sin(bob * 2.3) * 0.012 + (c.boosting ? Math.sin(bob * 71) * 0.005 : 0);
       }
