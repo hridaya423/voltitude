@@ -486,6 +486,7 @@ function endReplay() { replay = null; $('replayBug').hidden = true; mode = 'resu
 
 const POINTS = [25, 18, 15, 12, 10, 8, 6, 4];
 let clears = [], contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null;
+let resultsAt = 0;
 const speedUnit = () => (settings.units === 'kmh' ? 3.6 : 2.237);
 const medalLine = (m, before) => (m ? { id: m.id, name: m.name, fresh: !(before && before.id === m.id) } : null);
 async function loadDailyGhosts(ev) {
@@ -531,6 +532,7 @@ async function postDaily(result) {
 function showResults(result, m, before) {
   hud.show(false);
   mode = 'results';
+  resultsAt = performance.now();
   menu.open('results', { results: result });
   if (dailyRun) postDaily(result);
   garage.cut();
@@ -841,7 +843,7 @@ function menuKeys() {
   } else if (menu.page) {
     const page = menu.page, home = page === 'pause' || page === 'results';
     const cmd = any('ArrowUp', 'KeyW') || pad(12) ? 'up' : any('ArrowDown') || pad(13) ? 'down' : any('ArrowLeft', 'KeyA', 'BracketLeft') || pad(14, 4) ? 'left' : any('ArrowRight', 'KeyD', 'BracketRight') || pad(15, 5) ? 'right' : any('Enter', 'Space') || pad(0) ? 'confirm' : back ? 'back' : padNav();
-    if (cmd) menu.command(cmd);
+    if (cmd && !(cmd === 'confirm' && page === 'results' && performance.now() - resultsAt < 600)) menu.command(cmd);
     else if (any('KeyS')) menu.command(page === 'board' || page === 'pause' ? 'settings' : 'down');
     else if (page === 'pause' && pad(9)) resume();
     else if (page === 'results' && pad(9)) menu.command('confirm');
