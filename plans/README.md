@@ -19,7 +19,7 @@ Recommended order: 012, 001, 002, 003, 004, 005, 006, 007, 008, 009, then the tw
 | 009 | Retune the gas economy and add a style score | P2 | M | 002 | TODO |
 | 010 | Design spike: a car that can slide | P3 | M | 002 | TODO |
 | 011 | Design spike: put more of the lap on walls and in the air | P3 | L | 009 | TODO |
-| 012 | Stop the first race of a session from freezing | P1 | S | — | TODO |
+| 012 | Stop the first race of a session from freezing | P1 | S | — | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | SPIKE DONE (with a link to the proposal) | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

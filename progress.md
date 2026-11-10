@@ -1570,3 +1570,78 @@ The user said the trench looked sloppy and black, and the HUD was cluttered.
 - The result: line 1 needs flat-out throttle, lines 2 to 4 need lift, and line 5 and beyond need gas earned from near misses, landings and tricks. The dare autopilot (`bot.js`) clears 4 and clips on line 5.
 - The cubes are replaced by Kenney Car Kit models (CC0): hatch, taxi, van, pickup and delivery truck. Each is an InstancedMesh per kind, scaled to its collision box. The clip flash tints the instance red.
 - Evidence: screenshots of a forced line of 8 in flight show the row as distinct vehicles on the road, with shadows. `npm test` 157 of 157, `npm run test:server` 6 of 6.
+
+## Session 2026-11-10: first-start freeze (plan 012)
+
+- Cause: the garage group and its seven spot lights were created visible while `setActive` thought they were inactive, so both boot shader compiles saw garage lighting and the race's lighting (no spots) was first compiled inside the first race frame. `src/render/garage.js` now hides the group and spots right after `const spots`.
+- New check: `node tools/first-start.mjs ['<url>']`. Exit 0 needs 30 or fewer programs compiled during the first start and no shader error. Add it to the launch gates.
+- Proving Ground Grand Prix before the fix (exit 1):
+
+```json
+{
+ "bootMs": 2629,
+ "first": {
+  "toGoMs": 3669,
+  "worstFrameMs": 1083,
+  "framesOver100": 3,
+  "newPrograms": 52,
+  "top": [
+   "1684 ms  (idle) :0",
+   "771 ms  texSubImage2D :0",
+   "367 ms  getProgramInfoLog :0",
+   "153 ms  start src/audio.js:220"
+  ]
+ },
+ "again": {
+  "toGoMs": 2061,
+  "worstFrameMs": 33,
+  "framesOver100": 0,
+  "newPrograms": 0,
+  "top": [
+   "1678 ms  (idle) :0",
+   "94 ms  (program) :0",
+   "32 ms  updateMatrixWorld build/three.module.js:4448",
+   "20 ms  projectObject build/three.module.js:17124"
+  ]
+ },
+ "errors": [
+  "Program Info Log: FRAGMENT shader texture image units count exceeds MAX_TEXTURE_IMAGE_UNITS(16)"
+ ]
+}
+```
+
+- After the fix (exit 0):
+
+```json
+{
+ "bootMs": 3154,
+ "first": {
+  "toGoMs": 2621,
+  "worstFrameMs": 100,
+  "framesOver100": 0,
+  "newPrograms": 16,
+  "top": [
+   "1777 ms  (idle) :0",
+   "152 ms  (program) :0",
+   "109 ms  start src/audio.js:220",
+   "74 ms  getProgramInfoLog :0"
+  ]
+ },
+ "again": {
+  "toGoMs": 2018,
+  "worstFrameMs": 50,
+  "framesOver100": 0,
+  "newPrograms": 0,
+  "top": [
+   "1638 ms  (idle) :0",
+   "103 ms  (program) :0",
+   "30 ms  updateMatrixWorld build/three.module.js:4448",
+   "24 ms  copyArray build/three.module.js:10483"
+  ]
+ },
+ "errors": []
+}
+```
+
+- Other venues after the fix, all exit 0, no errors (boot ms, Enter to GO ms, worst frame ms, new programs): Airfield GP 3464 / 2643 / 117 / 23; The Pad Lineup 2901 / 2672 / 117 / 22; Launch TT night 3527 / 2638 / 100 / 12. Restart compiles 0 programs everywhere.
+- Screenshots: title and race before and after match apart from the rival grid order. `?venue=launch&event=gp&autostart&autopilot&night` draws with no console error. `npm test` 157 of 157. `src/main.js`, `src/sim`, `rl`, `server` untouched.
