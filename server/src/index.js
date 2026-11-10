@@ -47,7 +47,7 @@ async function submit(req, env) {
   }
   const world = await worldFor(env, body.venue);
   if (!eventsFor(world.track, world.venue).some((e) => e.id === run.event)) return json({ error: 'no such event' }, 400);
-  const hash = await sha256(`${body.venue}|${run.event}|${run.assist ? 1 : 0}|${run.seed}|${run.tier}|${run.inputs}`);
+  const hash = await sha256(`${run.v}|${body.venue}|${run.event}|${run.assist ? 1 : 0}|${run.seed}|${run.tier}|${run.inputs}`);
   if (await env.DB.prepare('SELECT id FROM runs WHERE hash = ?').bind(hash).first()) return json({ error: 'this run was already submitted' }, 409);
   const sim = resimulate(world, run);
   if (!sim) return json({ error: 'the run does not finish' }, 422);
