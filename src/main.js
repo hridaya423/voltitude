@@ -97,7 +97,7 @@ camera.layers.enable(1);
 camera.layers.enable(4);
 scene.add(camera);
 const sunUniform = { value: SUN_DIR };
-const fogDensity = { value: SESSION === 'golden' ? 0.000476 : 0.00034 };
+const fogDensity = { value: SESSION === 'golden' ? 0.00038 : 0.00034 };
 const heightP = fetch(`assets/terrain/height/${venue.id}.bin.gz`)
   .then(async (r) => (r.ok ? unpackBake(new Uint8Array(await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer())) : null))
   .catch(() => fetch(`assets/terrain/height/${venue.id}.bin`).then(async (r) => (r.ok ? new Uint8Array(await r.arrayBuffer()) : null)))
