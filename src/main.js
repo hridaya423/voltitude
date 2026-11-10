@@ -1036,7 +1036,7 @@ function loop(now) {
   requestAnimationFrame(loop);
   if (clipping) { last = now; return; }
   if (warmFrames >= 0 && ++warmFrames > 8 && (now - last < 20 || performance.now() - readyAt > 1500)) { warmFrames = -1; $('loading').classList.add('done'); $('hero').pause(); }
-  const ms = now - last;
+  const ms = Math.max(0, now - last);
   last = now;
   const dt = Math.min(0.1, ms / 1000);
   perf.frames.push(ms);

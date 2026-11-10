@@ -30,7 +30,7 @@ export function createChaseCamera(camera, height) {
       lastU.copy(tmp); lastF.set(c.fx, c.fy, c.fz);
       const wantRig = held ? Math.min(1, Math.max(0, (turn - 0.8) / 1.2, (0.8 - tmp.y) / 0.3)) : 0;
       rig += (wantRig - rig) * (1 - Math.exp(-dt * (wantRig > rig ? 12 : 2)));
-      lead += (Math.max(-0.6, Math.min(0.6, pitch / Math.max(8, speed) * 4)) - lead) * (1 - Math.exp(-dt * 20));
+      lead += (Math.max(-0.3, Math.min(0.3, pitch / Math.max(8, speed) * 4)) - lead) * (1 - Math.exp(-dt * 20));
       const tight = (r, k) => r + (k - r) * rig;
       upS.lerp(tmp, 1 - Math.exp(-dt * tight(grounded ? (tmp.y < upS.y - 0.02 ? 4.6 : 6.9) : upS.y < 0.3 ? 5 : 1.6, 60))).normalize();
       vel.set(c.vx, c.vy, c.vz);
