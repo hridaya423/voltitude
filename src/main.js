@@ -710,7 +710,7 @@ function handleEvents() {
         audio.event('clear', e.mult); input.rumble(0.4, 0.6, 180); chase.punch(-0.25 * e.mult); chase.bump(0.15 * e.mult); cheerNear(0.5 + 0.2 * e.mult);
         break;
       }
-      case 'clip': lineup.clip(e.k); hud.toast('CLIPPED', 'red', `SCORE ${e.score}`); audio.event('clip', 1); cheerNear(0.2, 'gasp'); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
+      case 'clip': lineup.clip(e.k); hud.toast('CLIPPED', 'red', `SCORE ${e.score} · ${key('restart')} RETRY`); audio.event('clip', 1); cheerNear(0.2, 'gasp'); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
       case 'release': hud.toast('LIP', 'white', 'ROLL OUT'); chase.punch(0.4); cheerNear(0.4); break;
       case 'try': {
         const why = { wreck: 'WRECKED', stall: 'STALLED', reset: 'RESET' }[e.why];
@@ -738,7 +738,7 @@ function handleEvents() {
       case 'wreck': cheerNear(0.2, 'gasp'); if (standGap(race.car.hint) < 260) audio.cheer('gasp'); audio.radio('wreck'); wreckToast = hud.toast('WRECKED', 'red'); audio.event('clip', 1); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
       case 'scrape': audio.event(e.angle > 0.35 ? 'impact' : 'scrape', e.v); input.rumble(Math.min(1, e.v / 15) * (e.angle > 0.35 ? 1 : 0.4), 0.3, 120); if (e.angle > 0.35) chase.bump(0.25); break;
       case 'impact': audio.event('impact'); input.rumble(Math.min(1, e.v / 20), 0.4, 160); chase.bump(Math.min(1, e.v / 15)); break;
-      case 'respawn': wreckToast?.remove(); audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
+      case 'respawn': wreckToast?.remove(); hud.toast('RESET', 'white'); audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
       case 'finish': {
         if (race.dare) { finishAt = performance.now(); break; }
         if (current.circuit) {
