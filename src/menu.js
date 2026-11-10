@@ -4,6 +4,7 @@ import { raceClock } from './sim/race.js';
 
 export const SETTINGS = [
   { key: 'assist', label: 'Landing assist', note: 'Levels the car in the air. Hold brake in the air to flip', type: 'toggle' },
+  { key: 'cue', label: 'Brake cue', note: 'Shows BRAKE above the speed when you are too fast for the next corner', type: 'toggle' },
   { key: 'invertPitch', label: 'Invert air pitch', note: 'Pull back to nose down', type: 'toggle' },
   { key: 'ghost', label: 'Ghost', note: 'Race your best run, or the author’s until you have one', type: 'toggle' },
   { key: 'tier', label: 'Difficulty', note: 'Rival pace in Grand Prix. Rivals never slow down to wait for you', type: 'choice', options: [['rookie', 'ROOKIE'], ['easy', 'EASY'], ['pro', 'PRO'], ['elite', 'ELITE']] },

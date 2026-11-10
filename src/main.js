@@ -44,7 +44,7 @@ function store(key, v) {
   try { localStorage.setItem(key, JSON.stringify(v)); } catch { }
 }
 
-const defaults = { tier: 'rookie', assist: true, invertPitch: false, ghost: true, units: 'mph', quality: 'medium', reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, rumble: true, session: 'golden', volume: 0.7, music: 0.7, keys: structuredClone(DEFAULT_KEYS) };
+const defaults = { tier: 'rookie', assist: true, cue: true, invertPitch: false, ghost: true, units: 'mph', quality: 'medium', reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, rumble: true, session: 'golden', volume: 0.7, music: 0.7, keys: structuredClone(DEFAULT_KEYS) };
 const settings = Object.assign(structuredClone(defaults), load(STORE, {}));
 settings.keys = Object.assign(structuredClone(DEFAULT_KEYS), settings.keys);
 if (!settings.venue) { settings.venue = load(SAVE, null) ? 'proving' : 'pad'; store(STORE, settings); }
