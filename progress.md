@@ -1842,3 +1842,23 @@ Worked on `advisor/integration` after plan 009. SIM_VERSION 18 to 19. Nothing pu
   - Redeploy the Worker (`npx wrangler deploy` in `server/`) for SIM_VERSION 19.
   - Local records reset again: the save key is `voltitude.save.v19`.
   - Judge the Elite contacts rise above, and the 2 m rival hide (the rival pops out of view rather than fading).
+
+## Session 2026-11-10 (cont.): full leaderboard
+
+Worked on `advisor/integration`. No change under `src/sim` or `rl`; SIM_VERSION stays 19. Nothing pushed or deployed, and no command touched the remote D1.
+
+- Server: `runs` gains `v` and `player`. `server/migrations/001-leaderboard.sql` adds both columns and the `runs_board (venue, event, v, day)` index for the live database; `schema.sql` carries them for a fresh one. Old rows keep `v` NULL and drop off every board.
+- `GET /board/<venue>.<event>/<day|all>?limit=&offset=&player=` ranks one row per player (a run with no player is its own player) at the Worker's SIM_VERSION, in one SQL statement with window functions. `EXPLAIN QUERY PLAN` shows `SEARCH runs USING INDEX runs_board (venue=? AND event=? AND v=?)`; the per-player best and the ranking then sort in temp B-trees, so cost grows with the number of runs on that one board.
+- `POST /runs` stores `v` and `player` and returns `rank`, `best` and `players` on the same rule.
+- Game: each save gets `save.player` (crypto.randomUUID). A non-daily Hot Lap with no invalid lap, a dare above the local best, or a spur trial that is a local best posts with no day. A failed or missing API changes nothing. Results show `Rank 14 of 15 · all-time`, or `Your best ranks …` when the server holds a better run from the same player. Time Trial and Grand Prix are not posted.
+- Leaderboard page: `L`, pad X or the BOARD button on the garage board, and `L` or the Board action on results after a post. Left and right page by 10, `T` or pad Y switches Daily and All-time (Daily only when the event is today's daily), Enter or a tap races the row as a linked ghost, Esc or BACK leaves.
+- Settings has a Callsign row. Enter starts typing through the key-capture listener; Enter keeps the name, Esc cancels. The callsign moved from `voltitude.callsign` into the settings object, seeded from the old key.
+- Evidence, `server/dev.mjs` on 8791 and `tools/serve.mjs` on 8790, seeded with the Pad author Hot Lap padded under 13 player ids, a bot lap, and 3 runs on the 2026-11-22 daily (a Pad Hot Lap day):
+  - Pad Hot Lap on autopilot posted 0:39.017; results read `Rank 14 of 15 · all-time`, and `/board/pad.hl/all?player=…` returned `me.rank` 14. The Lineup on autopilot posted score 10, `Rank 1 of 1 · all-time`.
+  - Frames: ranks 1–10 with the own row cyan in Around you; ranks 11–15 with PREV live and NEXT dimmed; Daily 2026-11-22 with 3 rows and `NOT RANKED YET`; the empty Lineup board; the offline board with `?api=http://localhost:9`; the Callsign row while typing.
+  - Selecting ORBIT on the daily board started a Hot Lap with the target `ORBIT 0:38.167`.
+  - Mouse clicks on the board's NEXT, BACK and the garage BOARD button page, leave and open the page.
+  - Fixed after looking: `GARAGE` ran into its `Esc` chip once results had six actions, and `BOARD` touched its `L` chip; the Around you `YOU` tag overlapped the time; the offline page said `NOT RANKED YET`.
+- Gates: `npm test` 193/193 (190 before), `npm run test:server` 13/13 (6 before).
+- Not verified: a real gamepad (the pad buttons map to the same menu commands the tests drive) and a touch device. Typing a callsign needs a keyboard; a tap ends the edit and keeps what was typed.
+- Open for the owner: run `npx wrangler d1 execute voltitude --remote --file=migrations/001-leaderboard.sql` in `server/`, then `npx wrangler deploy`.
