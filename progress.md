@@ -1949,7 +1949,7 @@ New: `src/render/carfx.js` (driver), `createSmoke` and `createSparks` in `src/re
 
 ## Session 2026-11-10 (cont.): polish round 2 (advisor/polish-2)
 
-Worked on `advisor/polish-2`, cut from `advisor/integration` at a8bdac3. No change under `src/sim`, `rl` or `server`. Nothing merged or pushed. In progress; this section is updated per item.
+Worked on `advisor/polish-2`, cut from `advisor/integration` at a8bdac3. No change under `src/sim`, `rl` or `server`. Nothing merged or pushed. Done.
 
 - Tooling: `tools/node_modules/playwright-core` is a symlink to `/Users/hridyaagrawal/pd-hero/pw/node_modules/playwright-core` (1.65.0); the repo had no install. Gitignored.
 - A1 done: `tools/offline.mjs` appends `api=` to every game URL a tool opens unless the URL names `api`. Logged smoke run that opens the leaderboard: 1 workers.dev request before, 0 after; a Lineup to results: 0.
@@ -1957,3 +1957,11 @@ Worked on `advisor/polish-2`, cut from `advisor/integration` at a8bdac3. No chan
 - A3 done: each hint rule has a hold test (`hintHolds`); the hint clears the frame its state ends. The Pad air hint: on screen 0.5 s after landing before, gone after.
 - A4 done: smoke and dust fade near the camera and off the camera-to-car line (`clearView` in `src/render/fx.js`). Wreck on The Pad: car buried in smoke before, visible after.
 - A5 done: cause is the golden exposure floor (EV −0.6) against a target of −2.4 when the curl rolls the camera to face the sun-side sky. Soft floor in `ADAPT` (`src/render/post.js`).
+- A5 is partial. After the lip the meter now takes exposure down to about EV −1.5 within 0.8 s, and blue sky and clouds return. On the inverted climb and the first 0.5 s after the lip, the sky near the sun still clips: the dark curl fills the metered centre and holds EV near +0.3.
+- A6 done: `bankWall` and `wallKit` in `src/render/spur.js` give the Airfield hairpin the Trench's panels, ribs, cap and LEDs.
+- A7 done: speed lines are full strength from 60 m/s on boost and reach 0.8 by 74 m/s without boost. They stay out of the centre third.
+- A8: frames of mid-corner on each venue, Launch night, two GP packs, the garage, the board and results. Fixed: the wall-ride glow (hard slabs on the Proving loop, a blob on the Airfield hairpin), the Time Trial ghost on the player's roof, and the Lineup `LINE 0` boards in a Hot Lap. The board fix needed a wrapper group, because the garage restores the visibility of every scene child.
+- A8, not fixed: aliased rival edges at Launch night (rivals are tracked for TAA, cause unknown); long skid squiggles on the Launch bowl; the chase camera looking straight down on the Proving loop; the solid black infield inside the Launch bowl at night; results with the API off read `First time on the board`.
+- Clip pipeline: replays now pass events to carFx (sparks, rings, debris and the rush were missing from every replay and clip); speed lines are off on the broadcast camera; export adapts exposure on clip time.
+- B: `tools/trailer-clips.mjs` holds ten shots; `trailer/SHOTS.md` lists them. The clips total 146 MB in `trailer/assets/clips/` (gitignored). The exporter draws the canvas only, so no hint or toast can reach a clip. A `nohints` param would change nothing, so none was added. No GP near miss happened on autopilot; the near-miss shot is a Lineup clear.
+- Gates: `npm test` 205/205, `npm run test:server` 13/13, `first-start` exit 0 on proving and airfield (8795), no diff under `src/sim`, `rl` or `server`.
