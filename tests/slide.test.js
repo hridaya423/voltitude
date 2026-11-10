@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { slide } from '../tools/slide-lab.mjs';
+import { createInput, packInput, unpackInput } from '../src/sim/race.js';
 
 test('holding slide sets the car at an angle, turns it tighter and costs speed', () => {
   for (const v of [30, 45, 60]) {
@@ -24,4 +25,16 @@ test('without slide the car still holds the grip limit', () => {
     const s = slide(v, false);
     assert.ok(s.maxBetaDeg < 9 && s.speedKept > 0.98, JSON.stringify(s));
   }
+});
+
+test('the slide input survives packing', () => {
+  const a = createInput(), b = createInput(), buf = new Int8Array(6);
+  Object.assign(a, { slide: 1, boost: 1, lift: 1, flip: 1 });
+  packInput(a, buf, 0);
+  unpackInput(buf, 0, b);
+  assert.deepEqual([b.slide, b.boost, b.lift, b.flip, b.reset], [1, 1, 1, 1, 0]);
+  a.slide = 0;
+  packInput(a, buf, 0);
+  assert.equal(unpackInput(buf, 0, b).slide, 0);
+  assert.equal(b.flip, 1);
 });
