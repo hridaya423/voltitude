@@ -4,7 +4,7 @@ import { SIM_VERSION, eventsFor } from '../../src/sim/race.js';
 import { createGhost, decodeInputs, STRIDE } from '../../src/sim/ghost.js';
 import { dailyFor } from '../../src/sim/daily.js';
 
-const MAX_TICKS = 120 * 600, OG_BYTES = 400000, BOARD = 100;
+const MAX_TICKS = 120 * 600, OG_BYTES = 400000;
 const worlds = new Map();
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...CORS } });
@@ -59,25 +59,36 @@ async function submit(req, env) {
     if (bytes.length > OG_BYTES || bytes[0] !== 0xff || bytes[1] !== 0xd8) return json({ error: 'og must be a JPEG under 400 KB' }, 400);
     og = bytes;
   }
-  const id = hash.slice(0, 12);
+  const id = hash.slice(0, 12), player = /^[\w-]{8,40}$/.test(body.player ?? '') ? String(body.player) : null;
   const name = String(body.name || 'anon').replace(/[^\w .-]/g, '').slice(0, 16) || 'anon';
-  await env.DB.prepare('INSERT INTO runs (id, hash, venue, event, day, name, total, score, run, og, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, hash, body.venue, run.event, day, name, sim.total, sim.score, JSON.stringify(run), og, Date.now()).run();
-  const rank = await env.DB.prepare(sim.dare
-    ? 'SELECT COUNT(*) AS n FROM runs WHERE venue = ? AND event = ? AND day IS ? AND score > ?'
-    : 'SELECT COUNT(*) AS n FROM runs WHERE venue = ? AND event = ? AND day IS ? AND total < ?').bind(body.venue, run.event, day, sim.dare ? sim.score : sim.total).first();
-  return json({ id, rank: rank.n + 1, total: sim.total, score: sim.score }, 201);
+  await env.DB.prepare('INSERT INTO runs (id, hash, venue, event, day, name, total, score, run, og, created, v, player) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, hash, body.venue, run.event, day, name, sim.total, sim.score, JSON.stringify(run), og, Date.now(), run.v, player).run();
+  const { n, me } = await standings(env, body.venue, run.event, day || 'all', sim.dare, 0, 0, player || id);
+  return json({ id, rank: me.rank, best: me.id === id, players: n, total: sim.total, score: sim.score }, 201);
 }
 
-async function board(env, key, day) {
+async function standings(env, venue, event, day, dare, limit, offset, who) {
+  const order = dare ? 'score DESC, created ASC' : 'total ASC, created ASC';
+  const { results } = await env.DB.prepare(`WITH best AS (SELECT id, name, total, score, created, COALESCE(player, id) AS who, ROW_NUMBER() OVER (PARTITION BY COALESCE(player, id) ORDER BY ${order}) AS k FROM runs WHERE venue = ? AND event = ? AND v = ?${day === 'all' ? '' : ' AND day = ?'}),
+ranked AS (SELECT id, name, total, score, created, who, ROW_NUMBER() OVER (ORDER BY ${order}) AS rank FROM best WHERE k = 1),
+meta AS (SELECT COUNT(*) AS n, (SELECT rank FROM ranked WHERE who = ?) AS mine FROM ranked)
+SELECT meta.n, meta.mine, ranked.rank, ranked.id, ranked.name, ranked.total, ranked.score, ranked.created FROM meta LEFT JOIN ranked ON (ranked.rank > ? AND ranked.rank <= ?) OR ranked.rank BETWEEN meta.mine - 2 AND meta.mine + 2 ORDER BY ranked.rank`)
+    .bind(venue, event, SIM_VERSION, ...(day === 'all' ? [] : [day]), who, offset, offset + limit).all();
+  const { n, mine } = results[0], rows = results.filter((r) => r.id).map(({ rank, id, name, total, score, created }) => ({ rank, id, name, total, score, created }));
+  const me = rows.find((r) => r.rank === mine);
+  return { n, rows, me: me ? { rank: me.rank, id: me.id, name: me.name, total: me.total, score: me.score } : null, off: mine && (mine <= offset || mine > offset + limit) };
+}
+
+async function board(env, url, key, day) {
   const [venue, event] = key.split('.');
   if (!VENUES[venue] || !event) return json({ error: 'board key is venue.event' }, 400);
   const world = await worldFor(env, venue);
   const dare = eventsFor(world.track, world.venue).find((e) => e.id === event)?.kind === 'dare';
-  const where = day === 'all' ? 'venue = ? AND event = ?' : 'venue = ? AND event = ? AND day = ?';
-  const args = day === 'all' ? [venue, event] : [venue, event, day];
-  const { results } = await env.DB.prepare(`SELECT id, name, total, score FROM runs WHERE ${where} ORDER BY ${dare ? 'score DESC' : 'total ASC'}, created ASC LIMIT ${BOARD}`).bind(...args).all();
-  return json({ venue, event, day, rows: results.map((r, k) => ({ rank: k + 1, ...r })) });
+  const q = url.searchParams, player = q.get('player');
+  const limit = Math.min(100, Math.max(1, parseInt(q.get('limit'), 10) || 20)), offset = Math.max(0, parseInt(q.get('offset'), 10) || 0);
+  const s = await standings(env, venue, event, day, dare, limit, offset, player);
+  const rows = s.rows.filter((r) => r.rank > offset && r.rank <= offset + limit);
+  return json({ venue, event, day, total: s.n, rows, ...(player !== null && { me: s.me, ...(s.off && { around: s.rows.filter((r) => Math.abs(r.rank - s.me.rank) <= 2) }) }) });
 }
 
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -103,7 +114,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     try {
       if (req.method === 'POST' && p[0] === 'runs' && p.length === 1) return await submit(req, env);
-      if (req.method === 'GET' && p[0] === 'board' && p.length === 3) return await board(env, p[1], p[2]);
+      if (req.method === 'GET' && p[0] === 'board' && p.length === 3) return await board(env, url, p[1], p[2]);
       if (req.method === 'GET' && p[0] === 'daily' && p.length === 2) return json(dailyFor(p[1]) || { error: 'bad day' }, dailyFor(p[1]) ? 200 : 400);
       if (req.method === 'GET' && p[0] === 'runs' && p.length === 2) {
         const row = await env.DB.prepare('SELECT venue, name, run FROM runs WHERE id = ?').bind(p[1]).first();
