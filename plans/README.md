@@ -9,7 +9,7 @@ Recommended order: 012, 001, 002, 003, 004, 005, 006, 007, 008, 009, then the tw
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 001 | Make the game tell the truth: bug sweep with no sim change | P1 | M | — | DONE |
-| 002 | Fix the sim rules that fight the player (one version bump) | P1 | M | 001 | BLOCKED (steps 6, 7) |
+| 002 | Fix the sim rules that fight the player (one version bump) | P1 | M | 001 | DONE (steps 6, 7 at `WALL_HIT` 0.3 and `yawRate` 3.0, SIM_VERSION 19) |
 | 003 | Make speed and weight visible | P1 | M | 001 | DONE |
 | 004 | Cut the dead time around failing and retrying | P1 | S | 001, 002 | DONE |
 | 005 | Put a new player in the car and teach every verb | P1 | M | 001 | DONE |
