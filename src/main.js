@@ -621,7 +621,7 @@ function finish() {
   const refName = prevRec?.run ? 'your best' : 'the author';
   lastRun = encodeRun(race, recorder.bytes());
   showResults({
-    card: ev.id === 'full' ? `${venue.name} · Full run` : `Practice · S${ev.card - 1} ${ev.name}`, pos, field: field.length + 1, medal: medalLine(m, before),
+    card: ev.id === 'full' ? `${venue.name} · Full run` : ev.spur ? `${venue.name} · ${ev.name}` : `Practice · S${ev.card - 1} ${ev.name}`, pos, field: field.length + 1, medal: medalLine(m, before),
     time: fmt(race.total), delta,
     note: worst >= 0 && worstLoss > 12 ? `Most time lost ${worst === rows.length - 1 ? 'on the run to the finish' : `before checkpoint ${worst + 1}`}: ${(worstLoss / 120).toFixed(2)} s against ${refName}.` : '',
     title: 'SPLITS', rows: rows.map((r) => ({ dot: sectorColors[r.i] || '', label: r.i === rows.length - 1 ? 'Finish' : `CP ${r.i + 1}`, value: fmt(r.seg), tag: r.has ? fmtDelta(r.loss) : '', tone: r.loss <= 0 ? 'good' : 'bad' })),
