@@ -316,3 +316,26 @@ test('a hop pressed just before touchdown fires on touchdown', () => {
   }
   assert.ok(peak - lab.track.H[600 * 3 + 1] > 0.8, `peak ${(peak - lab.track.H[600 * 3 + 1]).toFixed(2)} m after touchdown`);
 });
+
+function drop(roll) {
+  const c = createCar(), inp = createInput(), lands = [];
+  placeCar(c, lab.track, 600, 40, 0);
+  c.y += 3;
+  const cs = Math.cos(roll), sn = Math.sin(roll), [ux, uy, uz, rx, ry, rz] = [c.ux, c.uy, c.uz, c.rx, c.ry, c.rz];
+  c.ux = ux * cs + rx * sn; c.uy = uy * cs + ry * sn; c.uz = uz * cs + rz * sn;
+  c.rx = rx * cs - ux * sn; c.ry = ry * cs - uy * sn; c.rz = rz * cs - uz * sn;
+  let after = -1;
+  for (let t = 0; t < 120 * 4 && after < 60; t++) {
+    stepCar(c, inp, lab, t, false);
+    for (const e of c.ev) if (e.type === 'land') lands.push(e);
+    c.ev.length = 0;
+    if (after >= 0 || (c.air === 0 && t > 6)) after++;
+  }
+  return { speed: Math.hypot(c.vx, c.vz), lands };
+}
+
+test('a hard landing costs about 10% of the speed', () => {
+  const hard = drop(0.9), level = drop(0);
+  assert.ok(hard.lands.some((e) => e.quality === 'hard'), `landings ${hard.lands.map((e) => e.quality).join(' ')}`);
+  assert.ok(hard.speed <= level.speed * 0.93, `${hard.speed.toFixed(2)} vs ${level.speed.toFixed(2)} m/s`);
+});

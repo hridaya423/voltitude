@@ -556,7 +556,7 @@ function landing(c, nx, ny, nz) {
       c.wrecked = true;
     } else {
       const quality = align > 0.95 && vn < 16 ? 'perfect' : align > 0.8 && vn < 24 ? 'clean' : 'hard';
-      if (quality === 'hard') tricks.length = 0;
+      if (quality === 'hard') { tricks.length = 0; c.vx *= 0.9; c.vy *= 0.9; c.vz *= 0.9; }
       if (quality === 'hard' || tricks.length || !c.hopped) c.ev.push({ type: 'land', quality, air: airS, tricks, v: vn, hop: c.hopped });
     }
   }
