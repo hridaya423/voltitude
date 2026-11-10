@@ -27,7 +27,7 @@ import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
 import { createHints } from './hints.js';
-import { fmt, fmtDelta } from './time.js';
+import { fmt, fmtDelta, lapReview } from './time.js';
 import { createMenu, pauseView, describe, dareResults, rampResults, dareMedal, DARE_MEDALS } from './menu.js';
 import { dailyFor, dayOf } from './sim/daily.js';
 import { createGarage } from './render/garage.js';
@@ -571,11 +571,12 @@ function finishCircuit(ev) {
     return { dot: t === bestLapT ? 'purple' : '', label: `Lap ${k + 1}`, value: fmt(t), tag: t === bestLapT ? 'BEST' : fmtDelta(t - bestLapT), tone: t === bestLapT ? 'good' : 'bad' };
   };
   const penalty = me.penalty >= 0.05 ? ` · ${me.penalty.toFixed(1)} s track limits` : '';
+  const review = lapReview(race.splits, ev.perLap);
   showResults({
     card: `${venue.name} · ${ev.name}`, pos: gp ? me.pos : 0, field: race.entries.length, medal: medalLine(m, before),
-    time: fmt(race.total), delta, note: gp ? `${me.passes || 0} overtakes · ${contactCount} contacts${penalty}` : linked?.run.event === ev.id ? `Linked ghost ${fmt(linked.run.total)} · you ${fmtDelta(race.total - linked.run.total)}` : penalty.slice(3),
+    time: fmt(race.total), delta, note: gp ? `${me.passes || 0} overtakes · ${contactCount} contacts${penalty}` : linked?.run.event === ev.id ? `Linked ghost ${fmt(linked.run.total)} · you ${fmtDelta(race.total - linked.run.total)}` : [review.worst?.loss > 12 && `Most time lost in sector ${review.worst.sector} of lap ${review.worst.lap}: ${(review.worst.loss / 120).toFixed(2)} s off your own best`, penalty.slice(3)].filter(Boolean).join(' · '),
     title: 'LAPS', rows: race.laps.map(lapRow),
-    stats: [{ label: 'Top speed', value: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}` }, { label: 'Best lap', value: bestLapT ? fmt(bestLapT) : '—' }, { label: 'Resets', value: `${race.respawns}` }],
+    stats: [{ label: 'Top speed', value: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}` }, { label: 'Best lap', value: bestLapT ? fmt(bestLapT) : '—' }, ...(review.ideal ? [{ label: 'Ideal lap', value: fmt(review.ideal) }] : []), { label: 'Resets', value: `${race.respawns}` }],
     hasNext: !!EVENTS[ev.card],
   }, m, before);
 }
