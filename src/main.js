@@ -854,6 +854,7 @@ function menuKeys() {
 }
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+addEventListener('gamepaddisconnected', () => pause());
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight;
