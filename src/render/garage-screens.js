@@ -134,7 +134,7 @@ function modes(g, b) {
     chip(g, 'ENTER', rx + rw - 32, cy + 56, 48, { color: '#fff' });
     hits.push({ x: rx, y: cy, w: rw, h: 76, row: b.index });
   }
-  put(g, '↑↓  MODE     ←→  VENUE     ENTER  DRIVE     S  SETTINGS', 64, 906, { size: 30, color: C.ink2, gap: 4 });
+  put(g, '↑↓  MODE     ←→  VENUE     ENTER  DRIVE     O  SETTINGS', 64, 906, { size: 30, color: C.ink2, gap: 4 });
   let x = 64;
   b.legend.forEach(([keys, label]) => {
     x += put(g, keys.join(' '), x, 944, { size: 30, weight: 700, color: C.ink, gap: 2 }) + 12;

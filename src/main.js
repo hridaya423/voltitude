@@ -842,9 +842,9 @@ function menuKeys() {
     if (back || any('Enter', 'Space') || pad(0, 9)) endReplay();
   } else if (menu.page) {
     const page = menu.page, home = page === 'pause' || page === 'results';
-    const cmd = any('ArrowUp', 'KeyW') || pad(12) ? 'up' : any('ArrowDown') || pad(13) ? 'down' : any('ArrowLeft', 'KeyA', 'BracketLeft') || pad(14, 4) ? 'left' : any('ArrowRight', 'KeyD', 'BracketRight') || pad(15, 5) ? 'right' : any('Enter', 'Space') || pad(0) ? 'confirm' : back ? 'back' : padNav();
+    const cmd = any('ArrowUp', 'KeyW') || pad(12) ? 'up' : any('ArrowDown', 'KeyS') || pad(13) ? 'down' : any('ArrowLeft', 'KeyA', 'BracketLeft') || pad(14, 4) ? 'left' : any('ArrowRight', 'KeyD', 'BracketRight') || pad(15, 5) ? 'right' : any('Enter', 'Space') || pad(0) ? 'confirm' : back ? 'back' : padNav();
     if (cmd && !(cmd === 'confirm' && page === 'results' && performance.now() - resultsAt < 600)) menu.command(cmd);
-    else if (any('KeyS')) menu.command(page === 'board' || page === 'pause' ? 'settings' : 'down');
+    else if (any('KeyO')) menu.command('settings');
     else if (page === 'pause' && pad(9)) resume();
     else if (page === 'results' && pad(9)) menu.command('confirm');
     else if (home && (input.actionPressed('restart') || pad(8))) startRace(current);

@@ -21,7 +21,7 @@ export const SETTINGS = [
 export const PAUSE = [
   { id: 'resume', label: 'Resume', key: 'Esc' },
   { id: 'restart', label: 'Restart', key: 'R' },
-  { id: 'settings', label: 'Settings', key: 'S' },
+  { id: 'settings', label: 'Settings', key: 'O' },
   { id: 'quit', label: 'Quit to garage', key: '' },
 ];
 
