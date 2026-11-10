@@ -707,6 +707,7 @@ function handleEvents() {
         break;
       }
       case 'clip': lineup.clip(e.k); hud.toast('CLIPPED', 'red', `SCORE ${e.score} · ${key('restart')} RETRY`); audio.event('clip', 1); cheerNear(0.2, 'gasp'); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
+      case 'wide': hud.toast('WIDE', 'white', 'TAKE OFF OVER THE ROW'); audio.event('miss'); break;
       case 'release': hud.toast('LIP', 'white', 'ROLL OUT'); chase.punch(0.4); cheerNear(0.4); break;
       case 'try': {
         const why = { wreck: 'WRECKED', stall: 'STALLED', reset: 'RESET' }[e.why];
