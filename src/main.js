@@ -702,7 +702,7 @@ function handleEvents() {
       case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, race.pos === 1 ? 'gold big' : 'good', race.pos === 1 ? 'LEADING' : ''); audio.event('overtake', race.pos === 1 ? 1 : 0); } else { hud.toast(`P${race.pos}`, 'red'); audio.event('overtaken'); } updateTower(); break;
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
       case 'near_miss': audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
-      case 'track_limits': hud.toast('TRACK LIMITS', 'orange', `+${e.gain.toFixed(1)} S PENALTY`); audio.event('miss'); break;
+      case 'track_limits': hud.toast('TRACK LIMITS', 'orange', `+${e.gain.toFixed(1)} S · TOTAL ${race.penalty.toFixed(1)} S`); audio.event('miss'); break;
       case 'clear': {
         clears.push(e);
         lineup.set(race.dare.count);
