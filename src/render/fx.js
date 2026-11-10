@@ -10,6 +10,14 @@ function mark(geo, names, lo, cnt, count) {
   }
 }
 
+const CLEAR = /* glsl */ `
+  uniform vec3 uCar;
+  float clearView(vec3 mv, float r) {
+    vec3 car = (viewMatrix * vec4(uCar, 1.0)).xyz;
+    float off = length(mv.xy / -mv.z - car.xy / -car.z), body = 2.4 / -car.z, puff = r / -mv.z;
+    return smoothstep(1.5, 7.0, -mv.z) * mix(1.0, smoothstep(body + 0.4 * puff, body + puff, off), smoothstep(1.0, 4.0, mv.z - car.z));
+  }`;
+
 export function createDust(height, count = 600) {
   const p0 = new Float32Array(count * 3), vel = new Float32Array(count * 3), born = new Float32Array(count).fill(-99), seed = new Float32Array(count);
   for (let i = 0; i < count; i++) seed[i] = Math.random();
@@ -20,10 +28,10 @@ export function createDust(height, count = 600) {
   geo.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
   for (const a of ['position', 'vel', 'born']) geo.attributes[a].setUsage(THREE.DynamicDrawUsage);
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uScale: { value: 600 }, uSun: { value: new THREE.Color('#ffc09a') }, uAmb: { value: new THREE.Color('#5d5a78') } },
+    uniforms: { uTime: { value: 0 }, uScale: { value: 600 }, uSun: { value: new THREE.Color('#ffc09a') }, uAmb: { value: new THREE.Color('#5d5a78') }, uCar: { value: new THREE.Vector3() } },
     vertexShader: /* glsl */ `
       attribute vec3 vel; attribute float born; attribute float seed;
-      uniform float uTime; uniform float uScale; varying float vA; varying float vS;
+      uniform float uTime; uniform float uScale; varying float vA; varying float vS;${CLEAR}
       void main() {
         float t = uTime - born;
         float life = 1.4 + seed * 1.2;
@@ -32,6 +40,7 @@ export function createDust(height, count = 600) {
         vec3 p = position + vel * drag + vec3(0.0, t * t * 0.6 * (0.5 + seed), 0.0);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         vS = seed;
+        vA *= clearView(mv.xyz, 0.6 + t * 2.0);
         gl_PointSize = (1.2 + t * 4.0) * uScale / -mv.z;
         gl_Position = projectionMatrix * mv;
       }`,
@@ -55,6 +64,7 @@ export function createDust(height, count = 600) {
     update(time, dt, p, c, pixelScale) {
       mat.uniforms.uTime.value = time;
       mat.uniforms.uScale.value = pixelScale;
+      mat.uniforms.uCar.value.copy(p);
       const gap = p.y - height(p.x, p.z);
       const k = (c.mode === 2 ? Math.min(1, c.speed / 25) : 0) * Math.max(0, 1 - gap / 9);
       const wash = c.lifting || c.hopT > 0.4 ? Math.max(0, 1 - (gap - 0.6) / 1.5) : 0;
@@ -224,10 +234,10 @@ export function createSmoke(night, count = 2048) {
   geo.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
   for (const a of ['position', 'vel', 'born', 'aux']) geo.attributes[a].setUsage(THREE.DynamicDrawUsage);
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uScale: { value: 600 }, uSun: { value: new THREE.Color(night ? '#5a6278' : '#fff0dc').multiplyScalar(night ? 1 : 1.5) }, uAmb: { value: new THREE.Color(night ? '#1c2030' : '#b4b9c8') } },
+    uniforms: { uTime: { value: 0 }, uScale: { value: 600 }, uSun: { value: new THREE.Color(night ? '#5a6278' : '#fff0dc').multiplyScalar(night ? 1 : 1.5) }, uAmb: { value: new THREE.Color(night ? '#1c2030' : '#b4b9c8') }, uCar: { value: new THREE.Vector3() } },
     vertexShader: /* glsl */ `
       attribute vec3 vel; attribute float born; attribute vec3 aux; attribute float seed;
-      uniform float uTime; uniform float uScale; varying float vA; varying float vS; varying float vTone;
+      uniform float uTime; uniform float uScale; varying float vA; varying float vS; varying float vTone;${CLEAR}
       void main() {
         float t = uTime - born;
         float life = aux.z * (0.75 + 0.5 * seed);
@@ -236,7 +246,7 @@ export function createSmoke(night, count = 2048) {
         vec3 p = position + vel * drag + vec3(0.0, t * t * 0.35, 0.0);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         vS = seed; vTone = aux.y;
-        vA *= smoothstep(1.5, 7.0, -mv.z);
+        vA *= clearView(mv.xyz, 0.5 * (0.25 + aux.x * (0.12 + t)));
         gl_PointSize = vA > 0.0 ? min((0.25 + aux.x * (0.12 + t)) * uScale / -mv.z, 360.0) : 0.0;
         gl_Position = projectionMatrix * mv;
       }`,
@@ -269,9 +279,10 @@ export function createSmoke(night, count = 2048) {
       aux[i * 3] = grow; aux[i * 3 + 1] = tone; aux[i * 3 + 2] = life;
       born[i] = time;
     },
-    update(time, pixelScale) {
+    update(time, pixelScale, car) {
       mat.uniforms.uTime.value = time;
       mat.uniforms.uScale.value = pixelScale;
+      mat.uniforms.uCar.value.copy(car);
       if (lo < 0) return;
       mark(geo, ['position', 'vel', 'born', 'aux'], lo, Math.min(cnt, count), count);
       lo = -1; cnt = 0;

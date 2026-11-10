@@ -172,7 +172,7 @@ export function createCarFx(night, depth) {
       shock.visible = sk < 1;
       if (shock.visible) { const r = 3 + 16 * (1 - (1 - sk) * (1 - sk)); shock.matrix.copy(mat).multiply(local.makeScale(r, 1, r).setPosition(0, -0.46, 0)); shock.material.uniforms.uK.value = 2.5 * (1 - sk) * (1 - sk); }
       debris.update(running ? dt : 0);
-      smoke.update(t, pixelScale);
+      smoke.update(t, pixelScale, origin());
       sparks.update(t, width, height);
     },
   };
