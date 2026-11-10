@@ -339,10 +339,10 @@ void main() {
     float lane = floor(a * 220.0), f = fract(a * 220.0);
     float h1 = fract(sin(lane * 12.9898) * 43758.5453), h2 = fract(sin(lane * 78.233) * 12543.123);
     float rush = d.x < 0.0 ? uRush.x : uRush.y;
-    float s = 0.2 + fract(h1 + uTime * (1.1 + h2 * 1.8)) * 1.1, len = 0.1 + h2 * 0.22;
-    float line = smoothstep(s - len, s, r) * (1.0 - smoothstep(s, s + 0.012, r)) * (1.0 - smoothstep(0.0, 0.14, abs(f - 0.5)));
-    float k = uWind * step(0.5, h2) * 1.6 + rush * step(0.25, h2) * smoothstep(0.05, 0.35, abs(d.x)) * 1.6;
-    col = mix(col, vec3(1.0), clamp(line * k * smoothstep(0.3, 0.7, r) * 0.6, 0.0, 0.85));
+    float s = 0.2 + fract(h1 + uTime * (1.1 + h2 * 1.8)) * 1.1, len = 0.1 + h2 * 0.22 + uWind * 0.14;
+    float line = smoothstep(s - len, s, r) * (1.0 - smoothstep(s, s + 0.012, r)) * (1.0 - smoothstep(0.0, 0.14 + uWind * 0.2, abs(f - 0.5)));
+    float k = uWind * step(0.5 - uWind * 0.25, h2) * 1.6 + rush * step(0.25, h2) * 1.6;
+    col = mix(col, vec3(1.0), clamp(line * k * smoothstep(0.3, 0.7, r) * smoothstep(0.27, 0.4, abs(d.x)) * (0.6 + uWind * 0.35), 0.0, 0.9));
   }
   col += uFlash;
   col += (hash(vUv * 913.0) - 0.5) * uGrain;

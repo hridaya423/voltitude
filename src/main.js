@@ -1154,7 +1154,7 @@ function draw(dt, ticks = -1) {
   skyUniforms.uCloudT.value = time;
   boostKick *= Math.exp(-dt * 5); rushL *= Math.exp(-dt * 3.5); rushR *= Math.exp(-dt * 3.5);
   pu.uAberration.value = settings.reduced ? 0 : (c.boosting ? 0.012 : 0) + sp * 0.004 + boostKick * 0.05;
-  pu.uWind.value = settings.reduced || inGarage ? 0 : Math.min(1, Math.max(0, (c.speed - (c.boosting ? 50 : 64)) / 26)) * (c.boosting ? 1 : 0.6);
+  pu.uWind.value = settings.reduced || inGarage ? 0 : c.boosting ? Math.min(1, Math.max(0, (c.speed - 45) / 15)) : Math.min(0.8, Math.max(0, (c.speed - 62) / 12));
   pu.uRush.value.set(settings.reduced || inGarage ? 0 : rushL, settings.reduced || inGarage ? 0 : rushR);
   pu.uTime.value = time;
   pu.uFlash.value *= Math.exp(-dt * 6);
