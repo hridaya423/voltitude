@@ -26,7 +26,7 @@ void main() {
   vec4 prev = uPrevVP * uPrevModel * vec4(position, 1.0);
   vMotion = (cur.xy / cur.w - prev.xy / prev.w) * 0.5;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  vZ = gl_Position.z / gl_Position.w * 0.5 + 0.5;
+  vZ = -(modelViewMatrix * vec4(position, 1.0)).z;
 }`;
 
 const CAR_FRAG = /* glsl */ `
@@ -41,10 +41,10 @@ void main() {
   float d = texture2D(tDepth, vUv).r;
   vec4 car = texture2D(tCar, vUv);
   vec3 v = viewPos(vUv, d);
-  if (car.a > 0.5 && abs(viewPos(vUv, car.b).z - v.z) < 0.06 + 0.01 * abs(v.z)) { gl_FragColor = vec4(car.rg, 0.0, 1.0); return; }
+  if (car.a > 0.5 && abs(car.b + v.z) < 0.06 + 0.01 * abs(v.z)) { gl_FragColor = vec4(car.rgb, 1.0); return; }
   if (d > 0.99999) v = normalize(v) * 4000.0;
   vec4 pc = uPrevVP * (uCamWorld * vec4(v, 1.0));
-  gl_FragColor = vec4(vUv - (pc.xy / pc.w * 0.5 + 0.5), 0.0, 1.0);
+  gl_FragColor = vec4(vUv - (pc.xy / pc.w * 0.5 + 0.5), -v.z, 1.0);
 }`;
 
 const GTAO = /* glsl */ `
@@ -150,11 +150,11 @@ vec3 hist(vec2 uv) {
 void main() {
   aoK = mix(1.0, texture2D(tAO, vUv).r, uAOAmount);
   vec3 c0 = cur(vec2(0.0));
-  vec3 vel = texture2D(tVel, vUv).rgb;
+  vec4 vel = texture2D(tVel, vUv);
   for (int i = 0; i < 4; i++) {
     vec2 o = i == 0 ? vec2(1.0, 0.0) : i == 1 ? vec2(-1.0, 0.0) : i == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
-    vec3 v = texture2D(tVel, vUv + o * uTexel * 2.0).rgb;
-    if (dot(v.xy, v.xy) > dot(vel.xy, vel.xy)) vel = v;
+    vec4 v = texture2D(tVel, vUv + o * uTexel * 2.0);
+    if (v.b < vel.b) vel = v;
   }
   if (uReset > 0.5) { gl_FragColor = vec4(itm(c0), 1.0); return; }
   vec2 huv = vUv - vel.xy;
@@ -446,7 +446,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
     scene.depthTexture.minFilter = scene.depthTexture.magFilter = THREE.NearestFilter;
     carRT = target(Math.max(1, w >> 1), Math.max(1, h >> 1), { depthBuffer: true });
     carRT.texture.minFilter = carRT.texture.magFilter = THREE.NearestFilter;
-    velRT = target(Math.max(1, w >> 1), Math.max(1, h >> 1), { format: THREE.RGFormat });
+    velRT = target(Math.max(1, w >> 1), Math.max(1, h >> 1));
     velRT.texture.minFilter = velRT.texture.magFilter = THREE.NearestFilter;
     const hw = Math.max(1, w >> 1), hh = Math.max(1, h >> 1);
     aoRT = target(hw, hh, { format: THREE.RGFormat });
