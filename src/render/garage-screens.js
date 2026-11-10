@@ -173,10 +173,8 @@ function results(g, b) {
     put(g, b.dare ? b.lineLabel || 'LINE REACHED' : `OF ${b.field}`, 64, 440, { size: 44, weight: 700, color: C.ink3, gap: 8 });
   }
   const mid = b.medal;
-  if (!b.dare) {
-    dot(g, 90, 520, 26, mid && mid.id);
-    put(g, mid ? `${mid.name.toUpperCase()}${mid.fresh ? ' MEDAL' : ''}` : 'NO MEDAL YET', 140, 536, { size: 42, fam: DISPLAY, weight: '800 expanded', color: mid ? C.ink : C.ink3, max: 560 });
-  }
+  dot(g, 90, 520, 26, mid && mid.id);
+  put(g, mid ? `${mid.name.toUpperCase()}${mid.fresh ? ' MEDAL' : ''}` : 'NO MEDAL YET', 140, 536, { size: 42, fam: DISPLAY, weight: '800 expanded', color: mid ? C.ink : C.ink3, max: 560 });
   put(g, b.label || 'TIME', 760, 180, { size: 28, color: C.ink3, gap: 8 });
   put(g, b.time, 760, 280, { size: 76, fam: MONO, weight: '500 semi-condensed', max: 540 });
   put(g, b.delta.text, 760, 350, { size: 40, weight: 700, color: TONE[b.delta.tone] || C.ink2, max: 540 });
