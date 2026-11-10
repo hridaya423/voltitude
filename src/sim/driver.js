@@ -148,7 +148,7 @@ export function drive(race, e, inp) {
   const { track } = race.world;
   const L = lineFor(track), N = track.lap, c = e.car, d = e.driver;
   const sp = c.speed, hint = c.hint;
-  inp.pitch = 0; inp.roll = 0; inp.reset = 0; inp.boost = 0; inp.lift = 0;
+  inp.pitch = 0; inp.roll = 0; inp.reset = 0; inp.boost = 0; inp.lift = 0; inp.flip = 0;
   if (race.raceTick < d.react) { inp.throttle = 0; inp.brake = 0; inp.steer = 0; return inp; }
 
   const lim = (i) => track.halfW[i] - LIM_BAND - 1.2;

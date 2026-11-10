@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { flatWorld, zeroToSixty, topSpeed, braking, skidpad, wallScrape } from '../tools/physics-lab.mjs';
-import { createRace, stepRace, createInput, eventsFor, botInput } from '../src/sim/race.js';
+import { createRace, stepRace, createInput, eventsFor, botInput, packInput, unpackInput } from '../src/sim/race.js';
 import { placeCar, createCar, stepCar, steerTo, TUNING, DT } from '../src/sim/drive.js';
 import { lineFor } from '../src/sim/driver.js';
 
@@ -271,4 +271,28 @@ test('full steer while lifting moves the landing point 6 m or more sideways', ()
 
 test('a flight with no input lands where it took off sideways', () => {
   for (const liftS of [0, 1.5]) assert.ok(Math.abs(flight(0, liftS)) < 0.05, `lift ${liftS} s: ${flight(0, liftS).toFixed(3)} m`);
+});
+
+function fall(inp, assist, gas = 1) {
+  const c = createCar();
+  placeCar(c, lab.track, 600, 30, 0);
+  c.y += 30; c.gas = gas;
+  let most = 0, rate = 0;
+  for (let t = 0; t < 120 * 2; t++) { stepCar(c, inp, lab, t, assist); if (c.air === 0 && t > 12) break; most = Math.max(most, Math.abs(c.flip)); rate = Math.max(rate, Math.abs(c.wp)); }
+  return { most, rate };
+}
+
+test('with landing assist on, held pitch tilts and the flip input flips', () => {
+  const tilt = fall({ ...createInput(), pitch: 1 }, true).most;
+  const flip = fall({ ...createInput(), pitch: 1, flip: 1 }, true).most;
+  assert.ok(tilt < 1, `tilt ${tilt.toFixed(2)} rad`);
+  assert.ok(flip > 5, `flip ${flip.toFixed(2)} rad`);
+});
+
+test('the flip input survives packing', () => {
+  const a = { ...createInput(), flip: 1, lift: 1 }, b = createInput(), q = new Int8Array(6);
+  packInput(a, q, 0); unpackInput(q, 0, b);
+  assert.equal(b.flip, 1);
+  assert.equal(b.lift, 1);
+  assert.equal(b.boost, 0);
 });

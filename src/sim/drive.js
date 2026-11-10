@@ -479,7 +479,7 @@ export function stepCar(c, inp, world, tick, assist) {
 
   if (airborne) {
     let tp = inp.pitch * T.pitchRate, ty = c.lifting ? 0 : inp.steer * T.yawRate, tr = inp.roll * T.rollRate;
-    if (assist && inp.roll === 0) {
+    if (assist && inp.roll === 0 && !inp.flip) {
       const [hx, hy, hz] = upHint(c, track);
       const ex = c.uy * hz - c.uz * hy, ey = c.uz * hx - c.ux * hz, ez = c.ux * hy - c.uy * hx;
       tp = Math.max(-2.2, Math.min(2.2, ((ex * c.rx + ey * c.ry + ez * c.rz) + inp.pitch * 0.45) * 3));

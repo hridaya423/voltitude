@@ -61,6 +61,7 @@ export function createTouch(root, { onPause }) {
         inp.steer = airborne ? 0 : sx;
         inp.roll = airborne && Math.abs(sx) > 0.5 ? Math.sign(sx) : 0;
         inp.pitch = airborne ? sy : 0;
+        inp.flip = airborne && Math.abs(sy) > 0.85 ? 1 : 0;
         inp.lift = pulse > 0 || (first && !first.drag && (now - first.t) / 1000 >= HOLD) ? 1 : 0;
         inp.boost = fingers.size > 1 ? 1 : 0;
       } else {
@@ -68,6 +69,7 @@ export function createTouch(root, { onPause }) {
         inp.throttle = held.has('gas') ? 1 : 0;
         inp.brake = held.has('brake') ? 1 : 0;
         inp.pitch = inp.brake - inp.throttle;
+        inp.flip = inp.brake && !inp.throttle ? 1 : 0;
         inp.boost = held.has('boost') ? 1 : 0;
         inp.lift = held.has('lift') ? 1 : 0;
         inp.roll = airborne && Math.abs(sx) > 0.6 ? Math.sign(sx) : 0;
