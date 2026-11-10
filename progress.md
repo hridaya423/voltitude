@@ -1703,3 +1703,23 @@ Worked on `advisor/integration` after plan 002. Render, audio and post-process o
 - Seen: the car is smaller at speed and more of the track is in view. The horizon stays level, and the car stays clear of the HUD speed plate. Mid-speed blur is weaker than before (the ramp is longer). Rival positions differ between runs, so the before and after frames are not the same moment.
 - Found: in the after "landing" frame, rival FER sat between the camera and the player's car, with the camera inside its body. The chase camera has never collided with rivals. The player's car never came within 4.5 m of the camera, before or after (70 s of Proving GP each). Not a plan 003 regression; not fixed.
 - Open for the owner: drive a lap and judge the 64° top FOV and the rumble.
+
+## Session 2026-11-10: fail and retry flow (plan 004), SIM_VERSION 16
+
+Worked on `advisor/integration` after plan 003. SIM_VERSION 15 → 16. Nothing pushed or deployed. Status: DONE.
+
+- Step 1: bump to 16. No test failed on the bump alone.
+- Step 2: solo events count down in 160 ticks, a Grand Prix in 240. Test `solo events count down in 160 ticks, a Grand Prix in 240` failed first with `240 !== 160`. Lights 3, 4, 5 fire in a solo event. Frame at raceTick −80 shows four lamps lit.
+- Step 3: a clip holds 96 ticks, not 240. The dare test bound is 98 ticks; it fails with 240.
+- Step 4: a dare reaches results 700 ms after it finishes. Clip to results: 1508 ms (band 1300-1800; about 4200 before).
+- Step 5: `bankDare`. R during the clip hold restarts at once and keeps the score: `fresh true`, `mode race`, `phase countdown`, `saved { best: 1 }`. A finished circuit or trial, and a daily dare, ignore R until results.
+- Step 6: the clip toast reads `CLIPPED / SCORE 1 · [R] RETRY` (seen in a frame). A respawn shows `RESET`.
+- Step 7: a 0.3 screen flash on `retry` and `respawn`, off under reduced motion.
+- Step 8: resume holds 700 ms with a `READY` toast: `held 0`, `after 110` ticks in the next 1.2 s. Deviation: the plan's `running` gate also skipped `chase.update`, so the camera kept the pause screen's garage pose and showed only sky for the whole hold. That line is now a plain `else`; the frame during the hold shows the car.
+- Step 9: author totals unchanged (ticks): Proving TT 28603, Airfield TT 28048, Launch TT 24195, Launch Trench 2665, The Pad TT 13506. All ghosts carry `"v":16`.
+- Gates: `npm test` 168/168 (167 before). `npm run test:server` 6/6. Exploits PASS on proving, airfield, launch, pad. Smoke: Proving TT to racing exit 0; Pad Ramp and Launch Trench to results exit 0, no errors.
+- Open for the owner:
+  - Redeploy the Worker (`npx wrangler deploy` in `server/`). It rejects any run whose version is not its own with a 422.
+  - Local records reset again: the save key is `voltitude.save.v16`.
+  - Taste constants to judge in play: `SOLO_COUNTDOWN = 160` in `race.js` (200 gives four beeps), the 700 ms resume hold in `resume`, and the 0.3 reset flash (two places in `handleEvents`).
+  - The `R RETRY` label shows the keyboard key on every device; plan 005 fixes labels. Touch has no restart button.
