@@ -3,7 +3,7 @@ import { raceStats } from './race-stats.mjs';
 import { TIERS } from '../src/sim/race.js';
 
 const ELITE = [0.95, 1.08];
-const BEHIND = { rookie: [1.052, 1.112], easy: [1.025, 1.08], pro: [1.003, 1.04] };
+const BEHIND = { rookie: [1.047, 1.107], easy: [1.025, 1.08], pro: [1.003, 1.04] };
 const HELD = 4, CONTACTS = 3;
 
 const count = Number(process.argv[2] || 20), venue = process.argv[3] || 'proving';
