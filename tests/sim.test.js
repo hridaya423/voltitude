@@ -226,6 +226,23 @@ test('reset returns the car to the last checkpoint', () => {
   assert.ok(Math.abs(race.car.hint - ev.cps[0]) < 4, `respawned at ${race.car.hint}`);
 });
 
+test('a car pinned against a wall respawns within 180 ticks of stopping', () => {
+  const race = createRace(world, { event: byId('tt') });
+  const inp = createInput();
+  while (race.raceTick <= 400) { botInput(race, inp, 1); stepRace(race, inp); race.events.length = 0; }
+  const push = { ...createInput(), throttle: 1, steer: 1 };
+  let hit = false, stopped = -1, respawn = -1;
+  for (let t = 0; t < 120 * 20 && respawn < 0; t++) {
+    stepRace(race, push);
+    if (race.events.some((e) => e.type === 'scrape' || e.type === 'impact')) hit = true;
+    if (hit && stopped < 0 && race.car.speed < 2) stopped = t;
+    if (stopped >= 0 && race.events.some((e) => e.type === 'respawn')) respawn = t;
+    race.events.length = 0;
+  }
+  assert.ok(stopped >= 0, 'the car never stopped');
+  assert.ok(respawn >= 0 && respawn - stopped <= 180, `respawn ${respawn - stopped} ticks after stopping`);
+});
+
 test('thrusters burn gas and never push harder than the car weighs', () => {
   const race = createRace(world, { event: byId('tt') });
   const inp = createInput();

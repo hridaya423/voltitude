@@ -17,7 +17,7 @@ const DRAFT_NEAR = 4, DRAFT_FAR = 14, DRAFT_LAT = 1.6, DRAFT_SPEED = 40;
 const TOW = 0.2, TOW_FULL = 8, TOW_FAR = 25, TOW_LAT = 2.5, TOW_SPEED = 30;
 const HOLD = 600;
 const RESPAWN_GAS = 0.15;
-const STILL = 240, SINK = 6, AIR_RUNUP = 100;
+const STILL = 240, PINNED = 60, SINK = 6, AIR_RUNUP = 100;
 const IDLE = { throttle: 0, brake: 0.3, steer: 0, pitch: 0, roll: 0, boost: 0, lift: 0, reset: 0, flip: 0 };
 
 export function quantize(v) {
@@ -209,7 +209,7 @@ function stepEntry(race, e, inp) {
   if (!e.dare?.over && race.event.dare !== 'ramp') {
     if (c.wrecked && !e.respawnIn) e.respawnIn = 70;
     if (e.respawnIn && --e.respawnIn === 0) respawn(race, e);
-    else if (e.lost > 60 || e.still > STILL) respawn(race, e);
+    else if (e.lost > 60 || e.still > (e === race && c.wallT > 0 ? PINNED : STILL)) respawn(race, e);
   }
 
   if (track.closed && race.phase === 'racing') {
