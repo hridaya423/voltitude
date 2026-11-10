@@ -1645,3 +1645,24 @@ The user said the trench looked sloppy and black, and the HUD was cluttered.
 
 - Other venues after the fix, all exit 0, no errors (boot ms, Enter to GO ms, worst frame ms, new programs): Airfield GP 3464 / 2643 / 117 / 23; The Pad Lineup 2901 / 2672 / 117 / 22; Launch TT night 3527 / 2638 / 100 / 12. Restart compiles 0 programs everywhere.
 - Screenshots: title and race before and after match apart from the rival grid order. `?venue=launch&event=gp&autostart&autopilot&night` draws with no console error. `npm test` 157 of 157. `src/main.js`, `src/sim`, `rl`, `server` untouched.
+
+## Session 2026-11-10: truth and bug sweep (plan 001)
+
+Worked on `advisor/integration` after plan 012. No change under `src/sim`, `rl` or `server`. Nothing pushed or deployed.
+
+- Smoke tool: `tools/smoke.mjs` added with the plan's exact content, one README line. Trench autopilot to results exits 0, no errors. `state.live` reads `""` because the tool samples it in the frame that sets `mode = 'results'`, before the render loop writes `#menuLive`. Read 1 s later it is `Results. Position 1 of 5. Time 0:22.208. First time on the board.  Retry.` The tool is unchanged; a later plan that reads `state.live` should wait a frame.
+- A, daily restart: `?venue=pad&daily&day=2026-11-09`, Enter, R → `dailyRun` true. Lineup autostart, R → false. `toTitle()` clears the flag.
+- B, daily after reload: `?venue=pad&daily&day=2026-11-09` reaches racing with no key, `dailyRun` true.
+- C, finish: Grand Prix finish toasts `WINNER` or `P<n>` with `FINISH` under it, passes the position to `audio.event('finish', p)`, 12 firework shells. Pad GP autopilot exits 0; screenshot shows the `P7 FINISH` toast.
+- D, music hooks: `setAir` in `update`, `stinger('start', 1)` in `lightsOut`, the wreck sends `audio.event('clip', 1)`. Proving TT 25 s exits 0, no errors. Not heard: headless audio does not start without a gesture.
+- E, clip and OG renders restore `race` (`grep -c "race = was.race"` → 2).
+- F, Time Trial target reads `AUTHOR LAP 1:15.208` on an empty save.
+- G, results ignore confirm for 600 ms (`grep -c resultsAt` → 3).
+- H, S moves down in menus, settings is O; garage legend and pause row say O. Title screenshot shows `O SETTINGS`.
+- I, near miss plays the stunt cheer; clean landing plays its own `clean` sound and bank stinger.
+- J, `garage.boot()` removed with its only call. Six results frames over 1.2 s show steady hangar lights.
+- K, Trench results card: `Launch Complex · The Trench`.
+- L, `gamepaddisconnected` pauses the race.
+- M, phone throttle reads GO; touch screenshot on a GP shows LIFT, BOOST, BRAKE, GO.
+- Gate: `npm test` 157/157, `npm run test:server` 6/6, cold boot smoke exit 0 with no console errors (the plan 012 shader error is gone), Pad ramp autopilot to results exit 0, `git diff --stat 9ee19cc -- src/sim rl server` empty, comment count in `src/main.js` and `src/audio.js` unchanged at 0.
+- Open: the TT label checks only the player's save. With a linked friend ghost on a TT, `ghostRun` returns the friend's run and the label says AUTHOR LAP (or BEST when the player also has a run). The plan did not cover that case.
