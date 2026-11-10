@@ -7,7 +7,7 @@ import { trackLimits, MIN_GAIN, PACE } from './limits.js';
 import { lineupBoxes, lineupHit } from './lineup.js';
 
 export const SIM_VERSION = 15;
-export const TIERS = Object.freeze({ easy: 0.94, pro: 0.98, elite: 1 });
+export const TIERS = Object.freeze({ rookie: 0.88, easy: 0.94, pro: 0.98, elite: 1 });
 export const COUNTDOWN = 240;
 export const lightTick = (n) => -220 + 40 * (n - 1);
 const CP_RADIUS = 45;
