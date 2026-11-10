@@ -16,6 +16,7 @@ const NEAR = 1, NEAR_SPEED = 8, NEAR_EVERY = 360;
 const DRAFT_NEAR = 4, DRAFT_FAR = 14, DRAFT_LAT = 1.6, DRAFT_SPEED = 40;
 const TOW = 0.2, TOW_FULL = 8, TOW_FAR = 25, TOW_LAT = 2.5, TOW_SPEED = 30;
 const HOLD = 600;
+const SLIDE_ANGLE = 15 * Math.PI / 180;
 const RESPAWN_GAS = 0.15;
 const STILL = 240, PINNED = 60, SINK = 6, AIR_RUNUP = 100;
 const IDLE = { throttle: 0, brake: 0.3, steer: 0, pitch: 0, roll: 0, boost: 0, lift: 0, reset: 0, flip: 0, slide: 0 };
@@ -418,6 +419,7 @@ function streaks(race) {
     const c = e.car;
     if (c.fan > 0.2 && c.speed > 30) earn(race, e, 'wall', GAIN.wall * DT);
     if (drafting(race, e)) earn(race, e, 'draft', GAIN.draft * DT);
+    if (c.slide && !c.air && c.speed > 20 && Math.abs(Math.atan2(c.slip, Math.abs(c.vf))) > SLIDE_ANGLE) earn(race, e, 'slide', GAIN.slide * DT);
   }
   flushGains(race);
 }

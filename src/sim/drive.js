@@ -121,7 +121,7 @@ export function createCar() {
     mode: 1, hint: 0, lat: 0,
     gas: 1, boosting: false, thr: 0, delta: 0, brk: 0, lifting: false, liftHeld: false, hopT: 0, hopBuf: 0, hopped: false,
     air: 0, flip: 0, spin: 0, barrel: 0,
-    speed: 0, vf: 0, slip: 0, throttle: 0, brake: 0, steer: 0, yawRate: 0,
+    speed: 0, vf: 0, slip: 0, throttle: 0, brake: 0, steer: 0, slide: 0, yawRate: 0,
     wrecked: false, load: 0, fan: 0, wallT: 0, tow: 0,
     wl: createWheels(),
     ev: [],
@@ -317,7 +317,7 @@ function impulse(c, rx, ry, rz, nx, ny, nz, e, mu) {
 export function stepCar(c, inp, world, tick, assist) {
   const T = TUNING, m = T.mass;
   const { track } = world;
-  c.throttle = inp.throttle; c.brake = inp.brake; c.steer = inp.steer;
+  c.throttle = inp.throttle; c.brake = inp.brake; c.steer = inp.steer; c.slide = inp.slide;
   body(c, CGO[0], CGO[1], CGO[2], cg);
   COM[0] = c.x + cg[0]; COM[1] = c.y + cg[1]; COM[2] = c.z + cg[2];
   F[0] = F[1] = F[2] = 0; TQ[0] = TQ[1] = TQ[2] = 0;

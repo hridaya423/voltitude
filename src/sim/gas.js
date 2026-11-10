@@ -6,6 +6,7 @@ export const GAIN = Object.freeze({
   air: 0.06,
   wall: 0.08,
   draft: 0.1,
+  slide: 0.08,
   gate: 0.25,
 });
 
