@@ -173,7 +173,7 @@ function surfaceMaterial(renderer, sunUniform, fogDensity, grid, res) {
           c *= 1.0 - wear * (1.0 - runoff);
           float seg = floor(s / 17.0);
           float tar = abs(fract(s / 17.0 + 0.09 * sin(lat * 0.7 + seg * 1.7) + 0.04 * sin(lat * 2.3 + seg)) - 0.5);
-          c *= 1.0 - 0.55 * (1.0 - smoothstep(0.0025, 0.006, abs(tar - 0.31))) * step(0.35, fract(sin(seg * 7.13) * 91.7)) * (1.0 - runoff);
+          c *= 1.0 - 0.3 * (1.0 - smoothstep(0.0025, 0.006, abs(tar - 0.31))) * step(0.7, fract(sin(seg * 7.13) * 91.7)) * (1.0 - runoff);
           float joint = 1.0 - smoothstep(0.03, 0.07, abs(a - w * 0.34));
           c *= 1.0 - 0.3 * joint * (1.0 - runoff);
           float zone = floor(s / 55.0), zf = fract(s / 55.0);
