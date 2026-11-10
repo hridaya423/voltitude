@@ -118,7 +118,7 @@ export function createCar() {
     ox: 0, oy: 0, oz: 0,
     wp: 0, wy: 0, wr: 0,
     mode: 1, hint: 0, lat: 0,
-    gas: 1, boosting: false, thr: 0, delta: 0, brk: 0, lifting: false, liftHeld: false, hopT: 0, hopped: false,
+    gas: 1, boosting: false, thr: 0, delta: 0, brk: 0, lifting: false, liftHeld: false, hopT: 0, hopBuf: 0, hopped: false,
     air: 0, flip: 0, spin: 0, barrel: 0,
     speed: 0, vf: 0, slip: 0, throttle: 0, brake: 0, steer: 0, yawRate: 0,
     wrecked: false, load: 0, fan: 0, wallT: 0, tow: 0,
@@ -141,7 +141,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
   c.mode = 1; c.hint = i; c.lat = lat;
   c.air = 0; c.flip = c.spin = c.barrel = 0;
   c.speed = speed; c.vf = speed; c.slip = 0; c.delta = 0; c.brk = 0; c.thr = 0;
-  c.wrecked = false; c.boosting = false; c.wallT = 0; c.lifting = false; c.hopT = 0; c.hopped = false;
+  c.wrecked = false; c.boosting = false; c.wallT = 0; c.lifting = false; c.hopT = 0; c.hopBuf = 0; c.hopped = false;
   for (let k2 = 0; k2 < 4; k2++) {
     const w = c.wl[k2];
     w.om = speed / w.w.R; w.hint = i; w.a = 0; w.x = w.xp = 0; w.hit = false; w.fz = 0; w.kap = 0;
@@ -149,6 +149,7 @@ export function placeCar(c, track, i, speed, lat = 0) {
 }
 
 const AIR_PAD = 40;
+const HOP_BUFFER = 12, HOP_COYOTE = 8;
 const WALL_HIT = 1, WALL_DRAG = 4 * G, WALL_GRACE = 30, WALL_RAMP = 36, WALL_WRECK = 25;
 const WALL_TOP = 1.16;
 const TYRE_MU = 1, TYRE_WRECK = 45, TYRE_SPIN = 0.5;
@@ -455,10 +456,11 @@ export function stepCar(c, inp, world, tick, assist) {
   const tap = !!inp.lift && !c.liftHeld;
   c.liftHeld = !!inp.lift;
   c.hopT = Math.max(0, c.hopT - DT);
+  c.hopBuf = tap ? HOP_BUFFER : Math.max(0, c.hopBuf - 1);
   c.lifting = false;
-  if (tap && !airborne && c.hopT === 0 && c.gas >= T.hopGas) {
+  if (c.hopBuf > 0 && (!airborne || (c.air <= HOP_COYOTE && !c.hopped)) && c.hopT === 0 && c.gas >= T.hopGas) {
     c.vx += c.ux * T.hopDv; c.vy += c.uy * T.hopDv; c.vz += c.uz * T.hopDv;
-    c.gas -= T.hopGas; c.hopT = T.hopCool; c.lifting = true; c.hopped = true;
+    c.gas -= T.hopGas; c.hopT = T.hopCool; c.lifting = true; c.hopped = true; c.hopBuf = 0;
   } else if (inp.lift && airborne && c.gas > 1e-4) {
     const a = Math.max(0, Math.min(T.liftG * G, (G - 3 * c.vy) / Math.max(c.uy, 0.3)));
     F[0] += c.ux * m * a; F[1] += c.uy * m * a; F[2] += c.uz * m * a;

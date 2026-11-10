@@ -224,7 +224,7 @@ test('hover after a hop holds altitude within 0.5 m for 2 s', () => {
 test('a full tank gives 2.3 to 2.7 s of hover', () => {
   const c = createCar();
   placeCar(c, lab.track, 600, 0, 0);
-  c.y += 40;
+  c.y += 40; c.air = 60;
   let ticks = 0;
   const inp = createInput();
   inp.lift = 1;
@@ -300,4 +300,19 @@ test('the flip input survives packing', () => {
 test('an empty tank still rotates the car in the air', () => {
   const { rate } = fall({ ...createInput(), pitch: 1 }, false, 0);
   assert.ok(rate > 2.5, `pitch rate ${rate.toFixed(2)} rad/s`);
+});
+
+test('a hop pressed just before touchdown fires on touchdown', () => {
+  const c = createCar(), inp = createInput();
+  placeCar(c, lab.track, 600, 0, 0);
+  c.y += 1.5;
+  let landed = -1, peak = -Infinity;
+  for (let t = 0; t < 360; t++) {
+    const low = c.y - lab.track.H[600 * 3 + 1] < 0.35;
+    inp.lift = landed < 0 && low && c.air > 0 ? 1 : 0;
+    stepCar(c, inp, lab, t, true);
+    if (landed < 0 && c.air === 0 && t > 6) landed = t;
+    if (landed >= 0) peak = Math.max(peak, c.y);
+  }
+  assert.ok(peak - lab.track.H[600 * 3 + 1] > 0.8, `peak ${(peak - lab.track.H[600 * 3 + 1]).toFixed(2)} m after touchdown`);
 });
