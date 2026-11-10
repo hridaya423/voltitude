@@ -304,6 +304,22 @@ test('an empty tank still rotates the car in the air', () => {
   assert.ok(rate > 2.5, `pitch rate ${rate.toFixed(2)} rad/s`);
 });
 
+test('full steer through a 24 m drop spins the car once', () => {
+  const c = createCar(), inp = { ...createInput(), steer: 1 }, tricks = [];
+  placeCar(c, lab.track, 600, 30, 0);
+  c.y += 24;
+  let most = 0;
+  for (let t = 0; t < 120 * 4; t++) {
+    stepCar(c, inp, lab, t, true);
+    for (const e of c.ev) if (e.type === 'land') tricks.push(...e.tricks);
+    c.ev.length = 0;
+    if (c.air === 0 && t > 12) break;
+    most = Math.max(most, Math.abs(c.spin));
+  }
+  assert.ok(most > 5.4, `spin ${most.toFixed(2)} rad`);
+  assert.deepEqual(tricks, ['spin']);
+});
+
 test('a hop pressed just before touchdown fires on touchdown', () => {
   const c = createCar(), inp = createInput();
   placeCar(c, lab.track, 600, 0, 0);
