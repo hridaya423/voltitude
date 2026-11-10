@@ -1785,3 +1785,23 @@ Worked on `advisor/integration` after plan 006. SIM_VERSION stays 17. Nothing pu
 - Deviation: plan 002 had made the last `note` branch the track-limits text, not `''`. The sector note and the track-limits text now join with ` · `, so neither hides the other, and the sector note has no closing period.
 - Frames at 1280x720: the P1 toast is gold, larger, `LEADING` underneath, inside the screen; `LAP 2 · BEST LAP` and `FINAL LAP` stack without overlap; a lost-place `P7` is red; `WRONG WAY` sits red above the speed panel; the results board shows four stats in one row, none clipped. The WRONG WAY frame used a car turned round in the page, since a manual U-turn on The Pad ended in a reset.
 - Gates: `npm test` 185/185 (180 before).
+
+## Session 2026-11-10: Hot Lap (plan 008)
+
+Worked on `advisor/integration` after plan 007. SIM_VERSION stays 17. Nothing pushed or deployed. Status: DONE.
+
+- Event: `mode('hl', 'Hot Lap', 'tt', 1)` sits after the dares and before `gp` in `eventsFor`. The Pad lists `lineup, ramp, hl, gp, tt, pr`.
+- Author Hot Lap (`node tools/medals.mjs <venue> hl`, respawns 0): Proving 82.608 s, Airfield 83.350 s, Launch 71.617 s, The Pad 38.283 s. These match the plan's figures exactly.
+- Old ghost entries unchanged (totals in ticks, input lengths): Proving tt 28603/230104, Airfield tt 28048/225664, Launch trench 2665/22600 and tt 24195/194840, Pad tt 13506/109328. A JSON compare against HEAD gave `same` for each.
+- Ghost file sizes, before to after: Proving 230280 to 310992 B, Airfield 225842 to 307269 B, Launch 217765 to 287925 B, The Pad 109485 to 147640 B.
+- Step 4 smoke, Proving board: `HL Hot Lap | Proving Ground · One lap | 1:22.608 1:26.742 1:35.000 1:51.525`. The Time Trial row still reads `· 3 laps`.
+- First boot with no save still selects The Lineup on The Pad (`current` is `lineup`). `?venue=launch&event=gp` still opens the Grand Prix.
+- Step 5 smoke, Pad Hot Lap on autopilot, exit 0, no errors: card `The Pad · Hot Lap`, one row, time `0:39.125`, Gold. Proving `event=tt` at racing: `laps` 3. Exploits PASS on proving, airfield, launch, pad.
+- Step 6: circuit dailies and rotation moved from `tt` to `hl`; the airfield card reads `One lap of the lakebed`. Daily smoke `?venue=airfield&daily&day=2026-11-10`: `event hl, laps 1, daily true`. The daily row reads `Daily · Hot Lap`.
+- Frames at 1280x720: the Proving board shows the `HL HOT LAP` row selected with its brief and four medal times; the Pad results board reads `THE PAD · HOT LAP`, `0:39.125`, `GOLD MEDAL`, one lap row.
+- Gates: `npm test` 186/186 (185 before). `npm run test:server` 6/6.
+- Open for the owner:
+  - Redeploy the Worker (`npx wrangler deploy` in `server/`). Until then it answers `no such event` to a Hot Lap run, and the circuit dailies have no board.
+  - After the redeploy, post one author Hot Lap per venue and check for 201 or 503. If one lap still returns 503, choose the paid plan or dare-only dailies.
+  - Card numbers after the dares moved up by one. Links use the event id, so `?event=gp` still works.
+  - Ghost files are about a third larger.
