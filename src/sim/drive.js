@@ -31,7 +31,7 @@ export const TUNING = {
   valve: 0.01,
   fanG: 14,
   pitchRate: 3.8,
-  yawRate: 3.4,
+  yawRate: 2.4,
   rollRate: 4.6,
   attitude: [9, 6, 12],
   attitudeBurn: 0.05,

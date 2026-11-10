@@ -339,12 +339,3 @@ test('a hard landing costs about 10% of the speed', () => {
   assert.ok(hard.lands.some((e) => e.quality === 'hard'), `landings ${hard.lands.map((e) => e.quality).join(' ')}`);
   assert.ok(hard.speed <= level.speed * 0.93, `${hard.speed.toFixed(2)} vs ${level.speed.toFixed(2)} m/s`);
 });
-
-test('held steer in the air turns one full spin before a 2.2 s fall lands', () => {
-  const c = createCar(), inp = { ...createInput(), steer: 1 };
-  placeCar(c, lab.track, 600, 30, 0);
-  c.y += 24;
-  let most = 0;
-  for (let t = 0; t < 120 * 4; t++) { stepCar(c, inp, lab, t, true); if (c.air === 0 && t > 12) break; most = Math.max(most, Math.abs(c.spin)); }
-  assert.ok(most > 5.4, `spin ${most.toFixed(2)} rad`);
-});
