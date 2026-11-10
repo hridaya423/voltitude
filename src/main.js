@@ -801,7 +801,7 @@ function handleEvents() {
         break;
       }
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
-      case 'near_miss': { const o = race.entries[e.other]?.car, c = race.car, s = o ? (o.x - c.x) * c.rx + (o.y - c.y) * c.ry + (o.z - c.z) * c.rz : 0; if (s >= 0) rushR = 1; if (s <= 0) rushL = 1; } audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
+      case 'near_miss': rush(e); audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
       case 'track_limits': hud.toast('TRACK LIMITS', 'orange', `+${e.gain.toFixed(1)} S · TOTAL ${race.penalty.toFixed(1)} S`); audio.event('miss'); break;
       case 'clear': {
         clears.push(e);
@@ -865,11 +865,19 @@ function handleEvents() {
   race.events.length = 0;
 }
 
+function rush(e) {
+  const o = race.entries[e.other]?.car, c = race.car, s = o ? (o.x - c.x) * c.rx + (o.y - c.y) * c.ry + (o.z - c.z) * c.rz : 0;
+  if (s >= 0) rushR = 1;
+  if (s <= 0) rushL = 1;
+}
+
 function tick() {
   snapshot(race.car, prev);
   for (let k = 1; k < race.entries.length; k++) snapshot(race.entries[k].car, rprev[k - 1]);
   if (mode === 'replay') {
-    replay.step();
+    const seen = [];
+    replay.step(seen);
+    for (const e of seen) { carFx.event(e, race.car, e.type === 'contact' ? race.entries[e.other]?.car : null); if (e.type === 'near_miss') rush(e); }
     if (race.dare) lineup.set(race.dare.count);
     if (!clipping && race.phase === 'finished' && ++replayEnd > 300) startReplay();
     return;
@@ -1092,6 +1100,7 @@ function draw(dt, ticks = -1) {
   flora.update(time);
   if (!inGarage && running) skids.update(carView.root.matrixWorld, c, dt);
   if (!inGarage) carFx.update(dt, time, c, carView.root.matrixWorld, renderer.domElement.width, renderer.domElement.height, pixelScale, running);
+  const broadcastCam = mode === 'replay' && !current.spur && !(clipping && !broadcast.onLine(c.hint));
   if (inGarage) {
     if (menu.dirty || menu.listening || garage.sliding) {
       garageView = menu.view();
@@ -1100,8 +1109,8 @@ function draw(dt, ticks = -1) {
       menu.clean();
     }
     garage.update(dt, time, garageView, camera, pointer);
-  } else if (mode === 'replay' && (current.spur || (clipping && !broadcast.onLine(c.hint)))) chase.update(dt, interp, c, { reduced: false });
-  else if (mode === 'replay') broadcast.update(dt, interp, c);
+  } else if (broadcastCam) broadcast.update(dt, interp, c);
+  else if (mode === 'replay') chase.update(dt, interp, c, { reduced: false });
   else chase.update(dt, interp, c, { reduced: settings.reduced });
   if (fixedCam) { camera.position.fromArray(fixedCam, 0); if (fixedCam.length > 7) camera.up.fromArray(fixedCam, 7); else camera.up.set(0, 1, 0); camera.lookAt(fixedCam[3], fixedCam[4], fixedCam[5]); if (camera.fov !== fixedCam[6]) { camera.fov = fixedCam[6]; camera.filmOffset = 0; camera.updateProjectionMatrix(); } }
   if (!inGarage) {
@@ -1155,12 +1164,12 @@ function draw(dt, ticks = -1) {
   skyUniforms.uCloudT.value = time;
   boostKick *= Math.exp(-dt * 5); rushL *= Math.exp(-dt * 3.5); rushR *= Math.exp(-dt * 3.5);
   pu.uAberration.value = settings.reduced ? 0 : (c.boosting ? 0.012 : 0) + sp * 0.004 + boostKick * 0.05;
-  pu.uWind.value = settings.reduced || inGarage ? 0 : c.boosting ? Math.min(1, Math.max(0, (c.speed - 45) / 15)) : Math.min(0.8, Math.max(0, (c.speed - 62) / 12));
-  pu.uRush.value.set(settings.reduced || inGarage ? 0 : rushL, settings.reduced || inGarage ? 0 : rushR);
+  pu.uWind.value = settings.reduced || inGarage || broadcastCam ? 0 : c.boosting ? Math.min(1, Math.max(0, (c.speed - 45) / 15)) : Math.min(0.8, Math.max(0, (c.speed - 62) / 12));
+  pu.uRush.value.set(settings.reduced || inGarage || broadcastCam ? 0 : rushL, settings.reduced || inGarage || broadcastCam ? 0 : rushR);
   pu.uTime.value = time;
   pu.uFlash.value *= Math.exp(-dt * 6);
   carView.reflect(renderer, scene, camera, inGarage);
-  post.render(scene, camera);
+  post.render(scene, camera, clipping ? dt : undefined);
   perf.calls = renderer.info.render.calls;
   perf.tris = renderer.info.render.triangles;
   perf.scale.push(scale);

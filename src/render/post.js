@@ -501,7 +501,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
       if (overlay) await renderer.compileAsync(overlay, camera);
       renderer.setRenderTarget(target);
     },
-    render(world, camera) {
+    render(world, camera, frameDt) {
       renderer.getDrawingBufferSize(size);
       if (size.x !== w || size.y !== h) resize(size.x, size.y);
       camera.updateMatrixWorld();
@@ -571,7 +571,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
       }
       meter.uniforms.tSrc.value = cur.texture;
       pass(meter, meterRT);
-      const now = performance.now(), dt = Math.min(0.1, (now - lastRender) / 1000);
+      const now = performance.now(), dt = Math.min(0.1, frameDt ?? (now - lastRender) / 1000);
       adapt.uniforms.tMeter.value = meterRT.texture;
       adapt.uniforms.tPrev.value = evRT[(frame + 1) & 1].texture;
       adapt.uniforms.uDt.value = dt;
