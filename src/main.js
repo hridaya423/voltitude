@@ -327,6 +327,7 @@ function launch(go) {
 }
 
 function toTitle() {
+  dailyRun = false;
   mode = 'title';
   hud.show(false);
   $('replayBug').hidden = true;
@@ -423,7 +424,7 @@ function startReplay() {
   ghost = null;
 }
 
-function startRace(ev = current, daily = false) {
+function startRace(ev = current, daily = dailyRun && ev === current) {
   dailyRun = daily;
   dailyGhosts = [];
   submitted = null;
