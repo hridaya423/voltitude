@@ -144,21 +144,21 @@ function drop(height, upright) {
 
 const total = (earned) => Object.values(earned).reduce((a, b) => a + b, 0);
 
-test('gas: a near miss pays the player 0.12', () => {
+test('gas: a near miss pays the player 0.2', () => {
   const near = pass(2.8, 42, 0.5);
   assert.equal(near.length, 1);
-  assert.ok(Math.abs(near.race.car.gas - 0.62) < 1e-9, `gas ${near.race.car.gas}`);
-  assert.deepEqual(near.race.earned, { near_miss: 0.12 });
-  assert.deepEqual(near.gains.map((e) => [e.source, e.amount]), [['near_miss', 0.12]]);
+  assert.ok(Math.abs(near.race.car.gas - 0.7) < 1e-9, `gas ${near.race.car.gas}`);
+  assert.deepEqual(near.race.earned, { near_miss: 0.2 });
+  assert.deepEqual(near.gains.map((e) => [e.source, e.amount]), [['near_miss', 0.2]]);
 });
 
-test('gas: a perfect landing after 1.5 s of air pays 0.15 plus 0.03 per second', () => {
+test('gas: a perfect landing after 1.5 s of air pays 0.2 plus 0.06 per second', () => {
   const { race, events, land } = drop(10.6, true);
   assert.equal(land?.quality, 'perfect');
   assert.ok(Math.abs(land.air - 1.5) < 0.1, `air ${land.air}`);
-  assert.equal(race.earned.perfect, 0.15);
-  assert.ok(Math.abs(race.earned.air - 0.03 * land.air) < 1e-9);
-  assert.ok(Math.abs(total(race.earned) - 0.195) < 0.005, `${total(race.earned)}`);
+  assert.equal(race.earned.perfect, 0.2);
+  assert.ok(Math.abs(race.earned.air - 0.06 * land.air) < 1e-9);
+  assert.ok(Math.abs(total(race.earned) - 0.29) < 0.01, `${total(race.earned)}`);
   const gains = events.filter((e) => e.type === 'gas_gain').map((e) => e.source).sort();
   assert.deepEqual(gains, ['air', 'perfect']);
 });
@@ -173,7 +173,7 @@ test('gas: a wreck pays nothing', () => {
 test('gas: a rival earns from a near miss too', () => {
   const near = pass(2.8, 42, 0.5);
   assert.ok(near.rival.earned.near_miss > 0);
-  assert.ok(Math.abs(near.rival.car.gas - 0.62) < 1e-9);
+  assert.ok(Math.abs(near.rival.car.gas - 0.7) < 1e-9);
 });
 
 test('respawn keeps the gas level, with a floor of 0.15', () => {

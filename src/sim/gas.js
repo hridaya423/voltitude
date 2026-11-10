@@ -1,11 +1,11 @@
 export const GAIN = Object.freeze({
-  near_miss: 0.12,
-  clean: 0.08,
-  perfect: 0.15,
-  trick: 0.04,
-  air: 0.03,
-  wall: 0.05,
-  draft: 0.04,
+  near_miss: 0.2,
+  clean: 0.1,
+  perfect: 0.2,
+  trick: 0.12,
+  air: 0.06,
+  wall: 0.08,
+  draft: 0.1,
   gate: 0.25,
 });
 
