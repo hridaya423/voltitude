@@ -474,7 +474,7 @@ function pause() {
   hud.show(false);
   menu.open('pause');
 }
-function resume() { mode = 'race'; audio.mute(false); hud.show(true); menu.close(); }
+function resume() { mode = 'race'; resumeAt = performance.now() + 700; audio.mute(false); hud.show(true); menu.close(); hud.toast('READY', 'white'); }
 
 function watchReplay() {
   startReplay();
@@ -485,7 +485,7 @@ function watchReplay() {
 function endReplay() { replay = null; $('replayBug').hidden = true; mode = 'results'; }
 
 const POINTS = [25, 18, 15, 12, 10, 8, 6, 4];
-let clears = [], contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null;
+let clears = [], contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null, resumeAt = 0;
 let resultsAt = 0;
 const speedUnit = () => (settings.units === 'kmh' ? 3.6 : 2.237);
 const medalLine = (m, before) => (m ? { id: m.id, name: m.name, fresh: !(before && before.id === m.id) } : null);
@@ -944,7 +944,7 @@ function draw(dt, ticks = -1) {
     garage.setActive(inGarage, scene, garageKeep);
     if (!inGarage && ghostView && !ghost) ghostView.root.visible = false;
   }
-  const running = mode === 'race' || mode === 'replay';
+  const running = (mode === 'race' && performance.now() >= resumeAt) || mode === 'replay';
   if (running) {
     if (ticks >= 0) { for (let n = 0; n < ticks; n++) tick(); acc = 0; }
     else {
@@ -957,7 +957,7 @@ function draw(dt, ticks = -1) {
   }
   if (mode === 'race' && race.phase === 'finished' && finishAt && performance.now() - finishAt > (race.dare ? 700 : 2200)) { finishAt = 0; finish(); }
   if (!running) time += dt;
-  const a = running ? acc / DT : 1;
+  const a = running || mode === 'race' ? acc / DT : 1;
   const c = inGarage ? idleCar : race.car;
   if (inGarage) { carView.root.position.copy(garage.carPosition); carView.root.quaternion.copy(garage.carQuaternion); interp.copy(garage.carPosition); } else pose(carView.root, prev, c, a, interp);
   carView.update(dt, c, time);
