@@ -196,16 +196,19 @@ let dailyRun = false, dailyGhosts = [], submitted = null;
 const dailyViews = [];
 const BRIEFS = {
   proving: {
+    hl: 'One lap from a standing start. The loop, the jump and both hairpins, once each.',
     gp: 'Three laps against seven Roadsters. Brake late into the hairpins, take the loop flat out, keep it straight over the jump.',
     tt: 'Three laps alone against your best run. Every sector counts.',
     pr: 'Free laps with no field. Learn the braking points, the loop and the jump.',
   },
   airfield: {
+    hl: 'One lap from a standing start. The runway, the three hangars and the tower esses, once each.',
     gp: 'Three laps against seven Roadsters. Draft down the runway, brake late into the first turn, thread the three hangars.',
     tt: 'Three laps alone against your best run. The lap is won on the runway exit.',
     pr: 'Free laps with no field. Find the braking points for the hangars and the tower esses.',
   },
   launch: {
+    hl: 'One lap from a standing start. The banked wall, the tank farm and the tower climb, once each.',
     gp: 'Three laps against seven Roadsters. Ride the banked wall round the tank farm, then climb past the launch tower.',
     tt: 'Three laps alone against your best run. Carry speed up the tower climb.',
     pr: 'Free laps with no field. Learn the wall and the blind crest at the tower.',
@@ -214,6 +217,7 @@ const BRIEFS = {
   pad: {
     lineup: 'Jump the line off the kicker. Every clear adds a vehicle. A flip or a roll in the air multiplies the clear. Touch one and the dare is over.',
     ramp: 'Three tries at the curl. Drive up, hold the ceiling, drop off the lip and roll out onto your wheels. Square landings, kept speed and extra rolls score.',
+    hl: 'One lap of the oval from a standing start. The kicker is on the racing line.',
     gp: 'Three laps against seven Roadsters round the oval. Draft down the straights, hold the line over the kicker.',
     tt: 'Three laps alone against your best run.',
     pr: 'Free laps with no field. Learn the kicker.',
@@ -259,10 +263,10 @@ function eventRows() {
     const ladder = gp ? PODIUM.map((m, j) => ({ ...m, time: `P${j + 1}`, t: j + 1 })) : ev.kind === 'pr' ? [] : dare ? (DARE_MEDALS[ev.id] || []).map(([id, name, t]) => ({ id, name, time: `${t}`, t })) : medalTimes(authorTime(ev.id)).map((m) => ({ ...m, time: fmt(m.t) }));
     return {
       id: ev.id, name: ev.name, circuit: !!ev.circuit,
-      tag: ev.spur ? 'DR' : ev.circuit ? ev.kind.slice(0, 2).toUpperCase() : k === 0 ? 'RUN' : `S${k}`,
+      tag: ev.spur ? 'DR' : ev.id === 'hl' ? 'HL' : ev.circuit ? ev.kind.slice(0, 2).toUpperCase() : k === 0 ? 'RUN' : `S${k}`,
       best: gp ? (b ? `P${b}` : '') : dare ? (b ? `${b}` : '') : b ? fmt(b) : '',
       medal: medalOf(ev),
-      kicker: ev.spur ? `${venue.name} · Dare${dare ? '' : ' · Time attack'}` : ev.circuit ? `${venue.name} · ${dare ? 'Dare' : ev.kind === 'pr' ? 'Free laps' : `${ev.laps} laps`}` : k === 0 ? `${venue.name} · Full run` : `Practice · Sector ${k}`,
+      kicker: ev.spur ? `${venue.name} · Dare${dare ? '' : ' · Time attack'}` : ev.circuit ? `${venue.name} · ${dare ? 'Dare' : ev.kind === 'pr' ? 'Free laps' : ev.laps === 1 ? 'One lap' : `${ev.laps} laps`}` : k === 0 ? `${venue.name} · Full run` : `Practice · Sector ${k}`,
       brief: BRIEF[ev.id] || '',
       ladder: ladder.map((m) => ({ id: m.id, name: m.name, time: m.time, got: !!b && (dare ? b >= m.t : b <= m.t) })),
       bestLabel: ev.kind === 'pr' ? '' : gp ? 'BEST FINISH' : dare ? 'BEST SCORE' : 'PERSONAL BEST',
@@ -273,7 +277,7 @@ function eventRows() {
 function dailyRow() {
   const v = VENUES[DAILY.venue];
   return {
-    id: 'daily', name: `Daily · ${DARES[DAILY.event] || 'Time Trial'}`, circuit: true, tag: 'DY', best: '', medal: null, ladder: [], bestLabel: '',
+    id: 'daily', name: `Daily · ${DARES[DAILY.event] || (DAILY.event === 'hl' ? 'Hot Lap' : 'Time Trial')}`, circuit: true, tag: 'DY', best: '', medal: null, ladder: [], bestLabel: '',
     kicker: `${TODAY} · ${v.name}${DAILY_EV ? '' : ' · loads the venue'}`,
     brief: `${DAILY.title ? `${DAILY.title}. ` : ''}One card for everyone until 00:00 UTC.${API ? ' Your run goes on the daily board, and the top twenty race beside you.' : ' The daily board is offline, so the card plays without it.'}`,
   };
@@ -291,7 +295,7 @@ function startDaily() {
 function venueRows() {
   return Object.values(VENUES).map((v) => {
     const set = Object.values(v.id === 'proving' ? save.events : save.venues[v.id] || {}).filter((e) => e?.best).length;
-    const total = v.circuit ? 3 + (v.dares?.length || 0) : v.course.pieces.filter((p) => p.sector).length + 1;
+    const total = v.circuit ? 4 + (v.dares?.length || 0) : v.course.pieces.filter((p) => p.sector).length + 1;
     return { id: v.id, name: v.name, place: v.place, note: `${set} of ${total} set` };
   });
 }
