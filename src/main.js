@@ -1032,7 +1032,7 @@ function draw(dt, ticks = -1) {
   skyMesh.material.uniforms.uGain.value = inGarage && !NIGHT ? 2.3 : 1;
   if (NIGHT) facility.floodLight(sun.lights[0], inGarage ? null : interp);
   else for (const l of sun.lights) l.intensity = inGarage ? 6.2 : sunIrradiance;
-  const sp = Math.min(1, Math.max(0, (c.speed - 20) / 55));
+  const sp = Math.min(1, Math.max(0, (c.speed - 25) / 85));
   pu.uBlur.value = settings.reduced ? 0 : sp * 0.7 + (c.boosting ? 0.25 : 0);
   pu.uHeat.value = NIGHT ? 0 : SESSION === 'golden' ? 0.5 : 1;
   skyUniforms.uCloud.value = SESSION === 'day' && !inGarage ? 0.55 : 0;

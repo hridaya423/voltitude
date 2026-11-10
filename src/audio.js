@@ -414,7 +414,7 @@ export function createAudio(settings) {
     canyon += (cTarget - canyon) * (1 - Math.exp(-dt * 4));
     const near = smooth(5, 0.5, clr) * smooth(15, 50, s) * on;
 
-    const F = 220 * Math.pow(2, 2 * Math.min(1, s / 85));
+    const F = 220 * Math.pow(2, 2 * Math.min(1, s / 115));
     let wsum = 0;
     for (let i = 0; i < 3; i++) {
       const u = Math.log(F / ZONES[i][1]) / 0.42;
