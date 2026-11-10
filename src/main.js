@@ -546,17 +546,14 @@ function finishCircuit(ev) {
   for (let n = 0; n < 120 * 240 && !race.entries.every((e) => e.done); n++) stepRace(race, idle);
   race.events.length = 0;
   const me = race.entries[0], prevBest = book[ev.id]?.best, before = medalOf(ev);
-  const invalid = !gp && me.invalid.length > 0;
   const score = gp ? me.pos : race.total;
-  const record = !invalid && (!prevBest || score < prevBest);
+  const record = !prevBest || score < prevBest;
   if (record) { book[ev.id] = gp ? { best: score } : { best: score, run: lastRun }; persist(); }
-  const m = invalid ? null : gp ? PODIUM[me.pos - 1] || null : medalFor(race.total, authorTime(ev.id));
+  const m = gp ? PODIUM[me.pos - 1] || null : medalFor(race.total, authorTime(ev.id));
   let delta;
   if (gp) {
     const win = race.order[0];
     delta = { text: me.pos === 1 ? `Winner · ${POINTS[0]} points` : `${fmtDelta(race.total - win.total)} to ${win.identity.name} · ${POINTS[me.pos - 1]} points`, tone: me.pos <= 3 ? 'good' : 'bad' };
-  } else if (invalid) {
-    delta = { text: `Track limits · ${me.invalid.length === 1 ? 'one lap' : `${me.invalid.length} laps`} invalid, time not counted`, tone: 'bad' };
   } else if (prevBest) {
     const d = race.total - prevBest;
     delta = { text: d < 0 ? `New best · ${fmtDelta(d)}` : `${fmtDelta(d)} off your best`, tone: d <= 0 ? 'good' : 'bad' };
@@ -567,10 +564,10 @@ function finishCircuit(ev) {
     if (me.invalid.includes(k)) return { dot: '', label: `Lap ${k + 1}`, value: fmt(t), tag: 'INVALID', tone: 'bad' };
     return { dot: t === bestLapT ? 'purple' : '', label: `Lap ${k + 1}`, value: fmt(t), tag: t === bestLapT ? 'BEST' : fmtDelta(t - bestLapT), tone: t === bestLapT ? 'good' : 'bad' };
   };
-  const penalty = gp && me.penalty >= 0.05 ? ` · ${me.penalty.toFixed(1)} s track limits` : '';
+  const penalty = me.penalty >= 0.05 ? ` · ${me.penalty.toFixed(1)} s track limits` : '';
   showResults({
     card: `${venue.name} · ${ev.name}`, pos: gp ? me.pos : 0, field: race.entries.length, medal: medalLine(m, before),
-    time: fmt(race.total), delta, note: gp ? `${me.passes || 0} overtakes · ${contactCount} contacts${penalty}` : linked?.run.event === ev.id ? `Linked ghost ${fmt(linked.run.total)} · you ${fmtDelta(race.total - linked.run.total)}` : '',
+    time: fmt(race.total), delta, note: gp ? `${me.passes || 0} overtakes · ${contactCount} contacts${penalty}` : linked?.run.event === ev.id ? `Linked ghost ${fmt(linked.run.total)} · you ${fmtDelta(race.total - linked.run.total)}` : penalty.slice(3),
     title: 'LAPS', rows: race.laps.map(lapRow),
     stats: [{ label: 'Top speed', value: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}` }, { label: 'Best lap', value: bestLapT ? fmt(bestLapT) : '—' }, { label: 'Resets', value: `${race.respawns}` }],
     hasNext: !!EVENTS[ev.card],
@@ -700,7 +697,7 @@ function handleEvents() {
       case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, 'good'); audio.event('overtake', race.pos === 1 ? 1 : 0); } else audio.event('overtaken'); updateTower(); break;
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
       case 'near_miss': audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
-      case 'track_limits': hud.toast('TRACK LIMITS', e.penalty ? 'orange' : 'red', e.penalty ? `+${e.gain.toFixed(1)} S PENALTY` : 'LAP INVALID'); audio.event('miss'); break;
+      case 'track_limits': hud.toast('TRACK LIMITS', 'orange', `+${e.gain.toFixed(1)} S PENALTY`); audio.event('miss'); break;
       case 'clear': {
         clears.push(e);
         lineup.set(race.dare.count);

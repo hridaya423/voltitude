@@ -217,9 +217,9 @@ function stepEntry(race, e, inp) {
     if (breach) e.breaches.push(breach);
     if (breach?.gain >= MIN_GAIN) {
       const gp = race.event.kind === 'gp';
-      if (gp) e.penalty += breach.gain;
-      else if (!e.invalid.includes(e.laps.length)) e.invalid.push(e.laps.length);
-      if (e === race) emit(race, 'track_limits', { gain: breach.gain, penalty: gp });
+      e.penalty += breach.gain;
+      if (!gp && !e.invalid.includes(e.laps.length)) e.invalid.push(e.laps.length);
+      if (e === race) emit(race, 'track_limits', { gain: breach.gain, penalty: true });
     }
   }
 

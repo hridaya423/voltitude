@@ -62,7 +62,7 @@ test('track limits: cutting a corner costs the time it gained, within 0.1 s', ()
   assert.ok(cut >= 3, `${cut} corners cut`);
 });
 
-test('track limits: a race adds the time gained to the finish, a time trial marks the lap invalid', () => {
+test('track limits: a race and a time trial both add the time gained to the finish', () => {
   const sprint = { ...event('gp'), laps: 1, cps: [...track.cps, track.lap] };
   const gp = run(sprint, cutter, 2).race;
   const penalties = gp.events.filter((e) => e.type === 'track_limits');
@@ -73,8 +73,8 @@ test('track limits: a race adds the time gained to the finish, a time trial mark
   assert.equal(gp.total, gp.laps[0] + Math.round(owed * 120));
   assert.deepEqual(gp.invalid, []);
   const tt = run('tt', cutter).race;
-  assert.ok(tt.invalid.includes(0), 'time trial lap 1 invalid');
-  assert.equal(tt.penalty, 0);
+  assert.ok(tt.invalid.includes(0), 'time trial lap 1 cannot be the best lap');
+  assert.ok(tt.penalty > 1, `time trial penalty ${tt.penalty.toFixed(2)} s`);
 });
 
 test('track limits: running wide and losing time costs nothing', () => {
