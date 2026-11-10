@@ -65,7 +65,7 @@ export function createCarFx(night, depth) {
   const overlay = new THREE.Scene();
   overlay.add(sparks.mesh);
   const local = new THREE.Matrix4();
-  const p = new THREE.Vector3(), o = new THREE.Vector3(), acc = new Float32Array(6);
+  const p = new THREE.Vector3(), o = new THREE.Vector3(), acc = new Float32Array(4);
   const R = (a) => (Math.random() - 0.5) * a;
   let time = 0, wasAir = false, vyAir = 0, hopWas = 0, burn = 0, side = 1, mat = null, wake = 0, wakeK = 0, shockT = 9;
   const wheel = (k) => p.set(CAR.WHEELS[k][0], CONTACT, CAR.WHEELS[k][2]).applyMatrix4(mat);
@@ -170,7 +170,7 @@ export function createCarFx(night, depth) {
       shockT += running ? dt : 0;
       const sk = Math.min(1, shockT / 0.4);
       shock.visible = sk < 1;
-      if (shock.visible) { const r = 3 + 16 * (1 - (1 - sk) * (1 - sk)); shock.matrix.copy(mat).multiply(local.makeScale(r, 1, r).setPosition(0, -0.55, 0)); shock.material.uniforms.uK.value = 2.5 * (1 - sk) * (1 - sk); }
+      if (shock.visible) { const r = 3 + 16 * (1 - (1 - sk) * (1 - sk)); shock.matrix.copy(mat).multiply(local.makeScale(r, 1, r).setPosition(0, -0.46, 0)); shock.material.uniforms.uK.value = 2.5 * (1 - sk) * (1 - sk); }
       debris.update(running ? dt : 0);
       smoke.update(t, pixelScale);
       sparks.update(t, width, height);
