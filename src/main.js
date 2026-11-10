@@ -519,7 +519,7 @@ function startRace(ev = current, daily = dailyRun && ev === current) {
   lastSeed = ev.kind === 'gp' ? 1 + Math.floor(Math.random() * 1e6) : 1;
   race = createRace(world, { event: ev, assist: settings.assist, seed: lastSeed, tier: settings.tier });
   if (daily && API) loadDailyGhosts(ev);
-  lineup?.set(race.dare?.count ?? 0);
+  if (lineup) { lineup.mesh.visible = ev.id === 'lineup'; lineup.set(race.dare?.count ?? 0); }
   recorder = createRecorder();
   carView.wash();
   ghost = settings.ghost || linked?.run.event === ev.id ? createGhost(world, ghostRun(ev)) : null;
