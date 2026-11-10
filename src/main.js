@@ -536,7 +536,6 @@ function showResults(result, m, before) {
   menu.open('results', { results: result });
   if (dailyRun) postDaily(result);
   garage.cut();
-  garage.boot();
   if (m && (!before || m.id !== before.id)) audio.event('lap');
 }
 

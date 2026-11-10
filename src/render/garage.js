@@ -364,7 +364,6 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
       introT = 0;
       lastKey = '';
     },
-    boot() { introT = 0; },
     cut() { cutNext = true; },
     get sliding() { return slide.at !== slide.to; },
     flash() { flashK = 1; },
