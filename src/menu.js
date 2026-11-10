@@ -234,6 +234,16 @@ export function createMenu({ settings, data, on }) {
   return api;
 }
 
+export const DARE_MEDALS = {
+  lineup: [['author', 'Author', 36], ['gold', 'Gold', 21], ['silver', 'Silver', 10], ['bronze', 'Bronze', 3]],
+  ramp: [['author', 'Author', 1000], ['gold', 'Gold', 700], ['silver', 'Silver', 500], ['bronze', 'Bronze', 300]],
+};
+
+export function dareMedal(id, score) {
+  const m = (DARE_MEDALS[id] || []).find((x) => score >= x[2]);
+  return m ? { id: m[0], name: m[1] } : null;
+}
+
 export function dareResults({ card, score, best, line, clears, speed, hasNext = false }) {
   const delta = !best ? { text: 'First time on the board', tone: '' }
     : score > best ? { text: `New best · +${score - best}`, tone: 'good' }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMenu, pauseView, dareResults, describe, SETTINGS, PAUSE, RESULT_ACTIONS } from '../src/menu.js';
+import { createMenu, pauseView, dareResults, describe, SETTINGS, PAUSE, RESULT_ACTIONS, dareMedal, DARE_MEDALS } from '../src/menu.js';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, createInput, stepRace, eventsFor } from '../src/sim/race.js';
 import { ACTIONS, DEFAULT_KEYS } from '../src/input.js';
@@ -307,4 +307,15 @@ test('ramp results list each try and count the landed ones', async () => {
   assert.equal(r.lineLabel, 'LANDED');
   assert.deepEqual(r.rows.map((x) => [x.value, x.tag, x.tone]), [['+341', '95% · 96% · 1R', 'good'], ['+0', 'Wrecked', 'bad'], ['+195', '100% · 95%', 'good']]);
   assert.deepEqual(r.stats.map((x) => x.value), ['536', '1', '120 MPH']);
+});
+
+test('dare medals step up with the score and stop below bronze', () => {
+  assert.equal(dareMedal('lineup', 2), null);
+  assert.deepEqual(dareMedal('lineup', 3), { id: 'bronze', name: 'Bronze' });
+  assert.deepEqual(dareMedal('lineup', 10), { id: 'silver', name: 'Silver' });
+  assert.deepEqual(dareMedal('lineup', 35), { id: 'gold', name: 'Gold' });
+  assert.deepEqual(dareMedal('lineup', 36), { id: 'author', name: 'Author' });
+  assert.deepEqual(dareMedal('ramp', 585), { id: 'silver', name: 'Silver' });
+  assert.equal(dareMedal('trench', 999), null);
+  for (const rows of Object.values(DARE_MEDALS)) assert.deepEqual(rows.map((r) => r[2]), rows.map((r) => r[2]).slice().sort((a, b) => b - a));
 });
