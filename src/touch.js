@@ -72,6 +72,7 @@ export function createTouch(root, { onPause }) {
         inp.flip = inp.brake && !inp.throttle ? 1 : 0;
         inp.boost = held.has('boost') ? 1 : 0;
         inp.lift = held.has('lift') ? 1 : 0;
+        inp.slide = held.has('slide') ? 1 : 0;
         inp.roll = airborne && Math.abs(sx) > 0.6 ? Math.sign(sx) : 0;
       }
       stick.style.transform = `translateX(${(sx * 28).toFixed(1)}px)`;
