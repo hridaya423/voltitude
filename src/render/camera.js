@@ -64,8 +64,10 @@ export function createChaseCamera(camera, height) {
       camera.up.copy(up);
       camera.lookAt(look);
       shake = Math.max(0, shake - dt);
+      const rush = opts.reduced || !grounded ? 0 : Math.pow(Math.max(0, (speed - 55) / 60), 2) * 0.1;
       let s = shake * shake;
       if (opts.reduced) s *= 0.15;
+      s += rush;
       if (s > 0.001) {
         camera.rotateZ((Math.sin(t * 63) + Math.sin(t * 37 + 2)) * 0.5 * 0.021 * s);
         camera.rotateX((Math.sin(t * 47 + 1.3) + Math.sin(t * 29)) * 0.5 * 0.014 * s);
