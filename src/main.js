@@ -998,7 +998,7 @@ function draw(dt, ticks = -1) {
     garage.update(dt, time, garageView, camera, pointer);
   } else if (mode === 'replay' && (current.spur || (clipping && !broadcast.onLine(c.hint)))) chase.update(dt, interp, c, { reduced: false });
   else if (mode === 'replay') broadcast.update(dt, interp, c);
-  else if (running) chase.update(dt, interp, c, { reduced: settings.reduced });
+  else chase.update(dt, interp, c, { reduced: settings.reduced });
   if (fixedCam) { camera.position.fromArray(fixedCam, 0); if (fixedCam.length > 7) camera.up.fromArray(fixedCam, 7); else camera.up.set(0, 1, 0); camera.lookAt(fixedCam[3], fixedCam[4], fixedCam[5]); if (camera.fov !== fixedCam[6]) { camera.fov = fixedCam[6]; camera.filmOffset = 0; camera.updateProjectionMatrix(); } }
   if (!inGarage) {
     course.update(time, dt, race);
