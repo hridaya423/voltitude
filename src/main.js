@@ -456,7 +456,8 @@ function startRace(ev = current, daily = dailyRun && ev === current) {
   menu.close();
   hud.show(true);
   hud.begin(ev, targetFor(ev));
-  if (ev.circuit) hud.els.target.textContent = ev.kind === 'dare' ? (book[ev.id]?.best ? `BEST ${book[ev.id].best}` : '') : ref ? `BEST ${fmt(ref.t)}` : '';
+  const own = book[ev.id]?.run?.v === SIM_VERSION;
+  if (ev.circuit) hud.els.target.textContent = ev.kind === 'dare' ? (book[ev.id]?.best ? `BEST ${book[ev.id].best}` : '') : ref ? `${own ? 'BEST' : 'AUTHOR LAP'} ${fmt(ref.t)}` : '';
   hud.sectorsBegin(ev.kind === 'dare' ? 0 : ev.circuit ? ev.perLap : ev.cps.length);
   hud.tower([]);
   updateTower();
