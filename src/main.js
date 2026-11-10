@@ -946,7 +946,7 @@ function draw(dt, ticks = -1) {
     }
     time += dt;
   }
-  if (mode === 'race' && race.phase === 'finished' && finishAt && performance.now() - finishAt > 2200) { finishAt = 0; finish(); }
+  if (mode === 'race' && race.phase === 'finished' && finishAt && performance.now() - finishAt > (race.dare ? 700 : 2200)) { finishAt = 0; finish(); }
   if (!running) time += dt;
   const a = running ? acc / DT : 1;
   const c = inGarage ? idleCar : race.car;
