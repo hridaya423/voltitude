@@ -470,7 +470,7 @@ function startRace(ev = current, daily = dailyRun && ev === current) {
   if (ev.kind === 'dare') {
     const b = book[ev.id]?.best || 0, next = (DARE_MEDALS[ev.id] || []).slice().reverse().find((m) => b < m[2]);
     hud.els.target.textContent = [b ? `BEST ${b}` : '', next ? `${next[1].toUpperCase()} ${next[2]}` : ''].filter(Boolean).join(' · ');
-  } else if (ev.circuit) hud.els.target.textContent = ref ? `${own ? 'BEST' : 'AUTHOR LAP'} ${fmt(ref.t)}` : '';
+  } else if (ev.circuit) hud.els.target.textContent = ref ? `${linked?.run.event === ev.id ? (linked.name || 'GHOST').toUpperCase() : own ? 'BEST' : 'AUTHOR LAP'} ${fmt(ref.t)}` : '';
   hud.sectorsBegin(ev.kind === 'dare' ? 0 : ev.circuit ? ev.perLap : ev.cps.length);
   hud.tower([]);
   updateTower();
