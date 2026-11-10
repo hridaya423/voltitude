@@ -15,6 +15,7 @@ export const SETTINGS = [
   { key: 'rumble', label: 'Rumble', type: 'toggle' },
   { key: 'volume', label: 'Volume', type: 'slider' },
   { key: 'music', label: 'Music', type: 'slider' },
+  { key: 'callsign', label: 'Callsign', note: 'Your name on the boards. Enter, type it, Enter to keep', type: 'text' },
   { id: 'keys', label: 'Controls', note: 'Rebind the keyboard', type: 'link' },
   { id: 'back', label: 'Done', type: 'link' },
 ];
@@ -31,6 +32,7 @@ export const RESULT_ACTIONS = [
   { id: 'next', label: 'Next', key: 'N' },
   { id: 'replay', label: 'Replay', key: 'V' },
   { id: 'share', label: 'Share', key: 'C' },
+  { id: 'board', label: 'Board', key: 'L' },
   { id: 'quit', label: 'Garage', key: 'Esc' },
 ];
 
@@ -47,10 +49,11 @@ export const KEY_ROWS = 6;
 const STEP = 0.1;
 
 export function createMenu({ settings, data, on }) {
-  const s = { base: 'board', page: null, index: { board: 0, venue: 0, settings: 0, keys: 0, pause: 0, results: 0 }, listening: null, results: null, dirty: true, venueId: null };
+  const s = { base: 'board', page: null, index: { board: 0, venue: 0, settings: 0, keys: 0, pause: 0, results: 0, leaders: 0 }, listening: null, draft: '', from: 'board', results: null, dirty: true, venueId: null };
   const events = () => data.events();
   const venues = () => data.venues();
   const nextOk = () => !!s.results?.hasNext;
+  const leaders = () => { const b = data.leaders(); return [...b.rows, ...b.around]; };
   const rows = {
     board: () => events().length,
     venue: () => venues().length,
@@ -58,8 +61,9 @@ export function createMenu({ settings, data, on }) {
     keys: () => ACTIONS.length + 2,
     pause: () => PAUSE.length,
     results: () => RESULT_ACTIONS.length,
+    leaders: () => leaders().length,
   };
-  const disabled = (page, i) => page === 'results' && RESULT_ACTIONS[i].id === 'next' && !nextOk();
+  const disabled = (page, i) => page === 'results' && ((RESULT_ACTIONS[i].id === 'next' && !nextOk()) || (RESULT_ACTIONS[i].id === 'board' && !s.results?.board));
   const touch = (sound) => { s.dirty = true; if (sound) on.sound(sound); };
 
   function go(page) { if (s.page !== page) { s.page = page; touch(); } }
@@ -91,6 +95,12 @@ export function createMenu({ settings, data, on }) {
     on.change(row.key);
   }
   function leaveSettings() { go(s.base); touch('back'); }
+  function openLeaders() {
+    if (!(s.page === 'results' ? !!s.results?.board && on.leaders(null) : s.page === 'board' && on.leaders(s.index.board))) { on.sound('deny'); return; }
+    s.from = s.base; s.base = 'leaders'; s.index.leaders = 0;
+    go('leaders'); touch('confirm');
+  }
+  function leaveLeaders() { s.base = s.from; go(s.from); touch('back'); }
 
   function activate() {
     const page = s.page, i = s.index[page];
@@ -103,6 +113,7 @@ export function createMenu({ settings, data, on }) {
       const row = SETTINGS[i];
       if (row.id === 'keys') { go('keys'); touch('confirm'); }
       else if (row.id === 'back') leaveSettings();
+      else if (row.type === 'text') { s.listening = row.key; s.draft = settings[row.key]; touch('confirm'); }
       else adjust(1);
     } else if (page === 'keys') {
       if (i < ACTIONS.length) { s.listening = ACTIONS[i][0]; touch('confirm'); }
@@ -120,7 +131,10 @@ export function createMenu({ settings, data, on }) {
       else if (id === 'next') on.next();
       else if (id === 'replay') on.replay();
       else if (id === 'share') on.share();
+      else if (id === 'board') openLeaders();
       else on.quit();
+    } else if (page === 'leaders') {
+      if (i < leaders().length) on.race(i); else on.sound('deny');
     }
   }
   function back() {
@@ -130,6 +144,7 @@ export function createMenu({ settings, data, on }) {
     else if (page === 'keys') { go('settings'); touch('back'); }
     else if (page === 'pause') on.resume();
     else if (page === 'results') on.quit();
+    else if (page === 'leaders') leaveLeaders();
   }
 
   const api = {
@@ -164,6 +179,7 @@ export function createMenu({ settings, data, on }) {
         else if (page === 'settings') adjust(dir);
         else if (page === 'keys') jump(s.index.keys + dir * KEY_ROWS);
         else if (page === 'results') move(dir);
+        else if (page === 'leaders') { if (on.page(dir)) { s.index.leaders = 0; touch('move'); } else on.sound('deny'); }
       } else if (name === 'confirm') activate();
       else if (name === 'back') back();
       else if (name === 'venue' && page === 'board') enterVenue(0);
@@ -171,12 +187,16 @@ export function createMenu({ settings, data, on }) {
       else if (name === 'next' && page === 'results') { if (nextOk()) on.next(); else on.sound('deny'); }
       else if (name === 'replay' && page === 'results') on.replay();
       else if (name === 'share' && page === 'results') on.share();
+      else if (name === 'leaders' && (page === 'board' || page === 'results')) openLeaders();
+      else if (name === 'scope' && page === 'leaders') { if (on.scope()) { s.index.leaders = 0; touch('move'); } else on.sound('deny'); }
     },
     point(zone, hit, click) {
+      if (s.listening === 'callsign' && click) { api.capture('Enter', 'Enter'); return; }
       if (!s.page || s.listening) return;
       const page = s.page;
       if (zone === 'board') {
-        if (page === 'board' || page === 'pause' || page === 'results') {
+        if (hit?.act) { if (click) api.command(hit.act); return; }
+        if (page === 'board' || page === 'pause' || page === 'results' || page === 'leaders') {
           if (hit?.row === undefined) return;
           if (hit.row !== s.index[page]) { if (disabled(page, hit.row)) return; s.index[page] = hit.row; touch(); }
           if (click) activate();
@@ -204,9 +224,20 @@ export function createMenu({ settings, data, on }) {
         } else if (click) activate();
       }
     },
-    capture(code) {
+    capture(code, key = '') {
       if (!s.listening) return false;
       const action = s.listening;
+      if (action === 'callsign') {
+        if (code === 'Backspace') s.draft = s.draft.slice(0, -1);
+        else if (/^[\w .-]$/.test(key) && s.draft.length < 16) s.draft += key;
+        else if (code === 'Enter' || code === 'Escape') {
+          s.listening = null;
+          if (code === 'Enter' && s.draft.trim()) { settings.callsign = s.draft.trim(); on.change('callsign'); }
+          touch('confirm');
+        }
+        s.dirty = true;
+        return true;
+      }
       s.listening = null;
       if (code !== 'Escape') {
         for (const a in settings.keys) settings.keys[a] = settings.keys[a].filter((k) => k !== code);
@@ -222,12 +253,13 @@ export function createMenu({ settings, data, on }) {
       const lk = (a) => keyLabel((settings.keys[a] || [])[0]);
       const legend = [[[lk('throttle'), lk('brake')], 'drive'], [[lk('left'), lk('right')], 'steer'], [[lk('boost')], 'boost'], [[lk('lift')], 'hop · hover'], [[lk('rollLeft'), lk('rollRight')], 'air roll'], [[lk('reset')], 'reset'], [[lk('restart')], 'restart']];
       const board = s.base === 'pause' ? { kind: 'pause', ...data.pause(), rows: PAUSE, index: s.index.pause }
-        : s.base === 'results' && s.results ? { kind: 'results', ...s.results, actions: RESULT_ACTIONS.map((a) => ({ ...a, off: a.id === 'next' && !nextOk() })), index: s.index.results }
+        : s.base === 'results' && s.results ? { kind: 'results', ...s.results, actions: RESULT_ACTIONS.map((a, i) => ({ ...a, off: disabled('results', i) })), index: s.index.results }
+        : s.base === 'leaders' ? { kind: 'leaders', ...data.leaders(), index: Math.min(s.index.leaders, Math.max(0, leaders().length - 1)) }
           : { kind: 'modes', venue: cur, rows: list, index: s.index.board, detail: ev, legend, circuit: list.some((e) => e.circuit) };
-      const setRows = SETTINGS.map((r) => ({ ...r, value: r.type === 'choice' ? (r.options.find((o) => o[0] === settings[r.key]) || r.options[0])[1] : settings[r.key] }));
+      const setRows = SETTINGS.map((r) => ({ ...r, value: r.type === 'choice' ? (r.options.find((o) => o[0] === settings[r.key]) || r.options[0])[1] : r.type === 'text' && s.listening === r.key ? s.draft : settings[r.key] }));
       const keyRows = [...ACTIONS.map(([id, label]) => ({ id, label, value: (settings.keys[id] || []).map(keyLabel).join(' / ') || '—' })), { id: 'reset', label: 'Reset to defaults' }, { id: 'back', label: 'Done' }];
-      const tyre = s.page === 'keys' ? { kind: 'keys', rows: keyRows, index: s.index.keys, listening: s.listening } : { kind: 'settings', rows: setRows, index: s.index.settings, listening: null };
-      const zone = { board: 'board', pause: 'board', results: 'board', venue: 'floor', settings: 'tyre', keys: 'tyre' }[s.page] || 'board';
+      const tyre = s.page === 'keys' ? { kind: 'keys', rows: keyRows, index: s.index.keys, listening: s.listening } : { kind: 'settings', rows: setRows, index: s.index.settings, listening: s.listening === 'callsign' ? 'callsign' : null };
+      const zone = { board: 'board', pause: 'board', results: 'board', leaders: 'board', venue: 'floor', settings: 'tyre', keys: 'tyre' }[s.page] || 'board';
       return { page: s.page, base: s.base, zone, board, floor: { venues: venueList, index: s.index.venue, current: cur.id, active: s.page === 'venue' }, tyre };
     },
   };
@@ -272,13 +304,15 @@ export function describe(view) {
   if (page === 'venue') { const v = floor.venues[floor.index]; return `Venue ${v.name}, ${v.place}. ${v.note}.${v.id === floor.current ? ' Loaded.' : ' Press Enter to load.'}`; }
   if (page === 'settings' || page === 'keys') {
     const r = tyre.rows[tyre.index];
+    if (tyre.listening === 'callsign') return `Callsign ${r.value}. Type a name. Enter keeps it, Escape cancels.`;
     if (tyre.listening) return `Press the new key for ${r.label.split(' \u00b7 ')[0]}.`;
     const value = r.type === 'toggle' ? (r.value ? 'on' : 'off') : r.type === 'slider' ? `${Math.round(r.value * 100)} percent` : r.value || '';
     return `${page === 'keys' ? 'Controls' : 'Settings'}. ${r.label.split(' \u00b7 ')[0]} ${value}. ${r.note || ''}`;
   }
-  if (board.kind === 'results' && board.dare) return `Results. Score ${board.time}. ${board.lineLabel ? `Landed ${board.line}` : `Line ${board.line}`}. ${board.delta.text}. ${board.actions[board.index].label}.`;
+  if (board.kind === 'results' && board.dare) return `Results. Score ${board.time}. ${board.lineLabel ? `Landed ${board.line}` : `Line ${board.line}`}. ${board.delta.text}. ${board.note ? `${board.note}. ` : ''}${board.actions[board.index].label}.`;
   if (board.kind === 'results') return `Results. ${board.pos ? `Position ${board.pos} of ${board.field}. ` : ''}Time ${board.time}. ${board.delta.text}. ${board.note || ''} ${board.actions[board.index].label}.`;
   if (board.kind === 'pause') return `Paused. ${board.rows[board.index].label}.`;
+  if (board.kind === 'leaders') { const r = [...board.rows, ...board.around][board.index]; return `Leaderboard. ${board.title}, ${board.scope === 'day' ? 'daily' : 'all-time'}. ${board.message || `${board.mine ? `You are ${board.mine}. ` : ''}${r ? `Rank ${r.rank}, ${r.name}, ${r.value}. Enter races this ghost.` : ''}`}`; }
   const e = board.rows[board.index];
   return `${board.venue.name}. ${e.name}. ${e.kicker}. ${e.brief} ${e.best ? `Best ${e.best}.` : 'No result yet.'}`;
 }

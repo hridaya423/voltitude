@@ -127,19 +127,78 @@ function modes(g, b) {
       put(g, d.bestLabel, rx, 764, { size: 28, color: C.ink3, gap: 8 });
       put(g, d.best || '—', rx + rw, 768, { size: 44, fam: MONO, weight: '500 semi-condensed', align: 'right' });
     }
-    const cy = 786;
+    const cy = 786, dw = d.board ? rw - 300 : rw;
     g.fillStyle = C.red;
-    rrect(g, rx, cy, rw, 76, 14); g.fill();
+    rrect(g, rx, cy, dw, 76, 14); g.fill();
     put(g, 'DRIVE', rx + 36, cy + 52, { size: 38, fam: DISPLAY, weight: '800 expanded', gap: 6, color: '#fff' });
-    chip(g, 'ENTER', rx + rw - 32, cy + 56, 48, { color: '#fff' });
-    hits.push({ x: rx, y: cy, w: rw, h: 76, row: b.index });
+    chip(g, 'ENTER', rx + dw - 32, cy + 56, 48, { color: '#fff' });
+    hits.push({ x: rx, y: cy, w: dw, h: 76, row: b.index });
+    if (d.board) button(g, hits, rx + rw - 280, cy, 280, 76, 'BOARD', 'L', 'leaders');
   }
-  put(g, '↑↓  MODE     ←→  VENUE     ENTER  DRIVE     O  SETTINGS', 64, 906, { size: 30, color: C.ink2, gap: 4 });
+  put(g, '↑↓  MODE     ←→  VENUE     ENTER  DRIVE     L  BOARD     O  SETTINGS', 64, 906, { size: 30, color: C.ink2, gap: 4 });
   let x = 64;
   b.legend.forEach(([keys, label]) => {
     x += put(g, keys.join(' '), x, 944, { size: 30, weight: 700, color: C.ink, gap: 2 }) + 12;
     x += put(g, label, x, 944, { size: 30, weight: 500, color: C.ink3 }) + 34;
   });
+  return hits;
+}
+
+function button(g, hits, x, y, w, h, label, key, act, off = false) {
+  g.globalAlpha = off ? 0.3 : 1;
+  g.strokeStyle = C.ink3; g.lineWidth = 3;
+  rrect(g, x, y, w, h, 14); g.stroke();
+  put(g, label, x + 28, y + h / 2 + 13, { size: 34, fam: DISPLAY, weight: '800 expanded', color: C.ink2, gap: 4, max: w - 130 });
+  chip(g, key, x + w - 24, y + h / 2 + 17, 44, { color: C.ink3 });
+  g.globalAlpha = 1;
+  if (!off) hits.push({ x, y, w, h, act });
+}
+
+function standing(g, r, x, y, w, h, sel, rankW) {
+  if (r.me && !sel) { g.fillStyle = 'rgba(127,227,255,0.14)'; rrect(g, x, y, w, h - 10, 14); g.fill(); g.fillStyle = C.cyan; g.fillRect(x, y + 8, 6, h - 26); }
+  const base = y + (h - 10) / 2 + 13, col = sel ? '#fff' : r.me ? C.cyan : C.ink2;
+  put(g, `${r.rank}`, x + rankW, base, { size: 36, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink3, align: 'right' });
+  put(g, r.name, x + rankW + 40, base, { size: 36, weight: 600, color: col, max: w - rankW - 330 });
+  put(g, r.value, x + w - 32, base, { size: 38, fam: MONO, weight: '500 semi-condensed', color: sel ? '#fff' : C.ink, align: 'right' });
+}
+
+function leaders(g, b) {
+  const hits = [], lx = 64, lw = 1100, top = 196, rowH = 60;
+  header(g, b.kicker.toUpperCase());
+  put(g, b.range || 'LEADERBOARD', lx, 172, { size: 28, color: C.ink3, gap: 8 });
+  if (b.message) wrap(g, b.message, lw - 80, 44).forEach((l, i) => put(g, l, lx, 330 + i * 60, { size: 44, weight: 600, color: C.ink2 }));
+  b.rows.forEach((r, i) => {
+    const y = top + i * rowH, sel = i === b.index;
+    row(g, lx, y, lw, rowH, sel);
+    standing(g, r, lx, y, lw, rowH, sel, 150);
+    hits.push({ x: lx, y, w: lw, h: rowH, row: i });
+  });
+  button(g, hits, lx, 816, 300, 70, '‹ PREV', '←', 'left', !b.prev);
+  button(g, hits, lx + 320, 816, 300, 70, 'NEXT ›', '→', 'right', !b.next);
+  button(g, hits, lx + 640, 816, 300, 70, 'BACK', 'ESC', 'back');
+  const rx = 1240, rw = 744;
+  put(g, b.title.toUpperCase(), rx, 192, { size: 60, fam: DISPLAY, weight: '800 expanded', gap: 3, max: rw });
+  [['day', 'DAILY'], ['all', 'ALL-TIME']].forEach(([id, label], k) => {
+    const x = rx + k * 250, on = b.scope === id, ok = b.scopes.includes(id);
+    g.globalAlpha = ok ? 1 : 0.3;
+    g.fillStyle = on ? C.red : 'rgba(255,255,255,0.06)';
+    rrect(g, x, 232, 234, 64, 32); g.fill();
+    put(g, label, x + 117, 276, { size: 28, weight: 700, color: on ? '#fff' : C.ink2, align: 'center', gap: 4 });
+    g.globalAlpha = 1;
+  });
+  if (b.scopes.length > 1) { chip(g, 'T', rx + rw, 284, 48, { color: C.ink3 }); hits.push({ x: rx, y: 232, w: rw, h: 64, act: 'scope' }); }
+  if (b.state === 'ok' || b.state === 'empty') put(g, 'YOUR RANK', rx, 372, { size: 28, color: C.ink3, gap: 8 });
+  if (b.state === 'ok' || b.state === 'empty') put(g, b.mine ? b.mine.toUpperCase() : 'NOT RANKED YET', rx, 448, { size: b.mine ? 64 : 44, fam: b.mine ? MONO : UI, weight: b.mine ? '500 semi-condensed' : 600, color: b.mine ? C.ink : C.ink3, max: rw });
+  if (b.around.length) {
+    put(g, 'AROUND YOU', rx, 520, { size: 28, color: C.ink3, gap: 8 });
+    b.around.forEach((r, k) => {
+      const i = b.rows.length + k, y = 540 + k * 64, sel = i === b.index;
+      row(g, rx, y, rw, 64, sel);
+      standing(g, r, rx, y, rw, 64, sel, 120);
+      hits.push({ x: rx, y, w: rw, h: 64, row: i });
+    });
+  }
+  put(g, '↑↓  RUN     ←→  PAGE     T  DAILY · ALL-TIME     ENTER  RACE GHOST     ESC  BACK', 64, 930, { size: 30, color: C.ink2, gap: 4 });
   return hits;
 }
 
@@ -203,7 +262,7 @@ function resultActions(g, b, hits) {
     const x = 64 + i * (tw + gap), sel = i === b.index;
     g.globalAlpha = r.off ? 0.3 : 1;
     if (sel) { g.fillStyle = C.red; rrect(g, x, y, tw, 72, 14); g.fill(); } else { g.strokeStyle = C.hair; g.lineWidth = 3; rrect(g, x, y, tw, 72, 14); g.stroke(); }
-    put(g, r.label.toUpperCase(), x + 28, y + 48, { size: tw < 470 ? 28 : 34, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink2, gap: tw < 470 ? 2 : 4 });
+    put(g, r.label.toUpperCase(), x + 28, y + 48, { size: tw < 470 ? 28 : 34, fam: DISPLAY, weight: '800 expanded', color: sel ? '#fff' : C.ink2, gap: tw < 470 ? 2 : 4, max: tw - 140 });
     if (r.key) chip(g, r.key, x + tw - 26, y + 52, 44, { color: sel ? '#fff' : C.ink3 });
     g.globalAlpha = 1;
     if (!r.off) hits.push({ x, y, w: tw, h: 72, row: i });
@@ -212,7 +271,7 @@ function resultActions(g, b, hits) {
 
 export function drawBoard(g, b) {
   clear(g, BOARD.w, BOARD.h);
-  const hits = b.kind === 'pause' ? pause(g, b) : b.kind === 'results' ? results(g, b) : modes(g, b);
+  const hits = b.kind === 'pause' ? pause(g, b) : b.kind === 'results' ? results(g, b) : b.kind === 'leaders' ? leaders(g, b) : modes(g, b);
   if (b.kind === 'results') resultActions(g, b, hits);
   return hits;
 }
@@ -264,6 +323,9 @@ export function drawTyre(g, t, time) {
       g.fillStyle = r.value ? C.good : 'rgba(255,255,255,0.12)';
       rrect(g, x, py, pw, ph, ph / 2); g.fill();
       put(g, r.value ? 'ON' : 'OFF', x + pw / 2, py + 35, { size: 30, weight: 700, color: r.value ? '#06100a' : col, align: 'center', gap: 2 });
+    } else if (r.type === 'text') {
+      const editing = on && t.listening;
+      put(g, editing ? `${r.value}${Math.floor(time * 3) % 2 ? '_' : ' '}` : r.value, xr, y + 54, { size: 36, weight: 700, color: editing ? C.yellow : col, align: 'right', gap: 2 });
     } else if (r.type === 'choice') {
       put(g, `‹  ${r.value}  ›`, xr, y + 54, { size: 36, weight: 700, color: col, align: 'right', gap: 2 });
     } else if (r.type === 'slider') {
@@ -282,7 +344,7 @@ export function drawTyre(g, t, time) {
     g.fillStyle = C.hair; g.fillRect(w - 40, 128, 6, 588);
     g.fillStyle = C.ink2; g.fillRect(w - 40, 128 + (588 - th) * first / (t.rows.length - visible), 6, th);
   }
-  put(g, sel.note || '', 56, 758, { size: 30, weight: 500, color: C.ink2, max: w - 112 });
+  put(g, t.listening ? 'Type a name. Enter keeps it, Esc cancels.' : sel.note || '', 56, 758, { size: 30, weight: 500, color: C.ink2, max: w - 112 });
   return hits;
 }
 

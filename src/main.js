@@ -51,7 +51,7 @@ settings.keys = Object.assign(structuredClone(DEFAULT_KEYS), settings.keys);
 if (!settings.venue) { settings.venue = load(SAVE, null) ? 'proving' : 'pad'; store(STORE, settings); }
 if (params.has('quality')) settings.quality = params.get('quality');
 const API = (params.get('api') ?? document.querySelector('meta[name="voltitude-api"]')?.content ?? '').replace(/\/$/, '');
-const linked = location.hash.startsWith('#g=') ? await (await import('./share.js')).openLink(location.hash.slice(3), API) : null;
+let linked = location.hash.startsWith('#g=') ? await (await import('./share.js')).openLink(location.hash.slice(3), API) : null;
 if (linked && VENUES[linked.venue] && linked.venue !== (params.get('venue') || settings.venue)) {
   params.set('venue', linked.venue);
   location.replace(`?${params}${location.hash}`);
@@ -192,7 +192,7 @@ const broadcast = createBroadcastCamera(camera, track, terrain.height);
 const EVENTS = eventsFor(track, venue);
 const TODAY = dailyFor(params.get('day') || '') ? params.get('day') : dayOf(Date.now()), DAILY = dailyFor(TODAY);
 const DAILY_EV = DAILY.venue === venue.id ? EVENTS.find((e) => e.id === DAILY.event) || null : null;
-const callsign = (() => { const k = 'voltitude.callsign'; let c = load(k, ''); if (!c) { c = `RD-${Math.random().toString(16).slice(2, 6).toUpperCase()}`; store(k, c); } return c; })();
+if (!settings.callsign) { settings.callsign = load('voltitude.callsign', '') || `RD-${Math.random().toString(16).slice(2, 6).toUpperCase()}`; saveSettings(); }
 let dailyRun = false, dailyGhosts = [], submitted = null;
 const dailyViews = [];
 const BRIEFS = {
@@ -228,6 +228,7 @@ const BRIEF = BRIEFS[venue.id] || {};
 const save = Object.assign({ events: {}, hints: {}, venues: {} }, load(SAVE, {}));
 const book = venue.id === 'proving' ? save.events : (save.venues[venue.id] ||= {});
 const persist = () => store(SAVE, save);
+if (!save.player) { save.player = crypto.randomUUID(); persist(); }
 const authorTime = (id) => author[id]?.total || 0;
 const PODIUM = [{ id: 'gold', name: 'Gold' }, { id: 'silver', name: 'Silver' }, { id: 'bronze', name: 'Bronze' }];
 const medalOf = (ev) => { const b = book[ev.id]?.best; if (!b || ev.kind === 'pr') return null; if (ev.kind === 'dare') return dareMedal(ev.id, b); return ev.kind === 'gp' ? PODIUM[b - 1] || null : medalFor(b, authorTime(ev.id)); };
@@ -275,6 +276,7 @@ function eventRows() {
       brief: BRIEF[ev.id] || '',
       ladder: ladder.map((m) => ({ id: m.id, name: m.name, time: m.time, got: !!b && (dare ? b >= m.t : b <= m.t) })),
       bestLabel: ev.kind === 'pr' ? '' : gp ? 'BEST FINISH' : dare ? 'BEST SCORE' : 'PERSONAL BEST',
+      board: boardScopes(ev).length > 0,
     };
   });
 }
@@ -282,7 +284,7 @@ function eventRows() {
 function dailyRow() {
   const v = VENUES[DAILY.venue];
   return {
-    id: 'daily', name: `Daily · ${DARES[DAILY.event] || (DAILY.event === 'hl' ? 'Hot Lap' : 'Time Trial')}`, circuit: true, tag: 'DY', best: '', medal: null, ladder: [], bestLabel: '',
+    id: 'daily', name: `Daily · ${DARES[DAILY.event] || (DAILY.event === 'hl' ? 'Hot Lap' : 'Time Trial')}`, circuit: true, tag: 'DY', best: '', medal: null, ladder: [], bestLabel: '', board: !!DAILY_EV,
     kicker: `${TODAY} · ${v.name}${DAILY_EV ? '' : ' · loads the venue'}`,
     brief: `${DAILY.title ? `${DAILY.title}. ` : ''}One card for everyone until 00:00 UTC.${API ? ' Your run goes on the daily board, and the top twenty race beside you.' : ' The daily board is offline, so the card plays without it.'}`,
   };
@@ -306,10 +308,57 @@ function venueRows() {
 }
 
 
+const LB = 10, allTime = (ev) => ev.id === 'hl' || ev.kind === 'dare' || !!ev.spur;
+const boardScopes = (ev) => [ev === DAILY_EV && 'day', allTime(ev) && 'all'].filter(Boolean);
+const lb = { ev: null, scope: 'all', offset: 0, state: '', data: null, seq: 0 };
+async function loadBoard() {
+  const seq = ++lb.seq;
+  lb.state = API ? 'loading' : 'offline';
+  menu.refresh();
+  if (!API) return;
+  try {
+    const res = await fetch(`${API}/board/${venue.id}.${lb.ev.id}/${lb.scope === 'day' ? TODAY : 'all'}?limit=${LB}&offset=${lb.offset}&player=${save.player}`);
+    if (!res.ok) throw new Error(`board ${res.status}`);
+    const data = await res.json();
+    if (seq === lb.seq) Object.assign(lb, { data, state: data.total ? 'ok' : 'empty' });
+  } catch (e) {
+    console.warn('board', e);
+    if (seq === lb.seq) lb.state = 'offline';
+  }
+  menu.refresh();
+}
+function openBoard(ev, scope) {
+  const scopes = ev ? boardScopes(ev) : [];
+  if (!scopes.length) return false;
+  Object.assign(lb, { ev, scope: scopes.includes(scope) ? scope : scopes[0], offset: 0, data: null });
+  loadBoard();
+  return true;
+}
+function boardView() {
+  const ev = lb.ev, d = lb.state === 'ok' ? lb.data : null, dare = ev.kind === 'dare';
+  const line = (r) => ({ rank: r.rank, name: r.name, value: dare ? `${r.score}` : fmt(r.total), me: r.id === d.me?.id });
+  return {
+    title: ev.name, state: lb.state, kicker: `${venue.name} · ${lb.scope === 'day' ? `Daily · ${TODAY}` : 'All-time'}`, scopes: boardScopes(ev), scope: lb.scope,
+    message: { loading: 'Loading the board…', offline: 'The board is offline. Times are not loading right now.', empty: `No runs on this board yet. Finish one to set the first ${dare ? 'score' : 'time'}.` }[lb.state] || '',
+    rows: d ? d.rows.map(line) : [], around: d?.around ? d.around.map(line) : [],
+    mine: d?.me ? `${d.me.rank} of ${d.total}` : '', range: d ? `RANKS ${lb.offset + 1}–${lb.offset + d.rows.length} OF ${d.total}` : '',
+    prev: !!d && lb.offset > 0, next: !!d && lb.offset + LB < d.total,
+  };
+}
+async function raceBoardRow(i) {
+  const d = lb.data, row = d && [...d.rows, ...(d.around || [])][i];
+  if (!row || lb.state !== 'ok') return;
+  const got = await (await import('./share.js')).openLink(row.id, API);
+  if (!got) { lb.state = 'offline'; menu.refresh(); return; }
+  if (menu.page !== 'leaders') return;
+  linked = got;
+  launch(() => startRace(lb.ev, false));
+}
+
 const RESUME = 'voltitude.resume';
 const menu = createMenu({
   settings,
-  data: { events: () => [dailyRow(), ...eventRows()], venues: venueRows, pause: () => pauseView(race, current, venue.name) },
+  data: { events: () => [dailyRow(), ...eventRows()], venues: venueRows, pause: () => pauseView(race, current, venue.name), leaders: boardView },
   on: {
     sound(kind) { audio.start(); audio.event(kind === 'drive' ? 'slot' : kind === 'deny' ? 'miss' : 'ui'); },
     drive(i) { launch(() => (i ? startRace(EVENTS[i - 1]) : startDaily())); },
@@ -327,6 +376,22 @@ const menu = createMenu({
       if (k === 'quality' || k === 'session') { try { sessionStorage.setItem(RESUME, 'settings'); } catch { } location.reload(); }
     },
     keys: () => saveSettings(),
+    leaders: (i) => (i === null ? openBoard(lastResult.board.ev, lastResult.board.scope) : openBoard(i ? EVENTS[i - 1] : DAILY_EV, i ? 'all' : 'day')),
+    page(dir) {
+      const at = lb.offset + dir * LB;
+      if (lb.state !== 'ok' || at < 0 || at >= lb.data.total) return false;
+      lb.offset = at;
+      loadBoard();
+      return true;
+    },
+    scope() {
+      const scopes = boardScopes(lb.ev);
+      if (scopes.length < 2) return false;
+      Object.assign(lb, { scope: scopes.find((x) => x !== lb.scope), offset: 0, data: null });
+      loadBoard();
+      return true;
+    },
+    race: (i) => raceBoardRow(i),
   },
 });
 menu.setVenue(venue.id);
@@ -523,34 +588,40 @@ async function loadDailyGhosts(ev) {
   } catch (e) { console.warn('daily ghosts', e); }
 }
 
-async function postDaily(result) {
-  result.note = API ? 'Posting to the daily board…' : 'Daily board offline';
-  menu.refresh();
+async function postRun(result, day) {
+  if (day) { result.note = API ? 'Posting to the daily board…' : 'Daily board offline'; menu.refresh(); }
   if (!API) return;
-  const run = lastRun, score = race.dare?.score, ev = current;
+  const run = lastRun, score = race.dare?.score, ev = current, note = result.note;
   try {
     const og = await ogImage().catch((e) => { console.warn('og', e); return null; });
-    const res = await fetch(`${API}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ venue: venue.id, run, score, day: TODAY, name: callsign, og }) });
+    const res = await fetch(`${API}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ venue: venue.id, run, score, day, name: settings.callsign, player: save.player, og }) });
     const body = await res.json();
     if (!res.ok && res.status !== 409) throw new Error(body.error);
     submitted = body.id || null;
-    const board = await (await fetch(`${API}/board/${venue.id}.${ev.id}/${TODAY}`)).json();
-    result.note = res.ok ? `Daily rank ${body.rank} of ${board.rows.length} · ${callsign}` : 'This exact run is already on the board';
-    result.title = 'DAILY BOARD';
-    result.rows = board.rows.slice(0, 8).map((r) => ({ label: `${r.rank}. ${r.name}`, value: r.score ?? fmt(r.total), tag: r.id === body.id ? 'YOU' : '', tone: r.id === body.id ? 'good' : '' }));
+    result.board = { ev, scope: day ? 'day' : 'all' };
+    const rank = res.ok ? `${body.best ? 'Rank' : 'Your best ranks'} ${body.rank} of ${body.players} · ${day ? 'daily' : 'all-time'}` : 'This exact run is already on the board';
+    if (day) {
+      const board = await (await fetch(`${API}/board/${venue.id}.${ev.id}/${day}?limit=8&player=${save.player}`)).json();
+      result.note = `${rank} · ${settings.callsign}`;
+      result.title = 'DAILY BOARD';
+      result.rows = board.rows.map((r) => ({ label: `${r.rank}. ${r.name}`, value: r.score ?? fmt(r.total), tag: r.id === board.me?.id ? 'YOU' : '', tone: r.id === board.me?.id ? 'good' : '' }));
+    } else result.note = [rank, note].filter(Boolean).join('. ');
   } catch (e) {
-    console.warn('daily', e);
-    result.note = 'Daily board offline';
+    console.warn('post', e);
+    if (day) result.note = 'Daily board offline';
   }
   menu.refresh();
 }
 
-function showResults(result, m, before) {
+let lastResult = null;
+function showResults(result, m, before, best = false) {
   hud.show(false);
   mode = 'results';
   resultsAt = performance.now();
+  lastResult = result;
   menu.open('results', { results: result });
-  if (dailyRun) postDaily(result);
+  if (dailyRun) postRun(result, TODAY);
+  else if (best && allTime(current)) postRun(result);
   garage.cut();
   if (m && (!before || m.id !== before.id)) audio.event('lap');
 }
@@ -590,7 +661,7 @@ function finishCircuit(ev) {
     title: 'LAPS', rows: race.laps.map(lapRow),
     stats: [{ label: 'Top speed', value: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}` }, { label: 'Best lap', value: bestLapT ? fmt(bestLapT) : '—' }, ...(review.ideal ? [{ label: 'Ideal lap', value: fmt(review.ideal) }] : []), { label: 'Resets', value: `${race.respawns}` }, { label: style > styleBest && styleBest ? 'Style · new best' : 'Style', value: `${style}` }],
     hasNext: !!EVENTS[ev.card],
-  }, m, before);
+  }, m, before, record && !me.invalid.length);
 }
 
 function bankDare(ev) {
@@ -612,7 +683,7 @@ function finishDare(ev) {
     result.note = `Linked ghost scored ${g.race.dare.score} · ${d.score > g.race.dare.score ? 'you beat it' : d.score === g.race.dare.score ? 'a tie' : 'it beat you'}`;
   }
   result.medal = medalLine(m, before);
-  showResults(result, m, before);
+  showResults(result, m, before, d.score > best);
 }
 
 function finish() {
@@ -649,7 +720,7 @@ function finish() {
     title: 'SPLITS', rows: rows.map((r) => ({ dot: sectorColors[r.i] || '', label: r.i === rows.length - 1 ? 'Finish' : `CP ${r.i + 1}`, value: fmt(r.seg), tag: r.has ? fmtDelta(r.loss) : '', tone: r.loss <= 0 ? 'good' : 'bad' })),
     stats: [{ label: 'Top speed', value: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}` }, { label: 'Air', value: `${(race.airTime / 120).toFixed(1)} s` }, { label: 'Tricks', value: `${race.tricks}` }, { label: 'Resets', value: `${race.respawns}` }],
     hasNext: !!EVENTS[ev.card],
-  }, m, before);
+  }, m, before, record);
 }
 
 const HINT_HTML = {
@@ -821,7 +892,7 @@ addEventListener('keydown', (e) => {
   if (!menu.listening) return;
   e.preventDefault();
   e.stopPropagation();
-  menu.capture(e.code);
+  menu.capture(e.code, e.key);
 }, true);
 
 function switchVenue(id) {
@@ -863,6 +934,8 @@ function menuKeys() {
     const cmd = any('ArrowUp', 'KeyW') || pad(12) ? 'up' : any('ArrowDown', 'KeyS') || pad(13) ? 'down' : any('ArrowLeft', 'KeyA', 'BracketLeft') || pad(14, 4) ? 'left' : any('ArrowRight', 'KeyD', 'BracketRight') || pad(15, 5) ? 'right' : any('Enter', 'Space') || pad(0) ? 'confirm' : back ? 'back' : padNav();
     if (cmd && !(cmd === 'confirm' && page === 'results' && performance.now() - resultsAt < 600)) menu.command(cmd);
     else if (any('KeyO')) menu.command('settings');
+    else if (any('KeyL') || (page === 'board' && pad(2))) menu.command('leaders');
+    else if (page === 'leaders' && (any('KeyT') || pad(3))) menu.command('scope');
     else if (page === 'pause' && pad(9)) resume();
     else if (page === 'results' && pad(9)) menu.command('confirm');
     else if (home && (input.actionPressed('restart') || pad(8))) startRace(current);

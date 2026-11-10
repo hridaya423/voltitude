@@ -450,7 +450,7 @@ export function createGarage({ renderer, night, settings, sunUniform, fogDensity
       const px = hit.uv.x * spec.w, py = (1 - hit.uv.y) * spec.h;
       const found = hits[zone].find((r) => px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h);
       if (!found) return { zone };
-      return { zone, row: found.row, fx: found.slider ? (px - found.slider[0]) / (found.slider[1] - found.slider[0]) : undefined };
+      return { zone, row: found.row, act: found.act, fx: found.slider ? (px - found.slider[0]) / (found.slider[1] - found.slider[0]) : undefined };
     },
   };
 }

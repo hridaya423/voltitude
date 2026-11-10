@@ -319,3 +319,63 @@ test('dare medals step up with the score and stop below bronze', () => {
   assert.equal(dareMedal('trench', 999), null);
   for (const rows of Object.values(DARE_MEDALS)) assert.deepEqual(rows.map((r) => r[2]), rows.map((r) => r[2]).slice().sort((a, b) => b - a));
 });
+
+function leadersSetup(open = true) {
+  const calls = [], rec = (name, ret) => (...args) => { calls.push([name, ...args]); return ret; };
+  const board = { title: 'Hot Lap', state: 'ok', rows: [{ rank: 1 }, { rank: 2 }, { rank: 3 }], around: [{ rank: 30 }], scopes: ['day', 'all'], scope: 'all' };
+  const menu = createMenu({
+    settings: { keys: structuredClone(DEFAULT_KEYS) },
+    data: { events: () => EVENTS, venues: () => VENUES, pause: () => ({}), leaders: () => board },
+    on: { sound: rec('sound'), drive: rec('drive'), venue: rec('venue'), resume: rec('resume'), restart: rec('restart'), quit: rec('quit'), next: rec('next'), replay: rec('replay'), change: rec('change'), keys: rec('keys'), leaders: rec('leaders', open), page: rec('page', true), scope: rec('scope', true), race: rec('race') },
+  });
+  menu.setVenue('proving');
+  menu.open('board', { index: 2 });
+  return { menu, board, named: (n) => calls.filter((c) => c[0] === n) };
+}
+
+test('leaderboard: opens from the board for the selected event, pages, switches, races a row and goes back', () => {
+  const { menu, named } = leadersSetup();
+  menu.command('leaders');
+  assert.deepEqual(named('leaders'), [['leaders', 2]]);
+  assert.equal(menu.page, 'leaders');
+  assert.equal(menu.view().board.kind, 'leaders');
+  assert.equal(menu.view().zone, 'board');
+  menu.command('right');
+  menu.command('left');
+  assert.deepEqual(named('page'), [['page', 1], ['page', -1]]);
+  menu.command('scope');
+  assert.equal(named('scope').length, 1);
+  menu.command('up');
+  assert.equal(menu.view().board.index, 3);
+  menu.command('confirm');
+  assert.deepEqual(named('race'), [['race', 3]]);
+  menu.command('back');
+  assert.equal(menu.page, 'board');
+  assert.equal(menu.selected, 2);
+});
+
+test('leaderboard: an event with no board is refused, and the results Board action waits for a submitted run', () => {
+  const { menu, named } = leadersSetup(false);
+  menu.command('leaders');
+  assert.equal(menu.page, 'board');
+  assert.deepEqual(named('sound').at(-1), ['sound', 'deny']);
+  const r = { hasNext: false, title: 'LAPS', rows: [], stats: [], card: '', time: '', delta: { text: '', tone: '' } };
+  menu.open('results', { results: r });
+  assert.equal(menu.view().board.actions.find((a) => a.id === 'board').off, true);
+  menu.command('leaders');
+  assert.equal(named('leaders').length, 1);
+  r.board = { scope: 'all' };
+  assert.equal(menu.view().board.actions.find((a) => a.id === 'board').off, false);
+});
+
+test('leaderboard: touch buttons page, switch and leave; a tapped row races', () => {
+  const { menu, named } = leadersSetup();
+  menu.point('board', { act: 'leaders' }, true);
+  assert.equal(menu.page, 'leaders');
+  menu.point('board', { act: 'right' }, true);
+  menu.point('board', { act: 'scope' }, true);
+  menu.point('board', { row: 1 }, true);
+  assert.deepEqual([named('page').length, named('scope').length, named('race').at(-1)], [1, 1, ['race', 1]]);
+  menu.point('board', { act: 'back' }, true);
+  assert.equal(menu.page, 'board');
+});
