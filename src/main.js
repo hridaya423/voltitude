@@ -899,13 +899,14 @@ if (!PHONE && !params.has('tier')) {
 progress(1, 'Ready');
 const readyAt = performance.now();
 if (params.has('event')) { const ev = EVENTS.find((e) => e.id === params.get('event')); if (ev) { menu.open('board', { index: ev.card }); current = ev; } }
+const dailyBoot = params.has('daily') && !!DAILY_EV;
 if (params.has('daily') && DAILY_EV) { menu.open('board', { index: 0 }); current = DAILY_EV; params.delete('daily'); history.replaceState(null, '', `?${params}${location.hash}`); }
 let resumePage = null;
 try { resumePage = sessionStorage.getItem(RESUME); sessionStorage.removeItem(RESUME); } catch { }
 if (resumePage === 'settings') menu.command('settings');
 garage.intro();
 if (linked && EVENTS.some((e) => e.id === linked.run.event)) { current = EVENTS.find((e) => e.id === linked.run.event); menu.open('board', { index: current.card }); }
-if (params.has('autostart') || linked?.run.event === current.id) startRace(current);
+if (dailyBoot) startRace(DAILY_EV, true); else if (params.has('autostart') || linked?.run.event === current.id) startRace(current);
 
 let last = performance.now(), acc = 0, time = 0, garageView = null, clipping = false;
 let warmFrames = 0;
