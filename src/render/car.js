@@ -44,23 +44,25 @@ function createPlume(lite) {
     uniforms: { uPow: { value: new Float32Array(NOZ.length) }, uLen: { value: new Float32Array(NOZ.length) }, uBoost: { value: 0 }, uTime: { value: 0 }, uColor: { value: COLD } },
     vertexShader: /* glsl */ `
       attribute vec3 dir; attribute vec3 rad; attribute float along; attribute float nid;
-      uniform float uPow[${NOZ.length}]; uniform float uLen[${NOZ.length}];
-      varying float vT; varying float vP; varying float vN;
+      uniform float uPow[${NOZ.length}]; uniform float uLen[${NOZ.length}]; uniform float uBoost;
+      varying float vT; varying float vP; varying float vN; varying float vR;
       void main() {
         int k = int(nid + 0.5);
         float len = uLen[k];
-        vT = along; vP = uPow[k]; vN = nid;
-        vec3 p = position + dir * along * len + rad * (1.0 + along * (k < 4 ? 1.4 : 2.4));
+        vT = along; vP = uPow[k]; vN = nid; vR = length(rad) / 0.075;
+        vec3 p = position + dir * along * len + rad * (1.0 + along * (k < 4 ? 1.4 + 1.2 * uBoost : 2.4));
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
     fragmentShader: /* glsl */ `
-      uniform float uBoost; uniform float uTime; uniform vec3 uColor; varying float vT; varying float vP; varying float vN;
+      uniform float uBoost; uniform float uTime; uniform vec3 uColor; varying float vT; varying float vP; varying float vN; varying float vR;
       void main() {
         if (vP < 0.01) discard;
-        float rear = step(vN, 3.5);
-        float fade = pow(1.0 - clamp(vT, 0.0, 1.0), 1.6 + 1.4 * rear);
+        float rear = step(vN, 3.5), hot = uBoost * rear;
+        float fade = pow(1.0 - clamp(vT, 0.0, 1.0), mix(1.6 + 1.4 * rear, 1.1, hot));
         float flick = 0.85 + 0.15 * sin(uTime * 90.0 + vN * 7.0);
-        vec3 c = mix(uColor, vec3(1.0, 0.7, 0.95), uBoost * 0.35 * rear) * fade * flick * vP * (0.55 - 0.4 * rear);
+        float bands = mix(1.0, 0.7 + 0.3 * sin(vT * 34.0 - uTime * 40.0), hot);
+        vec3 flame = mix(vec3(1.0, 0.95, 1.0), mix(vec3(0.75, 0.35, 1.0), vec3(0.25, 0.55, 1.0), vT), smoothstep(0.2, 0.9, vR + vT * 0.6));
+        vec3 c = mix(uColor, flame, hot) * fade * flick * bands * vP * mix(0.55 - 0.4 * rear, 3.2 - vR * 1.6, hot);
         gl_FragColor = vec4(c, 1.0);
       }`,
     transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
@@ -71,6 +73,20 @@ function createPlume(lite) {
   return mesh;
 }
 
+function groundGlow(color, w, l, z, gain, fall) {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uK: { value: 0 }, uFall: { value: fall }, uColor: { value: new THREE.Color(color) } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: /* glsl */ `
+      uniform float uK; uniform float uFall; uniform vec3 uColor; varying vec2 vUv;
+      void main() { vec2 q = (vUv - 0.5) * 2.0; q.y = q.y < 0.0 ? q.y * 1.6 : q.y; float d = dot(q, q); gl_FragColor = vec4(uColor * exp(-d * uFall) * (1.0 - smoothstep(0.35, 1.0, d)) * uK, 1.0); }`,
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l).rotateX(-Math.PI / 2), mat);
+  m.position.set(0, -0.46, z);
+  m.userData = { gain, fx: true };
+  return m;
+}
 const models = {};
 
 export async function loadCar(hero = true) {
@@ -254,12 +270,13 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
   const wingBase = wing && { y: wing.position.y };
   let wingK = 0, wingBrake = 0;
   if (wing) wing.visible = false;
-  let plume = null, head = null;
+  let plume = null, head = null, glow = null, fanGlow = null;
   const uDust = { value: 0 }, uCar = { value: new THREE.Matrix4() };
   const vapour = ghost || lite ? null : createVapour(), puff = new Float32Array(NOZ.length), vp = new THREE.Vector3(), vd = new THREE.Vector3();
   if (!ghost) {
     plume = createPlume(lite);
     holder.add(plume);
+    if (!lite) { glow = groundGlow('#8052ff', 4.4, 9, -5.2, headlights ? 0.9 : 1.6, 3.2); fanGlow = groundGlow('#5cc8ff', 5.2, 8.6, -0.4, headlights ? 0.5 : 4.5, 2.2); holder.add(glow, fanGlow); }
     if (mats.paint) { mats.paint.envMapIntensity = 1.2; mats.paint.clearcoatRoughness = Math.max(mats.paint.clearcoatRoughness, 0.06); if (!lite) grime(mats.paint, uDust, uCar); }
     if (mats.glass) { mats.glass.envMapIntensity = 2.2; mats.glass.roughness = 0.04; mats.glass.metalness = 0; mats.glass.color.set('#07090c'); }
     if (headlights) {
@@ -340,9 +357,10 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
       if (plume) {
         const u = plume.material.uniforms, P = u.uPow.value, L = u.uLen.value;
         u.uBoost.value += ((c.boosting ? 1 : 0) - u.uBoost.value) * Math.min(1, dt * 8);
-        for (let k = 0; k < 4; k++) { P[k] += ((c.boosting ? 1 : 0) - P[k]) * Math.min(1, dt * 12); L[k] = 0.3 + 0.3 * rear + 0.5 * u.uBoost.value; }
+        for (let k = 0; k < 4; k++) { P[k] += ((c.boosting ? 1 : 0) - P[k]) * Math.min(1, dt * 12); L[k] = 0.3 + 0.3 * rear + u.uBoost.value * (2.2 + 0.25 * Math.sin(time * 53 + k * 2.1)); }
         for (let k = 4; k < NOZ.length; k++) { const w = Math.min(1, fire[k]); P[k] += (w - P[k]) * Math.min(1, dt * (w > P[k] ? 30 : 10)); L[k] = 0.35 + (k < 8 ? 1.1 : 0.7) * P[k]; }
         u.uTime.value = time;
+        if (glow) { glow.material.uniforms.uK.value = u.uBoost.value * glow.userData.gain * (air ? 0 : 1) * (0.9 + 0.1 * Math.sin(time * 41)); fanGlow.material.uniforms.uK.value += ((air ? 0 : Math.min(1, Math.max(0, (c.fan - 0.15) * 2.5))) * fanGlow.userData.gain - fanGlow.material.uniforms.uK.value) * Math.min(1, dt * 8); }
         if (lite) plume.visible = dist < 160 && (c.boosting || P[0] > 0.02);
       }
       if (!lite) { holder.updateMatrixWorld(); uCar.value.copy(chassis.matrixWorld).invert(); }

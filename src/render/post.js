@@ -457,7 +457,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
   function track(root) {
     roots.push(root);
     root.traverse((o) => {
-      if (!o.isMesh) return;
+      if (!o.isMesh || o.userData.fx) return;
       o.layers.enable(3);
       o.userData.prevMW = new THREE.Matrix4();
       o.onBeforeRender = () => {
