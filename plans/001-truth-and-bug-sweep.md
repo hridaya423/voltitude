@@ -210,7 +210,7 @@ How it works, for you and for later plans:
 - `--keys Enter,4000,KeyR`: after load, press keys in order. A bare number is a wait in milliseconds.
 - `--eval '<js>'`: evaluate an expression in the page at the end and print it as `value`. `window.__cap` exposes `race`, `mode`, `current`, `dailyRun`, `camera`, `menu`, `hud`, `audio`, `input`.
 - It exits 1 on an uncaught page error or if the state is never reached.
-- One console error is expected on every boot at this commit and is not a failure: `THREE.WebGLProgram: Shader Error 0 - VALIDATE_STATUS false ... texture image units`. Plan 012 owns it.
+- One console error is expected on every boot at this commit and is not a failure: `THREE.WebGLProgram: Shader Error 0 - VALIDATE_STATUS false ... texture image units`. Plan 012 removes it. If plan 012 has already landed and the error still appears on boot, report it.
 
 Add one line to the "Develop" block of `README.md`: `node tools/smoke.mjs '?venue=pad&event=lineup&autostart&autopilot'   # boots the game in headless Chrome and reports state`.
 
