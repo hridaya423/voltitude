@@ -182,8 +182,8 @@ test('respawn keeps the gas level, with a floor of 0.15', () => {
   const inp = createInput();
   const respawnWith = (gas) => {
     race.car.gas = gas;
-    inp.reset = 1; stepRace(race, inp);
-    inp.reset = 0; stepRace(race, inp);
+    race.respawnIn = 1; stepRace(race, inp);
+    stepRace(race, inp);
     return race.car.gas;
   };
   assert.equal(respawnWith(0), 0.15);
