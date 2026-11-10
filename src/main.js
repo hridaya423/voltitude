@@ -728,9 +728,10 @@ const HINT_HTML = {
   air: () => `In the air: ${onPad() ? '<kbd>LS</kbd>' : key('throttle') + key('brake')} tilt the nose. Land on your wheels`,
   lift: () => `Hold ${key('lift')} in the air to hover`,
   flip: () => `${onPad() ? 'Push <kbd>LS</kbd> all the way' : `Hold ${key('brake')} alone`} to flip. ${key('rollLeft')}${key('rollRight')} roll`,
+  slide: () => `Hold ${key('slide')} in a corner to slide. Slides refill the tank`,
   hop: () => `Tap ${key('lift')} on the ground to hop over a rival`,
   reset: () => `${key('reset')} puts you back on the road`,
-  gas: () => 'Tank empty. Near misses, clean landings and drafting refill it',
+  gas: () => 'Tank empty. Near misses, clean landings, slides and drafting refill it',
 };
 const nextHint = createHints();
 function hints() {

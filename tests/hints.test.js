@@ -94,3 +94,17 @@ test('a car driving against the track is flagged, and one driving with it is not
   c.speed = 2;
   assert.equal(wrongWay(world.track, c), false);
 });
+
+test('the slide hint waits for the third braking zone, and a player who slides is never told', () => {
+  const quiet = { air: 3, lift: 3, flip: 3, boost: 3, hop: 3, reset: 3, gas: 3 }, zones = [];
+  let was = false;
+  const out = play((race, inp) => {
+    botInput(race, inp, 1);
+    const b = race.phase === 'racing' && inp.brake > 0.3 && race.car.speed > 20;
+    if (b && !was) zones.push(race.raceTick);
+    was = b;
+  }, 60, { ...quiet });
+  const hint = out.find(([id]) => id === 'slide');
+  assert.ok(hint && zones.length >= 3 && hint[1] >= zones[2], `hint ${hint}, braking from ${zones.slice(0, 4)}`);
+  assert.deepEqual(play((race, inp) => { botInput(race, inp, 1); inp.slide = 1; }, 60, { ...quiet }).filter(([id]) => id === 'slide'), []);
+});

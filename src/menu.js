@@ -251,7 +251,7 @@ export function createMenu({ settings, data, on }) {
       const list = events(), venueList = venues(), cur = venueList.find((v) => v.id === s.venueId) || venueList[0];
       const ev = list[s.index.board] || list[0];
       const lk = (a) => keyLabel((settings.keys[a] || [])[0]);
-      const legend = [[[lk('throttle'), lk('brake')], 'drive'], [[lk('left'), lk('right')], 'steer'], [[lk('boost')], 'boost'], [[lk('lift')], 'hop · hover'], [[lk('rollLeft'), lk('rollRight')], 'air roll'], [[lk('reset')], 'reset'], [[lk('restart')], 'restart']];
+      const legend = [[[lk('throttle'), lk('brake')], 'drive'], [[lk('left'), lk('right')], 'steer'], [[lk('boost')], 'boost'], [[lk('lift')], 'hop · hover'], [[lk('slide')], 'slide'], [[lk('rollLeft'), lk('rollRight')], 'air roll'], [[lk('reset')], 'reset'], [[lk('restart')], 'restart']];
       const board = s.base === 'pause' ? { kind: 'pause', ...data.pause(), rows: PAUSE, index: s.index.pause }
         : s.base === 'results' && s.results ? { kind: 'results', ...s.results, actions: RESULT_ACTIONS.map((a, i) => ({ ...a, off: disabled('results', i) })), index: s.index.results }
         : s.base === 'leaders' ? { kind: 'leaders', ...data.leaders(), index: Math.min(s.index.leaders, Math.max(0, leaders().length - 1)) }
