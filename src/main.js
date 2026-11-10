@@ -718,7 +718,7 @@ function handleEvents() {
         if (!why) cheerNear(0.4 + 0.2 * e.rolls);
         break;
       }
-      case 'retry': wreckToast?.remove(); chase.snap(); snapshot(race.car, prev); break;
+      case 'retry': wreckToast?.remove(); if (!settings.reduced) post.uniforms.uFlash.value = 0.3; chase.snap(); snapshot(race.car, prev); break;
       case 'gate': (spurGates[current.spur] || gates).pass(e.index); audio.event('gate'); input.rumble(0.25, 0.5, 140); break;
       case 'gas_gain': hud.gasGain(e.source, e.amount); if (e.amount >= 0.05 && e.tick !== lastGainTick) { lastGainTick = e.tick; audio.event('slot', e.amount); } break;
       case 'pad': hud.toast('BOOST PAD', 'orange'); audio.event('boost'); input.rumble(0.2, 0.6, 180); chase.bump(0.35); post.uniforms.uFlash.value = 0.25; break;
@@ -738,7 +738,7 @@ function handleEvents() {
       case 'wreck': cheerNear(0.2, 'gasp'); if (standGap(race.car.hint) < 260) audio.cheer('gasp'); audio.radio('wreck'); wreckToast = hud.toast('WRECKED', 'red'); audio.event('clip', 1); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
       case 'scrape': audio.event(e.angle > 0.35 ? 'impact' : 'scrape', e.v); input.rumble(Math.min(1, e.v / 15) * (e.angle > 0.35 ? 1 : 0.4), 0.3, 120); if (e.angle > 0.35) chase.bump(0.25); break;
       case 'impact': audio.event('impact'); input.rumble(Math.min(1, e.v / 20), 0.4, 160); chase.bump(Math.min(1, e.v / 15)); break;
-      case 'respawn': wreckToast?.remove(); hud.toast('RESET', 'white'); audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
+      case 'respawn': wreckToast?.remove(); hud.toast('RESET', 'white'); if (!settings.reduced) post.uniforms.uFlash.value = 0.3; audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
       case 'finish': {
         if (race.dare) { finishAt = performance.now(); break; }
         if (current.circuit) {
