@@ -46,6 +46,7 @@ function store(key, v) {
 const defaults = { tier: 'rookie', assist: true, invertPitch: false, ghost: true, units: 'mph', quality: 'medium', reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, rumble: true, session: 'golden', volume: 0.7, music: 0.7, keys: structuredClone(DEFAULT_KEYS) };
 const settings = Object.assign(structuredClone(defaults), load(STORE, {}));
 settings.keys = Object.assign(structuredClone(DEFAULT_KEYS), settings.keys);
+if (!settings.venue) { settings.venue = load(SAVE, null) ? 'proving' : 'pad'; store(STORE, settings); }
 if (params.has('quality')) settings.quality = params.get('quality');
 const API = (params.get('api') ?? document.querySelector('meta[name="voltitude-api"]')?.content ?? '').replace(/\/$/, '');
 const linked = location.hash.startsWith('#g=') ? await (await import('./share.js')).openLink(location.hash.slice(3), API) : null;
@@ -885,6 +886,7 @@ function adaptResolution(ms) {
 
 progress(0.75, 'Compiling shaders…');
 toTitle();
+if (!Object.keys(book).length) { menu.open('board', { index: 1 }); current = EVENTS[0]; }
 pose(carView.root, prev, race.car, 1, interp);
 chase.update(1 / 60, interp, race.car, { reduced: settings.reduced });
 ensureGhostView();
