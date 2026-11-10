@@ -150,7 +150,7 @@ scene.add(gates.group);
 const spurGates = Object.fromEntries(Object.entries(track.spurs || {}).filter(([, t]) => t.gates.length).map(([id, t]) => [id, createGates({ ...world, track: t }, (m) => skyFog(m, sunUniform, fogDensity))]));
 for (const g of Object.values(spurGates)) scene.add(g.group);
 const lineup = track.lineup ? (await import('./render/lineup.js')).createLineup(world, (m) => skyFog(m, sunUniform, fogDensity)) : null;
-if (lineup) scene.add(lineup.mesh);
+if (lineup) scene.add(new THREE.Group().add(lineup.mesh));
 scene.add(fireworks.points);
 const finishAtPos = new THREE.Vector3();
 const standGap = (h) => stands.sites.reduce((m, i) => Math.min(m, Math.abs(i - h)), Infinity);
