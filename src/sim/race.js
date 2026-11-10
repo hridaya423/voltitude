@@ -322,7 +322,7 @@ function nextTry(race, c) {
 function clip(race, c, k) {
   const d = race.dare;
   d.over = true;
-  d.endAt = race.tick + 240;
+  d.endAt = race.tick + 96;
   c.wrecked = true;
   c.vx *= -0.15; c.vy *= -0.15; c.vz *= -0.15;
   emit(race, 'clip', { k, score: d.score });

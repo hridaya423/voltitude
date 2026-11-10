@@ -86,7 +86,7 @@ test('a slow car hits the first vehicle, and the dare ends', () => {
   assert.ok(clip, 'clipped');
   assert.equal(clip.k, 0);
   assert.equal(race.phase, 'finished');
-  assert.ok(race.raceTick - clipAt <= 242, `finished ${race.raceTick - clipAt} ticks after the clip`);
+  assert.ok(race.raceTick - clipAt <= 98, `finished ${race.raceTick - clipAt} ticks after the clip`);
   assert.equal(events.filter((e) => e.type === 'respawn').length, 0);
   assert.ok(race.car.hint <= after.hint + 1, `throttle carried the car from ${after.hint} to ${race.car.hint}`);
   assert.ok(race.car.speed < 4, `speed ${race.car.speed.toFixed(1)} after the clip`);
