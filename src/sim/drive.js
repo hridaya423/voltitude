@@ -75,6 +75,7 @@ const HULL = [
   [-0.96, -0.2, 2.2], [0.96, -0.2, 2.2], [-0.96, -0.2, -2.2], [0.96, -0.2, -2.2], [-1, -0.05, 0], [1, -0.05, 0],
 ];
 
+export const SLIDE = { lock: 2.5 };
 export const steerLimit = (v) => Math.min(0.55, (2.94 * latCap(v)) / Math.max(v * v, 1) + 0.045 * Math.min(1, 30 / Math.max(v, 1)) ** 0.3);
 const WHEELBASE = 2.94;
 const cl = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
@@ -324,7 +325,7 @@ export function stepCar(c, inp, world, tick, assist) {
   const vf0 = c.vx * c.fx + c.vy * c.fy + c.vz * c.fz;
   const speed0 = Math.hypot(c.vx, c.vy, c.vz);
   const beta0 = Math.atan2(c.slip, Math.max(Math.abs(vf0), 4));
-  const lock = steerLimit(speed0) + (inp.steer * beta0 > 0 ? Math.max(0, Math.min(Math.abs(beta0) - 0.08, 0.3)) : 0);
+  const lock = (inp.slide ? Math.min(0.55, steerLimit(speed0) * SLIDE.lock) : steerLimit(speed0)) + (inp.steer * beta0 > 0 ? Math.max(0, Math.min(Math.abs(beta0) - 0.08, 0.3)) : 0);
   c.delta += Math.max(-3 * DT, Math.min(3 * DT, inp.steer * lock - c.delta));
   const cd = Math.cos(c.delta), sd = Math.sin(c.delta);
 
