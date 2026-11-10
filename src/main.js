@@ -693,13 +693,13 @@ function handleEvents() {
         if (improved) { bestLap = e.t; lapRef = race.splits.slice((e.lap - 1) * per, e.lap * per).map((x) => x - base); }
         if (bestLap) hud.els.target.textContent = `BEST ${fmt(bestLap)}`;
         hud.toast(`LAP ${e.lap}`, e.invalid ? 'red' : improved && !first ? 'gold' : 'white', e.invalid ? `${fmt(e.t)} · INVALID` : improved && !first ? `${fmt(e.t)} · BEST LAP` : fmt(e.t));
-        if (e.lap < current.laps) { audio.event('lap', e.lap + 1); if (e.lap + 1 === current.laps) audio.event('final_lap'); }
+        if (e.lap < current.laps) { audio.event('lap', e.lap + 1); if (e.lap + 1 === current.laps) { audio.event('final_lap'); hud.toast('FINAL LAP', 'white'); } }
         if (improved && !first) audio.event('fastest');
         stands.cheer(0.35);
         setTimeout(() => hud.sectorsBegin(per), 1500);
         break;
       }
-      case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, race.pos === 1 ? 'gold big' : 'good', race.pos === 1 ? 'LEADING' : ''); audio.event('overtake', race.pos === 1 ? 1 : 0); } else audio.event('overtaken'); updateTower(); break;
+      case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, race.pos === 1 ? 'gold big' : 'good', race.pos === 1 ? 'LEADING' : ''); audio.event('overtake', race.pos === 1 ? 1 : 0); } else { hud.toast(`P${race.pos}`, 'red'); audio.event('overtaken'); } updateTower(); break;
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
       case 'near_miss': audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
       case 'track_limits': hud.toast('TRACK LIMITS', 'orange', `+${e.gain.toFixed(1)} S PENALTY`); audio.event('miss'); break;
