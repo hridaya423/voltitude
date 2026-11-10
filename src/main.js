@@ -20,6 +20,7 @@ import { createTrackside } from './render/trackside.js';
 import { createFacility } from './render/facility.js';
 import { createGrandstands } from './render/crowd.js';
 import { createDust, createFireworks } from './render/fx.js';
+import { createCarFx } from './render/carfx.js';
 import { createSkids } from './render/decals.js';
 import { createGates } from './render/gates.js';
 import { createChaseCamera, createBroadcastCamera } from './render/camera.js';
@@ -140,7 +141,9 @@ if (track.spurs && Object.keys(track.spurs).length) scene.add((await import('./r
 scene.add(facility.group, stands.group, festival.group, range.group);
 const dust = createDust(terrain.height);
 const skids = createSkids();
-scene.add(dust.points, skids.mesh);
+const carFx = createCarFx(NIGHT, post.depth);
+post.overlay = carFx.overlay;
+scene.add(dust.points, skids.mesh, carFx.group);
 const fireworks = createFireworks(12);
 const gates = createGates(world, (m) => skyFog(m, sunUniform, fogDensity));
 scene.add(gates.group);
@@ -745,6 +748,7 @@ function hints() {
 function handleEvents() {
   for (const e of race.events) {
     style += stylePoints(e);
+    carFx.event(e, race.car, e.type === 'contact' ? race.entries[e.other]?.car : null);
     switch (e.type) {
       case 'light': hud.light(e.n); audio.light(e.n); break;
       case 'go': cheerNear(0.7); hud.light(0); audio.lightsOut(); input.rumble(0.5, 0.4, 160); chase.bump(0.15); break;
@@ -821,7 +825,7 @@ function handleEvents() {
         else if (e.quality === 'perfect' && Math.random() < 0.35) audio.radio('perfect');
         break;
       }
-      case 'wreck': cheerNear(0.2, 'gasp'); if (standGap(race.car.hint) < 260) audio.cheer('gasp'); audio.radio('wreck'); wreckToast = hud.toast('WRECKED', 'red'); audio.event('clip', 1); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
+      case 'wreck': if (!settings.reduced) post.uniforms.uFlash.value = 0.5; cheerNear(0.2, 'gasp'); if (standGap(race.car.hint) < 260) audio.cheer('gasp'); audio.radio('wreck'); wreckToast = hud.toast('WRECKED', 'red'); audio.event('clip', 1); input.rumble(1, 0.6, 320); chase.bump(1.2); chase.stall(0.08); break;
       case 'scrape': audio.event(e.angle > 0.35 ? 'impact' : 'scrape', e.v); input.rumble(Math.min(1, e.v / 15) * (e.angle > 0.35 ? 1 : 0.4), 0.3, 120); if (e.angle > 0.35) chase.bump(0.25); break;
       case 'impact': audio.event('impact'); input.rumble(Math.min(1, e.v / 20), 0.4, 160); chase.bump(Math.min(1, e.v / 15)); break;
       case 'respawn': wreckToast?.remove(); hud.toast('RESET', 'white'); if (!settings.reduced) post.uniforms.uFlash.value = 0.3; audio.event('respawn'); chase.snap(); snapshot(race.car, prev); break;
@@ -1076,6 +1080,7 @@ function draw(dt, ticks = -1) {
   carView.vapour.update(time, pixelScale);
   flora.update(time);
   if (!inGarage && running) skids.update(carView.root.matrixWorld, c, dt);
+  if (!inGarage) carFx.update(dt, time, c, carView.root.matrixWorld, renderer.domElement.width, renderer.domElement.height, pixelScale, running);
   if (inGarage) {
     if (menu.dirty || menu.listening || garage.sliding) {
       garageView = menu.view();

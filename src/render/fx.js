@@ -1,5 +1,15 @@
 import * as THREE from 'three';
 
+function mark(geo, names, lo, cnt, count) {
+  for (const name of names) {
+    const at = geo.attributes[name], w = at.itemSize;
+    at.clearUpdateRanges();
+    if (lo + cnt <= count) at.addUpdateRange(lo * w, cnt * w);
+    else { at.addUpdateRange(lo * w, (count - lo) * w); at.addUpdateRange(0, (lo + cnt - count) * w); }
+    at.needsUpdate = true;
+  }
+}
+
 export function createDust(height, count = 600) {
   const p0 = new Float32Array(count * 3), vel = new Float32Array(count * 3), born = new Float32Array(count).fill(-99), seed = new Float32Array(count);
   for (let i = 0; i < count; i++) seed[i] = Math.random();
@@ -64,14 +74,7 @@ export function createDust(height, count = 600) {
         born[i] = time;
         cnt++;
       }
-      for (const name of ['position', 'vel', 'born']) {
-        const at = geo.attributes[name];
-        at.clearUpdateRanges();
-        const w = name === 'born' ? 1 : 3;
-        if (lo + cnt <= count) at.addUpdateRange(lo * w, cnt * w);
-        else { at.addUpdateRange(lo * w, (count - lo) * w); at.addUpdateRange(0, (lo + cnt - count) * w); }
-        at.needsUpdate = true;
-      }
+      mark(geo, ['position', 'vel', 'born'], lo, cnt, count);
     },
   };
 }
@@ -204,15 +207,136 @@ export function createVapour(count = 768) {
       mat.uniforms.uTime.value = time;
       mat.uniforms.uScale.value = pixelScale;
       if (lo < 0) return;
-      cnt = Math.min(cnt, count);
-      for (const name of ['position', 'vel', 'born']) {
-        const at = geo.attributes[name];
-        at.clearUpdateRanges();
-        const w = name === 'born' ? 1 : 3;
-        if (lo + cnt <= count) at.addUpdateRange(lo * w, cnt * w);
-        else { at.addUpdateRange(lo * w, (count - lo) * w); at.addUpdateRange(0, (lo + cnt - count) * w); }
-        at.needsUpdate = true;
-      }
+      mark(geo, ['position', 'vel', 'born'], lo, Math.min(cnt, count), count);
+      lo = -1; cnt = 0;
+    },
+  };
+}
+
+export function createSmoke(night, count = 2048) {
+  const p0 = new Float32Array(count * 3), vel = new Float32Array(count * 3), born = new Float32Array(count).fill(-99), aux = new Float32Array(count * 3), seed = new Float32Array(count);
+  for (let i = 0; i < count; i++) seed[i] = Math.random();
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(p0, 3));
+  geo.setAttribute('vel', new THREE.BufferAttribute(vel, 3));
+  geo.setAttribute('born', new THREE.BufferAttribute(born, 1));
+  geo.setAttribute('aux', new THREE.BufferAttribute(aux, 3));
+  geo.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+  for (const a of ['position', 'vel', 'born', 'aux']) geo.attributes[a].setUsage(THREE.DynamicDrawUsage);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uScale: { value: 600 }, uSun: { value: new THREE.Color(night ? '#5a6278' : '#fff0dc').multiplyScalar(night ? 1 : 1.5) }, uAmb: { value: new THREE.Color(night ? '#1c2030' : '#b4b9c8') } },
+    vertexShader: /* glsl */ `
+      attribute vec3 vel; attribute float born; attribute vec3 aux; attribute float seed;
+      uniform float uTime; uniform float uScale; varying float vA; varying float vS; varying float vTone;
+      void main() {
+        float t = uTime - born;
+        float life = aux.z * (0.75 + 0.5 * seed);
+        vA = t < 0.0 || t > life ? 0.0 : smoothstep(0.0, 0.06, t) * pow(1.0 - t / life, 1.4);
+        float drag = (1.0 - exp(-t * 2.2)) / 2.2;
+        vec3 p = position + vel * drag + vec3(0.0, t * t * 0.35, 0.0);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        vS = seed; vTone = aux.y;
+        vA *= smoothstep(1.5, 7.0, -mv.z);
+        gl_PointSize = vA > 0.0 ? min((0.25 + aux.x * (0.12 + t)) * uScale / -mv.z, 360.0) : 0.0;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uSun; uniform vec3 uAmb; varying float vA; varying float vS; varying float vTone;
+      void main() {
+        vec2 q = gl_PointCoord - 0.5;
+        float d = dot(q, q) * 4.0;
+        if (d > 1.0 || vA <= 0.0) discard;
+        float lit = 0.45 + 0.55 * smoothstep(0.3, -0.5, q.y + q.x * 0.4);
+        vec3 base = vTone < 1.0 ? mix(vec3(0.95, 0.78, 0.6), vec3(1.0), vTone) : mix(vec3(1.0), vec3(0.16, 0.15, 0.15), vTone - 1.0);
+        float a = (1.0 - d) * (1.0 - d) * vA * (vTone > 1.0 ? 0.7 : 0.45);
+        vec3 c = base * mix(uAmb, uSun, lit * (0.8 + 0.2 * vS));
+        gl_FragColor = vec4(c * a, a);
+      }`,
+    transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  let next = 0, lo = -1, cnt = 0;
+  return {
+    points,
+    emit(x, y, z, vx, vy, vz, time, grow, tone, life) {
+      const i = next;
+      next = (next + 1) % count;
+      if (lo < 0) lo = i;
+      cnt++;
+      p0[i * 3] = x; p0[i * 3 + 1] = y; p0[i * 3 + 2] = z;
+      vel[i * 3] = vx; vel[i * 3 + 1] = vy; vel[i * 3 + 2] = vz;
+      aux[i * 3] = grow; aux[i * 3 + 1] = tone; aux[i * 3 + 2] = life;
+      born[i] = time;
+    },
+    update(time, pixelScale) {
+      mat.uniforms.uTime.value = time;
+      mat.uniforms.uScale.value = pixelScale;
+      if (lo < 0) return;
+      mark(geo, ['position', 'vel', 'born', 'aux'], lo, Math.min(cnt, count), count);
+      lo = -1; cnt = 0;
+    },
+  };
+}
+
+export function createSparks(depth, count = 1024) {
+  const geo = new THREE.InstancedBufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, -1, 0, 0, 1, 0, 1, -1, 0, 1, 1, 0]), 3));
+  geo.setIndex([0, 2, 1, 1, 2, 3]);
+  const p0 = new Float32Array(count * 3), vel = new Float32Array(count * 3), born = new Float32Array(count).fill(-99), seed = new Float32Array(count);
+  for (let i = 0; i < count; i++) seed[i] = Math.random();
+  geo.setAttribute('p0', new THREE.InstancedBufferAttribute(p0, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('vel', new THREE.InstancedBufferAttribute(vel, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('born', new THREE.InstancedBufferAttribute(born, 1).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('seed', new THREE.InstancedBufferAttribute(seed, 1));
+  geo.instanceCount = count;
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1280, 720) }, tDepth: depth },
+    vertexShader: /* glsl */ `
+      attribute vec3 p0; attribute vec3 vel; attribute float born; attribute float seed;
+      uniform float uTime; uniform vec2 uRes; varying float vA; varying float vY;
+      vec4 at(float t) { float k = (1.0 - exp(-t * 2.5)) / 2.5; return projectionMatrix * viewMatrix * vec4(p0 + vel * k + vec3(0.0, -6.0 * t * t, 0.0), 1.0); }
+      void main() {
+        float t = uTime - born, life = 0.25 + seed * 0.55;
+        vA = t < 0.0 || t > life ? 0.0 : 1.0 - t / life;
+        vec4 h = at(t), b = at(max(0.0, t - 0.05 - seed * 0.05));
+        vec4 c = position.x > 0.5 ? h : b;
+        vec2 d = (h.xy / h.w - b.xy / b.w) * uRes;
+        float len = length(d);
+        vec2 n = len > 1e-3 ? vec2(-d.y, d.x) / len : vec2(0.0, 1.0);
+        c.xy += n * position.y * (1.6 + 2.4 * vA) * (position.x > 0.5 ? 1.0 : 0.35) * uRes.y / 720.0 / uRes * 2.0 * c.w;
+        vY = position.y;
+        gl_Position = vA > 0.0 && h.w > 0.1 && b.w > 0.1 ? c : vec4(0.0, 0.0, 2.0, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D tDepth; uniform vec2 uRes; varying float vA; varying float vY;
+      void main() {
+        if (gl_FragCoord.z > texture2D(tDepth, gl_FragCoord.xy / uRes).r + 2e-5) discard;
+        float e = 1.0 - abs(vY);
+        vec3 c = mix(vec3(1.0, 0.32, 0.06), vec3(1.0, 0.86, 0.55), vA * vA) * (2.5 + 9.0 * vA * vA);
+        gl_FragColor = vec4(c * e * e, 1.0);
+      }`,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = false;
+  let next = 0, lo = -1, cnt = 0;
+  return {
+    mesh,
+    emit(x, y, z, vx, vy, vz, time) {
+      const i = next;
+      next = (next + 1) % count;
+      if (lo < 0) lo = i;
+      cnt++;
+      p0[i * 3] = x; p0[i * 3 + 1] = y; p0[i * 3 + 2] = z;
+      vel[i * 3] = vx; vel[i * 3 + 1] = vy; vel[i * 3 + 2] = vz;
+      born[i] = time;
+    },
+    update(time, w, h) {
+      mat.uniforms.uTime.value = time;
+      mat.uniforms.uRes.value.set(w, h);
+      if (lo < 0) return;
+      mark(geo, ['p0', 'vel', 'born'], lo, Math.min(cnt, count), count);
       lo = -1; cnt = 0;
     },
   };

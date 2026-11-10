@@ -413,7 +413,9 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
   });
   let scene = null, carRT = null, velRT = null, aoRT = null, aoBlurRT = null, hist = [null, null], downs = [], ups = [];
   const meterRT = target(METER_W, METER_H, { format: THREE.RGFormat }), evRT = [target(1, 1, { format: THREE.RedFormat }), target(1, 1, { format: THREE.RedFormat })];
-  let lastRender = 0;
+  let lastRender = 0, overlay = null;
+  const far = new THREE.DataTexture(new Float32Array([1]), 1, 1, THREE.RedFormat, THREE.FloatType);
+  far.needsUpdate = true;
   const size = new THREE.Vector2();
   let w = 0, h = 0, frame = 0, reset = true, writing = false;
   const movers = [], roots = [];
@@ -467,6 +469,8 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
     });
   }
   return {
+    set overlay(o) { overlay = o; },
+    depth: shared.tDepth,
     get lite() { return lite; },
     set lite(v) { lite = v; reset = true; },
     uniforms: comp.uniforms,
@@ -481,6 +485,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
       const target = renderer.getRenderTarget();
       renderer.setRenderTarget(scene);
       await renderer.compileAsync(world, camera);
+      if (overlay) await renderer.compileAsync(overlay, camera);
       renderer.setRenderTarget(target);
     },
     render(world, camera) {
@@ -541,6 +546,15 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
       taa.uniforms.uTexel.value.set(1 / w, 1 / h);
       taa.uniforms.uReset.value = reset ? 1 : 0;
       pass(taa, cur);
+      }
+      if (overlay) {
+        const autoClear = renderer.autoClear;
+        renderer.autoClear = false;
+        renderer.setRenderTarget(cur);
+        if (lite) shared.tDepth.value = far;
+        renderer.render(overlay, camera);
+        shared.tDepth.value = scene.depthTexture;
+        renderer.autoClear = autoClear;
       }
       meter.uniforms.tSrc.value = cur.texture;
       pass(meter, meterRT);
