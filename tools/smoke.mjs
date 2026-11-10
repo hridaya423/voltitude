@@ -20,6 +20,7 @@ const loadedMs = Date.now() - t0;
 for (const k of keys.split(',').filter(Boolean)) { if (/^\d+$/.test(k)) await page.waitForTimeout(Number(k)); else await page.keyboard.press(k); }
 const done = { boot: () => true, racing: () => window.__cap.mode === 'race' && window.__cap.race.phase === 'racing', results: () => window.__cap.mode === 'results' }[until];
 const reached = await page.waitForFunction(done, null, { timeout: limit, polling: 100 }).then(() => true, () => false);
+if (reached && until === 'results') await page.waitForFunction(() => document.getElementById('menuLive').textContent, null, { timeout: 2000, polling: 'raf' }).catch(() => {});
 const out = { query, until, reached, loadedMs, errors, consoleErrors: [...new Set(logs)], state: await page.evaluate(() => ({ mode: window.__cap.mode, event: window.__cap.current.id, phase: window.__cap.race.phase, live: document.getElementById('menuLive').textContent })) };
 if (expr) out.value = await page.evaluate(expr);
 console.log(JSON.stringify(out, null, 1));
