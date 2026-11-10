@@ -1723,3 +1723,16 @@ Worked on `advisor/integration` after plan 003. SIM_VERSION 15 → 16. Nothing p
   - Local records reset again: the save key is `voltitude.save.v16`.
   - Taste constants to judge in play: `SOLO_COUNTDOWN = 160` in `race.js` (200 gives four beeps), the 700 ms resume hold in `resume`, and the 0.3 reset flash (two places in `handleEvents`).
   - The `R RETRY` label shows the keyboard key on every device; plan 005 fixes labels. Touch has no restart button.
+
+## Session 2026-11-10: first run and teaching (plan 005)
+
+Worked on `advisor/integration` after plan 004. No sim change; `git diff f8083a4 -- src/sim rl server` is empty. Nothing pushed or deployed. Status: DONE.
+
+- Steps 1-2: `tests/hints.test.js` failed first on the missing `src/hints.js`, then passed 7/7. The `flip` rule is in, because plan 002 landed `inp.flip`.
+- Step 3: the first boot smoke printed `venue pad`, `event lineup`, `index 1`. `?venue=proving` printed `event gp`, `index 1`. The daily check `?venue=pad&daily&day=2026-11-09` reached racing with `dailyRun true`, exit 0.
+- Steps 4-5: key labels follow the device. The rule-driven hints replace the position hints. `grep -n "hintAt\|hoverHint\|const HINTS" src/main.js` finds nothing.
+- Step 6: the Proving TT smoke with the throttle held logged `4.3s state=[BRAKE!]`, `7.2s state=[]`, `7.8s hint=[Backspace puts you back on the road]`, `13.8s hint=[Hold Shift to fire the rear thrusters]`. The three requirements hold.
+- Step 7: the legend smoke printed `W S drive | A D steer | Shift boost | Space hop · hover | Q E air roll | Backspace reset | R restart`.
+- Step 8: screenshots at 1280x720 in the session scratchpad. The boot garage shows The Pad with The Lineup selected. The legend fits on one row inside the board. At 5 s on Proving TT, BRAKE and the speed number are red. On The Lineup at 3.5 s, the boost hint sits above the speed plate and touches nothing. A forced flip hint with BRAKE on shows the hint box clear of the label. Each hint string (air, lift, flip, hop, gas, reset, boost) fits on one line.
+- Gates: `npm test` 175/175 (168 before).
+- Open for the owner: the default venue for a new player is now The Pad. The brake cue has a Settings toggle and is on by default.
