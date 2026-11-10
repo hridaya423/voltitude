@@ -26,6 +26,7 @@ import { createChaseCamera, createBroadcastCamera } from './render/camera.js';
 import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
+import { stylePoints } from './style.js';
 import { createHints } from './hints.js';
 import { fmt, fmtDelta, lapReview } from './time.js';
 import { createMenu, pauseView, describe, dareResults, rampResults, dareMedal, DARE_MEDALS } from './menu.js';
@@ -239,7 +240,7 @@ const prev = { p: new THREE.Vector3(), q: new THREE.Quaternion() }, gprev = { p:
 const interp = new THREE.Vector3(), gInterp = new THREE.Vector3(), rInterp = new THREE.Vector3();
 const _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _x = new THREE.Vector3(), _y = new THREE.Vector3(), _z = new THREE.Vector3();
 const autoplay = params.has('autopilot');
-let usage = { boost: 0, air: 0, roll: 0 };
+let style = 0;
 
 function carQuat(c, out) {
   _x.set(-c.rx, -c.ry, -c.rz); _y.set(c.ux, c.uy, c.uz); _z.set(c.fx, c.fy, c.fz);
@@ -460,6 +461,7 @@ function startRace(ev = current, daily = dailyRun && ev === current) {
   if (garage.active && !settings.reduced) chase.from({ position: _x.set(c0.x - c0.fx * 3.4 - c0.rx * 2.2, c0.y + 0.9, c0.z - c0.fz * 3.4 - c0.rz * 2.2), fov: 38, filmOffset: 0 }, prev.p);
   else chase.snap();
   finishAt = 0;
+  style = 0;
   mode = 'race';
   menu.close();
   hud.show(true);
@@ -576,11 +578,13 @@ function finishCircuit(ev) {
   };
   const penalty = me.penalty >= 0.05 ? ` · ${me.penalty.toFixed(1)} s track limits` : '';
   const review = lapReview(race.splits, ev.perLap);
+  const styleKey = `${venue.id}.${ev.id}`, styleBest = (save.style ||= {})[styleKey] || 0;
+  if (style > styleBest) { save.style[styleKey] = style; persist(); }
   showResults({
     card: `${venue.name} · ${ev.name}`, pos: gp ? me.pos : 0, field: race.entries.length, medal: medalLine(m, before),
     time: fmt(race.total), delta, note: gp ? `${me.passes || 0} overtakes · ${contactCount} contacts${penalty}` : linked?.run.event === ev.id ? `Linked ghost ${fmt(linked.run.total)} · you ${fmtDelta(race.total - linked.run.total)}` : [review.worst?.loss > 12 && `Most time lost in sector ${review.worst.sector} of lap ${review.worst.lap}: ${(review.worst.loss / 120).toFixed(2)} s off your own best`, penalty.slice(3)].filter(Boolean).join(' · '),
     title: 'LAPS', rows: race.laps.map(lapRow),
-    stats: [{ label: 'Top speed', value: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}` }, { label: 'Best lap', value: bestLapT ? fmt(bestLapT) : '—' }, ...(review.ideal ? [{ label: 'Ideal lap', value: fmt(review.ideal) }] : []), { label: 'Resets', value: `${race.respawns}` }],
+    stats: [{ label: 'Top speed', value: `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}` }, { label: 'Best lap', value: bestLapT ? fmt(bestLapT) : '—' }, ...(review.ideal ? [{ label: 'Ideal lap', value: fmt(review.ideal) }] : []), { label: 'Resets', value: `${race.respawns}` }, { label: style > styleBest && styleBest ? 'Style · new best' : 'Style', value: `${style}` }],
     hasNext: !!EVENTS[ev.card],
   }, m, before);
 }
@@ -664,6 +668,7 @@ function hints() {
 
 function handleEvents() {
   for (const e of race.events) {
+    style += stylePoints(e);
     switch (e.type) {
       case 'light': hud.light(e.n); audio.light(e.n); break;
       case 'go': cheerNear(0.7); hud.light(0); audio.lightsOut(); input.rumble(0.5, 0.4, 160); chase.bump(0.15); break;
@@ -734,7 +739,6 @@ function handleEvents() {
         if (e.quality === 'perfect') { hud.toast(names || 'PERFECT LANDING', e.tricks.length >= 2 ? 'gold big' : 'good'); audio.event('perfect'); input.rumble(0.45, 0.6, 160); chase.bump(0.3); chase.punch(-0.6); }
         else if (e.quality === 'clean') { hud.toast(names || 'CLEAN', 'white'); audio.event('clean'); input.rumble(0.3, 0.3, 140); chase.bump(0.2); chase.punch(-0.3); }
         else { hud.toast('HARD LANDING', 'red', '−10% SPEED'); audio.event('impact'); input.rumble(0.9, 0.4, 220); chase.bump(0.9); chase.stall(0.05); }
-        if (e.tricks.length) usage.roll++;
         if (e.quality === 'hard') audio.radio('hard');
         else if (e.tricks.length) audio.radio('flip');
         else if (e.air > 2.5) sayOnce('big_air');
@@ -790,7 +794,6 @@ function tick() {
     packInput(simIn, packed, 0);
     unpackInput(packed, 0, simIn);
     recorder.push(simIn);
-    if (simIn.boost) usage.boost++;
   }
   stepRace(race, simIn);
   if (ghost) ghost.step();
