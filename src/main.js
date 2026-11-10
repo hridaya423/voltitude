@@ -138,7 +138,7 @@ scene.add(facility.group, stands.group, festival.group, range.group);
 const dust = createDust(terrain.height);
 const skids = createSkids();
 scene.add(dust.points, skids.mesh);
-const fireworks = createFireworks();
+const fireworks = createFireworks(12);
 const gates = createGates(world, (m) => skyFog(m, sunUniform, fogDensity));
 scene.add(gates.group);
 const spurGates = Object.fromEntries(Object.entries(track.spurs || {}).filter(([, t]) => t.gates.length).map(([id, t]) => [id, createGates({ ...world, track: t }, (m) => skyFog(m, sunUniform, fogDensity))]));
@@ -740,7 +740,10 @@ function handleEvents() {
         if (current.circuit) {
           const k = track.finish % track.lap * 3;
           for (const side of [-1, 1]) fireworks.show(finishAtPos.set(track.P[k] + track.R[k] * side * 32, track.P[k + 1], track.P[k + 2] + track.R[k + 2] * side * 32), race.order[0] === race ? 5 : 3, 24);
-          audio.event('finish'); hud.toast('FINISH', 'white'); finishAt = performance.now(); stands.party(); input.rumble(0.6, 0.6, 400); break;
+          const p = current.kind === 'gp' ? race.pos : 0;
+          audio.event('finish', p);
+          hud.toast(p === 1 ? 'WINNER' : p ? `P${p}` : 'FINISH', p && p <= 3 ? 'good' : 'white', p ? 'FINISH' : '');
+          finishAt = performance.now(); stands.party(); input.rumble(p === 1 ? 1 : 0.6, p === 1 ? 0.8 : 0.6, p === 1 ? 700 : 400); break;
         }
         const pb = book[current.id]?.best;
         if (!pb || race.total < pb) {
