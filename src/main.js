@@ -601,6 +601,7 @@ async function postRun(result, day) {
     const body = await res.json();
     if (!res.ok && res.status !== 409) throw new Error(body.error);
     submitted = body.id || null;
+    if (res.ok && !result.delta.text) result.delta = { text: 'First time on the board', tone: '' };
     result.board = { ev, scope: day ? 'day' : 'all' };
     const rank = res.ok ? `${body.best ? 'Rank' : 'Your best ranks'} ${body.rank} of ${body.players} · ${day ? 'daily' : 'all-time'}` : 'This exact run is already on the board';
     if (day) {
@@ -647,7 +648,7 @@ function finishCircuit(ev) {
   } else if (prevBest) {
     const d = race.total - prevBest;
     delta = { text: d < 0 ? `New best · ${fmtDelta(d)}` : `${fmtDelta(d)} off your best`, tone: d <= 0 ? 'good' : 'bad' };
-  } else delta = { text: 'First time on the board', tone: '' };
+  } else delta = { text: '', tone: '' };
   const valid = race.laps.filter((t, k) => !me.invalid.includes(k));
   const bestLapT = valid.length ? Math.min(...valid) : 0;
   const lapRow = (t, k) => {
@@ -704,7 +705,7 @@ function finish() {
   if (prevBest) {
     const d = race.total - prevBest;
     delta = { text: d < 0 ? `New best · ${fmtDelta(d)}` : `${fmtDelta(d)} off your best`, tone: d <= 0 ? 'good' : 'bad' };
-  } else delta = { text: 'First time on the board', tone: '' };
+  } else delta = { text: '', tone: '' };
   const ref = prevRec?.run?.splits || author[ev.id]?.splits || [];
   let worst = -1, worstLoss = 0, last = 0, lastRef = 0;
   const rows = race.splits.map((t, i) => {

@@ -277,7 +277,7 @@ export function dareMedal(id, score) {
 }
 
 export function dareResults({ card, score, best, line, clears, speed, hasNext = false }) {
-  const delta = !best ? { text: 'First time on the board', tone: '' }
+  const delta = !best ? { text: '', tone: '' }
     : score > best ? { text: `New best · +${score - best}`, tone: 'good' }
       : { text: score === best ? 'Equal to your best' : `${best - score} short of your best`, tone: score === best ? 'good' : 'bad' };
   return {
@@ -309,8 +309,8 @@ export function describe(view) {
     const value = r.type === 'toggle' ? (r.value ? 'on' : 'off') : r.type === 'slider' ? `${Math.round(r.value * 100)} percent` : r.value || '';
     return `${page === 'keys' ? 'Controls' : 'Settings'}. ${r.label.split(' \u00b7 ')[0]} ${value}. ${r.note || ''}`;
   }
-  if (board.kind === 'results' && board.dare) return `Results. Score ${board.time}. ${board.lineLabel ? `Landed ${board.line}` : `Line ${board.line}`}. ${board.delta.text}. ${board.note ? `${board.note}. ` : ''}${board.actions[board.index].label}.`;
-  if (board.kind === 'results') return `Results. ${board.pos ? `Position ${board.pos} of ${board.field}. ` : ''}Time ${board.time}. ${board.delta.text}. ${board.note || ''} ${board.actions[board.index].label}.`;
+  if (board.kind === 'results' && board.dare) return `Results. Score ${board.time}. ${board.lineLabel ? `Landed ${board.line}` : `Line ${board.line}`}. ${board.delta.text ? `${board.delta.text}. ` : ''}${board.note ? `${board.note}. ` : ''}${board.actions[board.index].label}.`;
+  if (board.kind === 'results') return `Results. ${board.pos ? `Position ${board.pos} of ${board.field}. ` : ''}Time ${board.time}. ${board.delta.text ? `${board.delta.text}. ` : ''}${board.note || ''} ${board.actions[board.index].label}.`;
   if (board.kind === 'pause') return `Paused. ${board.rows[board.index].label}.`;
   if (board.kind === 'leaders') { const r = [...board.rows, ...board.around][board.index]; return `Leaderboard. ${board.title}, ${board.scope === 'day' ? 'daily' : 'all-time'}. ${board.message || `${board.mine ? `You are ${board.mine}. ` : ''}${r ? `Rank ${r.rank}, ${r.name}, ${r.value}. Enter races this ghost.` : ''}`}`; }
   const e = board.rows[board.index];

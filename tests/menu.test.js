@@ -232,7 +232,7 @@ test('results for a dare show score, best and the line reached, with no sector d
   assert.ok(r.rows.every((x) => !('dot' in x)));
   assert.deepEqual(r.stats.map((x) => [x.label, x.value]), [['Best', '8'], ['Cleared', '6'], ['Top speed', '140 MPH']]);
   assert.deepEqual(dareResults({ card: '', score: 2, best: 5, line: 2, clears: [], speed: '' }).delta, { text: '3 short of your best', tone: 'bad' });
-  assert.equal(dareResults({ card: '', score: 0, best: 0, line: 1, clears: [], speed: '' }).delta.text, 'First time on the board');
+  assert.equal(dareResults({ card: '', score: 0, best: 0, line: 1, clears: [], speed: '' }).delta.text, '');
   const { menu } = setup();
   menu.open('results', { results: r });
   assert.equal(describe(menu.view()), 'Results. Score 8. Line 4. New best · +3. Retry.');
