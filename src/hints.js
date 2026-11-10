@@ -39,3 +39,5 @@ export function createHints() {
 export const brakeCue = (line, lap, c, on) => c.mode === 1 && c.uy >= 0.3 && c.speed > line.cap[(c.hint + Math.round(c.speed * 0.5)) % lap] + (on ? 0 : 3);
 
 export const wrongWay = (track, c) => c.mode !== 0 && c.speed > 5 && c.fx * track.T[c.hint * 3] + c.fy * track.T[c.hint * 3 + 1] + c.fz * track.T[c.hint * 3 + 2] < -0.5;
+
+export const placeCall = (told, pos) => pos === told ? null : pos > told ? 'lost' : 'gained';

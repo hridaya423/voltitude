@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput } from '../src/sim/race.js';
 import { lineFor } from '../src/sim/driver.js';
-import { createHints, brakeCue, wrongWay } from '../src/hints.js';
+import { createHints, brakeCue, wrongWay, placeCall } from '../src/hints.js';
 import { placeCar } from '../src/sim/drive.js';
 
 const world = loadWorld('proving');
@@ -107,4 +107,22 @@ test('the slide hint waits for the third braking zone, and a player who slides i
   const hint = out.find(([id]) => id === 'slide');
   assert.ok(hint && zones.length >= 3 && hint[1] >= zones[2], `hint ${hint}, braking from ${zones.slice(0, 4)}`);
   assert.deepEqual(play((race, inp) => { botInput(race, inp, 1); inp.slide = 1; }, 60, { ...quiet }).filter(([id]) => id === 'slide'), []);
+});
+
+test('a pack that passes a stopped car calls each place once, never the same place twice in a row', () => {
+  const GP = eventsFor(world.track, world.venue).find((e) => e.id === 'gp');
+  const race = createRace(world, { event: GP, seed: 7 }), inp = createInput(), calls = [], raw = [];
+  let told = race.pos;
+  for (let t = 0; t < 120 * 40; t++) {
+    botInput(race, inp);
+    if (race.raceTick > 120 * 20) { inp.throttle = 0; inp.brake = 1; inp.boost = 0; }
+    stepRace(race, inp);
+    if (t % 2) {
+      for (const e of race.events) if (e.type === 'pass') { raw.push(race.pos); const call = placeCall(told, race.pos); told = race.pos; if (call) calls.push([call, race.pos]); }
+      race.events.length = 0;
+    }
+  }
+  assert.ok(raw.length > calls.length, `raw ${raw} calls ${JSON.stringify(calls)}`);
+  for (let i = 1; i < calls.length; i++) assert.notEqual(calls[i][1], calls[i - 1][1]);
+  assert.deepEqual(calls.filter(([c]) => c === 'lost').map(([, p]) => p), [6, 8]);
 });

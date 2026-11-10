@@ -28,7 +28,7 @@ import { createInput, DEFAULT_KEYS, keyLabel } from './input.js';
 import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
 import { stylePoints } from './style.js';
-import { createHints } from './hints.js';
+import { createHints, placeCall } from './hints.js';
 import { fmt, fmtDelta, lapReview } from './time.js';
 import { createMenu, pauseView, describe, dareResults, rampResults, dareMedal, DARE_MEDALS } from './menu.js';
 import { dailyFor, dayOf } from './sim/daily.js';
@@ -524,7 +524,7 @@ function startRace(ev = current, daily = dailyRun && ev === current) {
   carView.wash();
   ghost = settings.ghost || linked?.run.event === ev.id ? createGhost(world, ghostRun(ev)) : null;
   const ref = ev.kind === 'tt' ? lapSplits(ghostRun(ev)) : null;
-  bestLap = 0; lapRef = ref ? ref.cum : null; contactCount = 0; clears = [];
+  bestLap = 0; lapRef = ref ? ref.cum : null; contactCount = 0; clears = []; told = race.pos;
   race.entries.forEach((e, k) => { if (k) snapshot(e.car, rprev[k - 1]); });
   rivalViews.forEach((v, k) => { v.root.visible = k + 1 < race.entries.length; });
   if (ghost) { ensureGhostView().root.visible = true; snapshot(ghost.race.car, gprev); } else if (ghostView) ghostView.root.visible = false;
@@ -569,7 +569,7 @@ function watchReplay() {
 function endReplay() { replay = null; $('replayBug').hidden = true; mode = 'results'; }
 
 const POINTS = [25, 18, 15, 12, 10, 8, 6, 4];
-let clears = [], contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null, resumeAt = 0;
+let clears = [], contactCount = 0, lastContact = -999, lastGainTick = -1, wreckToast = null, placeToast = null, told = 0, resumeAt = 0;
 let resultsAt = 0;
 const speedUnit = () => (settings.units === 'kmh' ? 3.6 : 2.237);
 const medalLine = (m, before) => (m ? { id: m.id, name: m.name, fresh: !(before && before.id === m.id) } : null);
@@ -789,7 +789,14 @@ function handleEvents() {
         setTimeout(() => hud.sectorsBegin(per), 1500);
         break;
       }
-      case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, race.pos === 1 ? 'gold big' : 'good', race.pos === 1 ? 'LEADING' : ''); audio.event('overtake', race.pos === 1 ? 1 : 0); } else { hud.toast(`P${race.pos}`, 'red'); audio.event('overtaken'); } updateTower(); break;
+      case 'pass': {
+        const call = placeCall(told, race.pos);
+        told = race.pos;
+        if (call) placeToast?.remove();
+        if (call === 'gained') { placeToast = hud.toast(`P${race.pos}`, race.pos === 1 ? 'gold big' : 'good', race.pos === 1 ? 'LEADING' : ''); audio.event('overtake', race.pos === 1 ? 1 : 0); } else if (call === 'lost') { placeToast = hud.toast(`P${race.pos}`, 'red'); audio.event('overtaken'); }
+        updateTower();
+        break;
+      }
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
       case 'near_miss': { const o = race.entries[e.other]?.car, c = race.car, s = o ? (o.x - c.x) * c.rx + (o.y - c.y) * c.ry + (o.z - c.z) * c.rz : 0; if (s >= 0) rushR = 1; if (s <= 0) rushL = 1; } audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
       case 'track_limits': hud.toast('TRACK LIMITS', 'orange', `+${e.gain.toFixed(1)} S · TOTAL ${race.penalty.toFixed(1)} S`); audio.event('miss'); break;
