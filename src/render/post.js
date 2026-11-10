@@ -256,6 +256,7 @@ uniform sampler2D tScene; uniform sampler2D tBloom; uniform sampler2D tVel; unif
 uniform float uBloom; uniform float uExposure; uniform vec2 uTexel;
 uniform float uBlur; uniform float uShutter; uniform float uSharpen; uniform float uAberration; uniform float uVignette; uniform float uTime; uniform float uGrain;
 uniform vec3 uLift; uniform vec3 uGain; uniform float uSaturation; uniform float uFlash; uniform float uHeat; uniform mat4 uCamWorld;
+uniform float uWind; uniform vec2 uRush;
 varying vec2 vUv;
 vec3 agx(vec3 color) {
   const mat3 toRec2020 = mat3(0.6274039, 0.0690973, 0.0163914, 0.3292830, 0.9195404, 0.0880133, 0.0433131, 0.0113623, 0.8955953);
@@ -331,6 +332,17 @@ void main() {
   col = texture(tLut, col * (31.0 / 32.0) + 0.5 / 32.0).rgb;
   vec2 vq = (vUv - 0.5) * vec2(1.0, 0.82);
   col *= 1.0 - uVignette * smoothstep(0.18, 0.75, dot(vq, vq) * 2.0);
+  if (uWind + uRush.x + uRush.y > 0.002) {
+    vec2 d = (vUv - 0.5) * vec2(uTexel.y / uTexel.x, 1.0);
+    float r = length(d), a = atan(d.y, d.x) * 0.1591549 + 0.5;
+    float lane = floor(a * 220.0), f = fract(a * 220.0);
+    float h1 = fract(sin(lane * 12.9898) * 43758.5453), h2 = fract(sin(lane * 78.233) * 12543.123);
+    float rush = d.x < 0.0 ? uRush.x : uRush.y;
+    float s = 0.2 + fract(h1 + uTime * (1.1 + h2 * 1.8)) * 1.1, len = 0.1 + h2 * 0.22;
+    float line = smoothstep(s - len, s, r) * (1.0 - smoothstep(s, s + 0.012, r)) * (1.0 - smoothstep(0.0, 0.14, abs(f - 0.5)));
+    float k = uWind * step(0.5, h2) * 1.6 + rush * step(0.25, h2) * smoothstep(0.05, 0.35, abs(d.x)) * 1.6;
+    col = mix(col, vec3(1.0), clamp(line * k * smoothstep(0.3, 0.7, r) * 0.6, 0.0, 0.85));
+  }
   col += uFlash;
   col += (hash(vUv * 913.0) - 0.5) * uGrain;
   gl_FragColor = vec4(col, 1.0);
@@ -405,7 +417,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
     tDepth: shared.tDepth, uInvProj: shared.uInvProj, uCamWorld: shared.uCamWorld,
     tScene: { value: null }, tBloom: { value: null }, tVel: { value: null }, tEV, tLut: { value: lut }, uBloom: { value: 0.08 }, uExposure: exposure, uTexel: { value: new THREE.Vector2() },
     uBlur: { value: 0 }, uShutter: { value: 1 }, uSharpen: { value: 0.5 }, uAberration: { value: 0 }, uVignette: { value: 0.38 },
-    uTime: { value: 0 }, uGrain: { value: 0.016 }, uLift: { value: new THREE.Vector3(0.006, 0.005, 0.01) }, uGain: { value: new THREE.Vector3(1.0, 1.0, 1.0) }, uSaturation: { value: 1.08 }, uFlash: { value: 0 }, uHeat: { value: 0 },
+    uTime: { value: 0 }, uGrain: { value: 0.016 }, uLift: { value: new THREE.Vector3(0.006, 0.005, 0.01) }, uGain: { value: new THREE.Vector3(1.0, 1.0, 1.0) }, uSaturation: { value: 1.08 }, uFlash: { value: 0 }, uHeat: { value: 0 }, uWind: { value: 0 }, uRush: { value: new THREE.Vector2() },
   });
   const carMat = new THREE.ShaderMaterial({
     vertexShader: CAR_VERT, fragmentShader: CAR_FRAG,
@@ -505,7 +517,7 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
       renderer.setRenderTarget(scene);
       renderer.render(world, camera);
       let cur = scene;
-      if (lite) for (const k of ['uBlur', 'uAberration', 'uHeat', 'uSharpen']) comp.uniforms[k].value = 0;
+      if (lite) { for (const k of ['uBlur', 'uAberration', 'uHeat', 'uSharpen', 'uWind']) comp.uniforms[k].value = 0; comp.uniforms.uRush.value.set(0, 0); }
       else {
       const mask = camera.layers.mask, clearAlpha = renderer.getClearAlpha(), clear = renderer.getClearColor(new THREE.Color()), autoClear = renderer.autoClear;
       camera.layers.set(3);
