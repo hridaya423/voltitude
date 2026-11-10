@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput } from '../src/sim/race.js';
 import { lineFor } from '../src/sim/driver.js';
-import { createHints, brakeCue } from '../src/hints.js';
+import { createHints, brakeCue, wrongWay } from '../src/hints.js';
+import { placeCar } from '../src/sim/drive.js';
 
 const world = loadWorld('proving');
 const TT = eventsFor(world.track, world.venue).find((e) => e.id === 'tt');
@@ -82,4 +83,14 @@ test('a driver who brakes only on the cue laps within 8% of the bot', () => {
   };
   const bot = lap(false), cued = lap(true);
   assert.ok(cued && cued < bot * 1.08, `bot ${bot}, cue driver ${cued}`);
+});
+
+test('a car driving against the track is flagged, and one driving with it is not', () => {
+  const c = createRace(world, { event: TT }).car;
+  placeCar(c, world.track, 200, 30);
+  assert.equal(wrongWay(world.track, c), false);
+  c.fx = -c.fx; c.fy = -c.fy; c.fz = -c.fz;
+  assert.equal(wrongWay(world.track, c), true);
+  c.speed = 2;
+  assert.equal(wrongWay(world.track, c), false);
 });
