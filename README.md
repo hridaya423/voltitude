@@ -47,6 +47,7 @@ node tools/exploits.mjs proving        # exploit patterns against one venue
 node tools/ai-bench.mjs 20 proving     # seeded races per difficulty tier
 node tools/bake-terrain.mjs proving    # after any layout change; tests fail on a stale bake
 node tools/medals.mjs                  # author ghosts and medal times
+node tools/smoke.mjs '?venue=pad&event=lineup&autostart&autopilot'   # boots the game in headless Chrome and reports state
 ```
 
 The browser tools (`shot-match`, `menu-shots`, `capture-gates`, `perf`) drive system Chrome through Playwright. Install them once with `npm install --prefix tools`.
