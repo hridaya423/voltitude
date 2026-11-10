@@ -386,6 +386,7 @@ export function createAudio(settings) {
     now = ctx.currentTime;
     playFrom(bcast, bcastCues.lights_out, 1, 1, now, sfxBus);
     commentary('lights_out', 0.7);
+    if (music) music.stinger('start', 1);
   }
 
   function passBy(sn) {
@@ -529,6 +530,7 @@ export function createAudio(settings) {
       intensityT = 0.25;
       music.setIntensity(clamp01(0.08 + 0.45 * clamp01(s / 85) + (c.mode === 0 ? 0.2 : 0) + (boosting ? 0.15 : 0)));
     }
+    if (music) music.setAir(active && c.mode === 0 ? 1 : 0);
 
     sp(rvLoop.gain, 0.05 + 0.5 * canyon + 0.12 * near, 0.3);
     if (canyon > 0.35 && clr > 4.5 && on && s > 45) {
