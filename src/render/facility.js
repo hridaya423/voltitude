@@ -129,6 +129,25 @@ export function createFacility(world, sunUniform, fogDensity, night) {
     poles.push([m.x, m.g, m.z, m.y + MOUNT - 1.4 - m.g]);
     heads.push({ x: m.x, y: m.y + MOUNT, z: m.z, yaw: m.yaw, pitch: Math.atan2(MOUNT, m.off), ground: m.y });
   }
+  const banked = (i) => i < track.lap && track.U[i * 3 + 1] < 0.9 && track.U[i * 3 + 1] > 0.3 && !track.roof[i] && Math.abs(track.curv[i]) > 0.004;
+  for (let a = 0; night && a < track.lap; a++) {
+    if (!banked(a)) continue;
+    let b = a;
+    while (banked(b + 1)) b++;
+    if (b - a > 40) {
+      let cx = 0, cz = 0;
+      for (let i = a; i <= b; i++) { const o = i * 3, r = 1 / Math.abs(track.curv[i]), side = Math.sign(track.U[o] * track.R[o] + track.U[o + 2] * track.R[o + 2]); cx += track.P[o] + track.R[o] * side * r; cz += track.P[o + 2] + track.R[o + 2] * side * r; }
+      cx /= b - a + 1; cz /= b - a + 1;
+      const g = terrain.height(cx, cz);
+      for (const f of [0.2, 0.5, 0.8]) {
+        const o = Math.round(a + (b - a) * f) * 3, dx = track.P[o] - cx, dz = track.P[o + 2] - cz, d = Math.hypot(dx, dz);
+        const x = cx + dx / d * 6, z = cz + dz / d * 6;
+        poles.push([x, g, z, MOUNT - 1.4]);
+        heads.push({ x, y: g + MOUNT, z, yaw: Math.atan2(dx, dz), pitch: Math.atan2(MOUNT, d * 0.5), ground: g });
+      }
+    }
+    a = b;
+  }
   const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.38, 1, 10).translate(0, 0.5, 0), white, poles.length);
   poles.forEach(([x, y, z, h], k) => { _m.compose(_p.set(x, y, z), _q.identity(), _s.set(1, h, 1)); pole.setMatrixAt(k, _m); });
   const headGeo = mergeGeometries([new THREE.BoxGeometry(4.3, 1.5, 0.3).translate(0, 0, -0.05), new THREE.BoxGeometry(4.5, 0.12, 0.5).translate(0, 0.78, 0.05), new THREE.BoxGeometry(0.3, 2.4, 0.3).translate(0, -0.6, -0.35)]);
