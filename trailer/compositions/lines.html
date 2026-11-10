@@ -8,14 +8,14 @@
     .stack { display: flex; flex-direction: column; gap: 8px; }
   </style>
   <div id="root" data-composition-id="lines" data-width="1920" data-height="1080">
-    <div id="l-jump" class="line clip" data-start="1.75" data-duration="1.75"><i></i><span>JUMP.</span></div>
-    <div id="l-roll" class="line clip" data-start="8.1" data-duration="1.85"><i></i><span>ROLL.</span></div>
-    <div id="l-wall" class="line clip" data-start="10.4" data-duration="1.85"><i></i><b class="stack"><span>RIDE</span><span>WALLS.</span></b></div>
-    <div id="l-slide" class="line clip" data-start="12.6" data-duration="1.2"><i></i><span>SLIDE.</span></div>
-    <div id="l-boost" class="line clip" data-start="14.2" data-duration="1.95"><i></i><span>BOOST.</span></div>
-    <div id="l-loop" class="line clip" data-start="16.6" data-duration="2.15"><i></i><span>LOOP</span><span>IT.</span></div>
-    <div id="l-crash" class="line clip" data-start="21.75" data-duration="1.75"><i></i><span>CRASH.</span></div>
-    <div id="l-again" class="line clip" data-start="23.95" data-duration="2.05"><i></i><span>GO</span><span>AGAIN.</span></div>
+    <div id="l-jump" class="line clip" data-start="1.45" data-duration="2.4"><i></i><span>JUMP.</span></div>
+    <div id="l-roll" class="line clip" data-start="6.95" data-duration="1.85"><i></i><span>ROLL.</span></div>
+    <div id="l-wall" class="line clip" data-start="9.25" data-duration="1.85"><i></i><b class="stack"><span>RIDE</span><span>WALLS.</span></b></div>
+    <div id="l-slide" class="line clip" data-start="11.55" data-duration="2.05"><i></i><span>SLIDE.</span></div>
+    <div id="l-boost" class="line clip" data-start="14.05" data-duration="2.4"><i></i><span>BOOST.</span></div>
+    <div id="l-loop" class="line clip" data-start="16.95" data-duration="2.5"><i></i><span>LOOP</span><span>IT.</span></div>
+    <div id="l-crash" class="line clip" data-start="22.4" data-duration="1.6"><i></i><span>CRASH.</span></div>
+    <div id="l-again" class="line clip" data-start="24.8" data-duration="0.8"><i></i><span>GO</span><span>AGAIN.</span></div>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
@@ -29,14 +29,14 @@
       if (bar) tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: "expo.out" }, at - 0.05);
       tl.to(box.children, { opacity: 0, filter: "blur(6px)", duration: 0.16, ease: "power3.in" }, end - 0.2);
     };
-    words("#l-jump", 1.75, 3.5);
-    words("#l-roll", 8.1, 9.95);
-    words("#l-wall", 10.4, 12.25);
-    words("#l-slide", 12.6, 13.8);
-    words("#l-boost", 14.2, 16.15);
-    words("#l-loop", 16.6, 18.75);
-    words("#l-crash", 21.75, 23.5);
-    words("#l-again", 23.95, 26.0);
+    words("#l-jump", 1.45, 3.85);
+    words("#l-roll", 6.95, 8.8);
+    words("#l-wall", 9.25, 11.1);
+    words("#l-slide", 11.55, 13.6);
+    words("#l-boost", 14.05, 16.45);
+    words("#l-loop", 16.95, 19.45);
+    words("#l-crash", 22.4, 24);
+    words("#l-again", 24.8, 25.6);
     window.__timelines["lines"] = tl;
   </script>
 </template>

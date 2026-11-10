@@ -14,12 +14,14 @@ No clip shows the HUD, a hint or a toast. The exporter draws the 3D canvas only.
 | `loop.mp4` | 12.1 s | 10.9 s | Proving Ground at golden hour on boost: through the loop, then the sweeper as a wall ride with fan glow, wall dust and speed lines. | 0.0–2.5 s: the loop, inverted at about 1.0 s. 8.0–10.5 s: the sweeper wall ride on boost. |
 | `gp-night.mp4` | 11.1 s | 9.9 s | Grand Prix at Launch by night: the player boosts down the straight inside the pack, then the pack turns into the first corner. | 0.0–3.0 s: boost flames in the pack. 7.0–9.2 s: the pack through the corner. |
 | `hairpin.mp4` | 9.1 s | 7.9 s | Airfield at golden hour: the approach, the panelled lit retaining wall, then the 45 degree banked hairpin taken as a wall ride with the cyan fan glow. | 4.5–7.0 s: the wall ride. 3.8–4.5 s: the lit wall. |
-| `slide.mp4` | 8.1 s | 6.9 s | Proving Ground by day: a jump landing with dust, then held slides through the hairpins with tyre smoke. | 3.3–5.4 s: the slides. 2.0 s: the landing dust. |
+| `slide.mp4` | 8.1 s | 6.9 s | Proving Ground by day: held slides through the sweeper, with thick tyre smoke that trails the car. | 4.1–6.6 s: the long slide. |
 | `landing.mp4` | 7.1 s | 5.9 s | The Pad by day: boost down the straight, the kicker, and a perfect landing with the cyan ring and dust. | 5.3–5.5 s: touchdown and the ring. |
 | `near-miss.mp4` | 7.1 s | 5.9 s | The Lineup on The Pad by day, from the chase camera: the run-up and a close clear over the vehicles, with the near-miss rush lines. | 4.7–5.4 s: the leap over the line. |
 | `wreck.mp4` | 7.1 s | 5.9 s | The Pad by day: the car rolls in the air off the kicker, lands on its roof and wrecks, with sparks, smoke and debris. | 3.5–4.7 s: the roll. 5.2–5.5 s: the impact. |
 
-Total: 146 MB.
+Total: 139 MB.
+
+`slide`, `loop`, `ramp`, `gp-night` and `trench` were re-shot on 2026-11-10, after the polish-3 camera, sky, edge, floodlight and smoke fixes. Their timings did not move.
 
 ## Notes for the editor
 

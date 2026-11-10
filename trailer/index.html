@@ -13,39 +13,42 @@
       .shot { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; object-fit: cover; }
       #crop4 { position: absolute; inset: 0; overflow: hidden; transform-origin: 50% 38%; }
       #dip { position: absolute; inset: 0; background: #000; opacity: 0; z-index: 20; }
+      #flash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 21; }
     </style>
   </head>
   <body>
     <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1920" data-height="1080">
       <div id="ground"></div>
       <video id="s1" class="clip shot" src="assets/clips/wreck.mp4" data-start="0.00" data-duration="0.70" data-media-start="4.95" data-track-index="1" muted playsinline style="z-index:1"></video>
-      <video id="s2" class="clip shot" src="assets/clips/gp-night.mp4" data-start="0.70" data-duration="0.80" data-media-start="0.40" data-track-index="1" muted playsinline style="z-index:2"></video>
-      <video id="s3" class="clip shot" src="assets/clips/near-miss.mp4" data-start="1.50" data-duration="2.25" data-media-start="3.40" data-track-index="1" muted playsinline style="z-index:3"></video>
+      <video id="s2" class="clip shot" src="assets/clips/gp-night.mp4" data-start="0.70" data-duration="0.70" data-media-start="0.30" data-track-index="1" muted playsinline style="z-index:2"></video>
+      <video id="s3" class="clip shot" src="assets/clips/near-miss.mp4" data-start="1.40" data-duration="0.80" data-media-start="5.05" data-track-index="1" muted playsinline style="z-index:3"></video>
       <div id="crop4" style="z-index:4">
-        <video id="s4" class="clip shot" src="assets/clips/lineup.mp4" data-start="3.75" data-duration="2.20" data-media-start="1.50" data-track-index="1" muted playsinline></video>
+        <video id="s4" class="clip shot" src="assets/clips/lineup.mp4" data-start="2.20" data-duration="2.20" data-media-start="1.50" data-track-index="1" muted playsinline></video>
       </div>
-      <video id="s5" class="clip shot" src="assets/clips/ramp.mp4" data-start="5.95" data-duration="1.90" data-media-start="5.50" data-track-index="1" muted playsinline style="z-index:5"></video>
-      <video id="s6" class="clip shot" src="assets/clips/trench.mp4" data-start="7.85" data-duration="2.30" data-media-start="4.10" data-track-index="1" muted playsinline style="z-index:6"></video>
-      <video id="s7" class="clip shot" src="assets/clips/hairpin.mp4" data-start="10.15" data-duration="2.30" data-media-start="5.10" data-track-index="1" muted playsinline style="z-index:7"></video>
-      <video id="s8" class="clip shot" src="assets/clips/slide.mp4" data-start="12.45" data-duration="1.50" data-media-start="3.50" data-track-index="1" muted playsinline style="z-index:8"></video>
-      <video id="s9" class="clip shot" src="assets/clips/gp-night.mp4" data-start="13.95" data-duration="2.40" data-media-start="1.60" data-track-index="1" muted playsinline style="z-index:9"></video>
-      <video id="s10" class="clip shot" src="assets/clips/loop.mp4" data-start="16.35" data-duration="2.60" data-media-start="0.10" data-track-index="1" muted playsinline style="z-index:10"></video>
-      <video id="s11" class="clip shot" src="assets/clips/gp-night.mp4" data-start="18.95" data-duration="2.55" data-media-start="6.75" data-track-index="1" muted playsinline style="z-index:11"></video>
-      <video id="s12" class="clip shot" src="assets/clips/wreck.mp4" data-start="21.50" data-duration="2.20" data-media-start="3.45" data-track-index="1" muted playsinline style="z-index:12"></video>
-      <video id="s13" class="clip shot" src="assets/clips/landing.mp4" data-start="23.70" data-duration="2.50" data-media-start="3.10" data-track-index="1" muted playsinline style="z-index:13"></video>
+      <video id="s5" class="clip shot" src="assets/clips/ramp.mp4" data-start="4.40" data-duration="2.30" data-media-start="5.60" data-track-index="1" muted playsinline style="z-index:5"></video>
+      <video id="s6" class="clip shot" src="assets/clips/trench.mp4" data-start="6.70" data-duration="2.30" data-media-start="4.00" data-track-index="1" muted playsinline style="z-index:6"></video>
+      <video id="s7" class="clip shot" src="assets/clips/hairpin.mp4" data-start="9.00" data-duration="2.30" data-media-start="5.10" data-track-index="1" muted playsinline style="z-index:7"></video>
+      <video id="s8" class="clip shot" src="assets/clips/slide.mp4" data-start="11.30" data-duration="2.50" data-media-start="4.15" data-track-index="1" muted playsinline style="z-index:8"></video>
+      <video id="s9" class="clip shot" src="assets/clips/gp-night.mp4" data-start="13.80" data-duration="2.90" data-media-start="3.75" data-track-index="1" muted playsinline style="z-index:9"></video>
+      <video id="s10" class="clip shot" src="assets/clips/loop.mp4" data-start="16.70" data-duration="3.00" data-media-start="0.00" data-track-index="1" muted playsinline style="z-index:10"></video>
+      <video id="s11" class="clip shot" src="assets/clips/gp-night.mp4" data-start="19.70" data-duration="2.45" data-media-start="7.15" data-track-index="1" muted playsinline style="z-index:11"></video>
+      <video id="s12" class="clip shot" src="assets/clips/wreck.mp4" data-start="22.15" data-duration="2.60" data-media-start="3.15" data-track-index="1" muted playsinline style="z-index:12"></video>
+      <video id="s13" class="clip shot" src="assets/clips/landing.mp4" data-start="24.75" data-duration="0.90" data-media-start="4.90" data-track-index="1" muted playsinline style="z-index:13"></video>
       <audio id="mix" src="assets/clips/mix.m4a" data-start="0" data-duration="30" data-track-index="4" data-volume="1"></audio>
-      <div id="dip" class="clip" data-start="0" data-duration="26.2" data-track-index="2"></div>
-      <div id="lines" data-composition-id="lines" data-composition-src="compositions/lines.html" data-start="0" data-duration="26.2" data-track-index="3" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:30"></div>
-      <div id="endcard" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="26.2" data-duration="3.8" data-track-index="3" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:30"></div>
+      <div id="dip" class="clip" data-start="0" data-duration="25.65" data-track-index="2"></div>
+      <div id="flash" class="clip" data-start="24.75" data-duration="0.4" data-track-index="2"></div>
+      <div id="lines" data-composition-id="lines" data-composition-src="compositions/lines.html" data-start="0" data-duration="25.65" data-track-index="3" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:30"></div>
+      <div id="endcard" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="25.65" data-duration="4.35" data-track-index="3" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:30"></div>
     </div>
     <script>
       const tl = gsap.timeline({ paused: true });
-      tl.fromTo("#crop4", { scale: 1.36 }, { scale: 1.46, duration: 2.2, ease: "none" }, 3.75);
+      tl.fromTo("#crop4", { scale: 1.36 }, { scale: 1.46, duration: 2.2, ease: "none" }, 2.2);
       tl.set("#dip", { opacity: 0 }, 0);
-      for (const t of [13.95, 21.5]) {
+      for (const t of [13.8, 22.15]) {
         tl.to("#dip", { opacity: 0.45, duration: 0.1, ease: "power2.in" }, t - 0.1);
         tl.set("#dip", { opacity: 0 }, t);
       }
+      tl.fromTo("#flash", { opacity: 0.55 }, { opacity: 0, duration: 0.3, ease: "power2.out" }, 24.75);
       window.__timelines["main"] = tl;
     </script>
   </body>
