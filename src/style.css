@@ -100,6 +100,7 @@ button { font: inherit; }
 .toast, .hint, .gas-gains div, .marker-dist { background: var(--plate); border: 1px solid var(--hair); border-radius: 10px; text-shadow: none; }
 .toast { font: 800 expanded 19px/1 var(--display); letter-spacing: 0.14em; text-align: center; padding: 12px 20px; animation: toast 1600ms var(--ease) both; }
 .toast small { display: block; margin-top: 8px; font: 600 14px/1 var(--ui); letter-spacing: 0.16em; color: var(--ink-2); }
+.toast.big { font-size: 26px; padding: 16px 28px; }
 .toast.cyan { color: var(--cyan); }
 .toast.orange { color: var(--orange); }
 .toast.good { color: var(--good); }

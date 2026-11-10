@@ -692,21 +692,21 @@ function handleEvents() {
         if (lapRef && bestLap) hud.delta(e.t - bestLap, false); else if (lapRef) hud.delta(e.t - lapRef[per - 1], false);
         if (improved) { bestLap = e.t; lapRef = race.splits.slice((e.lap - 1) * per, e.lap * per).map((x) => x - base); }
         if (bestLap) hud.els.target.textContent = `BEST ${fmt(bestLap)}`;
-        hud.toast(`LAP ${e.lap}`, e.invalid ? 'red' : improved && !first ? 'good' : 'white', e.invalid ? `${fmt(e.t)} · INVALID` : fmt(e.t));
+        hud.toast(`LAP ${e.lap}`, e.invalid ? 'red' : improved && !first ? 'gold' : 'white', e.invalid ? `${fmt(e.t)} · INVALID` : improved && !first ? `${fmt(e.t)} · BEST LAP` : fmt(e.t));
         if (e.lap < current.laps) { audio.event('lap', e.lap + 1); if (e.lap + 1 === current.laps) audio.event('final_lap'); }
         if (improved && !first) audio.event('fastest');
         stands.cheer(0.35);
         setTimeout(() => hud.sectorsBegin(per), 1500);
         break;
       }
-      case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, 'good'); audio.event('overtake', race.pos === 1 ? 1 : 0); } else audio.event('overtaken'); updateTower(); break;
+      case 'pass': if (e.gained) { hud.toast(`P${race.pos}`, race.pos === 1 ? 'gold big' : 'good', race.pos === 1 ? 'LEADING' : ''); audio.event('overtake', race.pos === 1 ? 1 : 0); } else audio.event('overtaken'); updateTower(); break;
       case 'contact': if (e.tick - lastContact > 40) { contactCount++; audio.event('contact', e.v); } lastContact = e.tick; input.rumble(Math.min(1, e.v / 8), 0.3, 120); chase.bump(Math.min(0.6, e.v / 14)); break;
       case 'near_miss': audio.event('near_miss'); stands.wave(race.car); cheerNear(0.45); break;
       case 'track_limits': hud.toast('TRACK LIMITS', 'orange', `+${e.gain.toFixed(1)} S PENALTY`); audio.event('miss'); break;
       case 'clear': {
         clears.push(e);
         lineup.set(race.dare.count);
-        hud.toast(`+${e.count * e.mult} CLEARED${e.mult > 1 ? ` ×${e.mult}` : ''}`, e.hard ? 'white' : 'good', `LINE ${race.dare.count} NEXT`);
+        hud.toast(`+${e.count * e.mult} CLEARED${e.mult > 1 ? ` ×${e.mult}` : ''}`, e.hard ? 'white' : e.mult >= 3 ? 'gold big' : 'good', `LINE ${race.dare.count} NEXT`);
         audio.event('clear', e.mult); input.rumble(0.4, 0.6, 180); chase.punch(-0.25 * e.mult); chase.bump(0.15 * e.mult); cheerNear(0.5 + 0.2 * e.mult);
         break;
       }
@@ -726,7 +726,7 @@ function handleEvents() {
       case 'land': {
         const names = e.tricks.length ? [...new Set(e.tricks)].map((t) => { const n = e.tricks.filter((x) => x === t).length; return (n > 1 ? `${n}× ` : '') + t.toUpperCase(); }).join(' + ') : '';
         if (e.quality !== 'hard') cheerNear(e.tricks.length ? 0.9 : e.quality === 'perfect' ? 0.5 : 0.25);
-        if (e.quality === 'perfect') { hud.toast(names || 'PERFECT LANDING', 'good'); audio.event('perfect'); input.rumble(0.45, 0.6, 160); chase.bump(0.3); chase.punch(-0.6); }
+        if (e.quality === 'perfect') { hud.toast(names || 'PERFECT LANDING', e.tricks.length >= 2 ? 'gold big' : 'good'); audio.event('perfect'); input.rumble(0.45, 0.6, 160); chase.bump(0.3); chase.punch(-0.6); }
         else if (e.quality === 'clean') { hud.toast(names || 'CLEAN', 'white'); audio.event('clean'); input.rumble(0.3, 0.3, 140); chase.bump(0.2); chase.punch(-0.3); }
         else { hud.toast('HARD LANDING', 'red', '−10% SPEED'); audio.event('impact'); input.rumble(0.9, 0.4, 220); chase.bump(0.9); chase.stall(0.05); }
         if (e.tricks.length) usage.roll++;
