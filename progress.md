@@ -2011,3 +2011,30 @@ Worked on `advisor/polish-3`, cut from `advisor/integration` at 375d3a0. No chan
 - Perf, Launch night, 60 s, interleaved: base p99 11.7 and 11.8 ms, polish-3 11.8 and 10.8 ms. p50 6.6–6.8 ms on both.
 - `first-start` exits 0 on proving and on launch at night (port 8795).
 - `npm test` 206/206, `npm run test:server` 13/13. `git diff --stat advisor/integration -- src/sim rl server` is empty.
+
+## Session 2026-11-10 (cont.): polish round 4 (advisor/polish-4)
+
+Worked on `advisor/polish-4`, cut from `advisor/integration` at 0a17113. No change under `src/sim`, `rl` or `server`. Nothing merged or pushed. Pairs in `docs/sheets/2026-11-polish-4/`. Frames come from a scratchpad harness that steps the game with `draw(1/60, 2)`; the before frames come from an `advisor/integration` worktree at `/Users/hridyaagrawal/honey/vt-base` served on port 8796.
+
+### Part A: physical effects (done, 384ad74)
+
+- Removed: the screen-space speed lines, the near-miss streaks, the chromatic kick and the boost aberration, the violet road glow, the cyan landing ring, the cyan wall-ride glow pool, and the white flashes on a wreck and on a boost pad.
+- Boost plume: soft camera-facing sprites along each rear jet. The core is white-hot and turns pale blue; length 0.3 m idle to about 1.2 m on boost. Heat shimmer distorts the frame behind the nozzles (`uExhaust` in `post.js`), and the world motion blur is masked there, because the plume is not in the velocity buffer and was being smeared by the road's velocity. A small warm pool lights the road just behind the car (strong at night, faint by day). The rear nozzles no longer emit grey vapour puffs.
+- Camera: the boost onset pushes the camera back 0.6 m and adds 1.5° of FOV, decaying at 4/s. A near miss swings the camera about 0.25 m away from the rival on a spring.
+- Landing: a wider, faster dust burst replaces the ring. Wall ride: a faint down-thruster glow, smaller dust and dark grit. Wreck: 44 sparks instead of 90, lower; debris 40% smaller. Sparks are thinner and dimmer everywhere.
+
+### Part B: brake cue (done, a6561fb)
+
+Measured with `node tools/brake-cue.mjs` (one lap per circuit; AI = `botInput` full pace; early = brakes when the AI's planned speed 1 s ahead is lower; late = the AI's brake input delayed 0.3 s). Before → after:
+
+| Venue | AI lit % / activations | Early lit % / act. | Late lit % / act. | Lit while braking (AI) |
+|---|---|---|---|---|
+| Proving | 28.6 / 12 → 0.6 / 1 | 4.2 / 2 → 0 / 0 | 28.8 / 13 → 2.4 / 12 | 80% → 0% |
+| Airfield | 29.0 / 12 → 0 / 0 | 1.0 / 1 → 0 / 0 | 30.9 / 12 → 2.5 / 11 | 87% → — |
+| Launch | 30.2 / 15 → 0.1 / 1 | 1.0 / 2 → 0 / 0 | 28.3 / 16 → 3.3 / 14 | 83% → 0% |
+| Pad | 21.8 / 4 → 0 / 0 | 7.6 / 1 → 0 / 0 | 20.9 / 4 → 1.9 / 5 | 85% → — |
+
+- Rule: the cue lights when the car cannot make the next corner (racing-line speed cap, loops and air lips excluded) at full `brakeAt` braking after a 0.25 s reaction, the danger persists 0.05 s, the brake is under 0.3, and the corner needs more than a 4 m/s drop and more than coasting. It holds at least 0.5 s, clears at once when the driver brakes, stays dark 0.4 s after it clears, and fades for a corner taken cleanly twice in the session.
+- The late driver gets the cue 0.01–0.26 s before it brakes; it is on the AI's own braking point, so it cannot come earlier without lighting for the AI.
+- Look: the speed number no longer turns red. The red BRAKE label is the one element (`brake-cue-before-after.jpg`).
+
