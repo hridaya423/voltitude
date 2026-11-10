@@ -1736,3 +1736,36 @@ Worked on `advisor/integration` after plan 004. No sim change; `git diff f8083a4
 - Step 8: screenshots at 1280x720 in the session scratchpad. The boot garage shows The Pad with The Lineup selected. The legend fits on one row inside the board. At 5 s on Proving TT, BRAKE and the speed number are red. On The Lineup at 3.5 s, the boost hint sits above the speed plate and touches nothing. A forced flip hint with BRAKE on shows the hint box clear of the label. Each hint string (air, lift, flip, hop, gas, reset, boost) fits on one line.
 - Gates: `npm test` 175/175 (168 before).
 - Open for the owner: the default venue for a new player is now The Pad. The brake cue has a Settings toggle and is on by default.
+
+## Session 2026-11-10: Lineup back to back (plan 006), SIM_VERSION 17
+
+Worked on `advisor/integration` after plan 005. SIM_VERSION 16 → 17. Nothing pushed or deployed. Status: DONE.
+
+- The Lineup now starts at metre 6 on the centre line, at rest through the countdown, and rolls at 30 m/s from GO. Each clear puts the car back at metre 6 at 30 m/s after 150 ticks. The tank is not refilled. A take-off more than 2 m off centre is `wide`: no score, the line does not grow, and the car goes back to the run-up. The constants are `LINE_RUN` in `src/sim/race.js`.
+- Autopilot on The Lineup, measured with the sim alone:
+
+| | Score | Run ends | Clears at | Lip to lip |
+|---|---|---|---|---|
+| Before (714717f) | 10 | 158.3 s | 11.2, 47.2, 83.5, 119.7 s | 36.3 s |
+| After | 10 | 45.5 s | 9.2, 18.2, 27.1, 36.0 s | 8.9 to 10.5 s |
+
+- Lip speed (plan's table, confirmed for the first two rows and the new start):
+
+| Start | Lip speed |
+|---|---|
+| Old standing start from the grid (first jump) | 65.2 m/s |
+| Old flying lap (every later jump) | 66.7 m/s |
+| New, metre 6 at 30 m/s (every jump) | 66.2 m/s first, 66.3 m/s after |
+| Metre 6 from rest (plan figure, not re-measured) | 63.8 m/s |
+
+- Medal thresholds (`DARE_MEDALS` in `src/menu.js`): Lineup Author 36, Gold 21, Silver 10, Bronze 3. Ramp Author 1000, Gold 700, Silver 500, Bronze 300.
+- Smoke, step 6: Lineup autopilot to results exit 0, `score "10"`, `medal { id silver, name Silver, fresh true }`, 53 s wall time including a 4 s load. Lineup at racing: target `BRONZE 3`. Garage ladders: `Author 36, Gold 21, Silver 10, Bronze 3` and `Author 1000, Gold 700, Silver 500, Bronze 300`. Ramp autopilot to results exit 0, `score "585"`, `medal silver`.
+- Deviation: the results board skipped the medal row for every dare (`if (!b.dare)` in `results` in `src/render/garage-screens.js`), so the Silver set by `finishDare` did not show. The guard is gone. The Lineup and Ramp results frames now show `SILVER MEDAL` under the big number.
+- Frames (session scratchpad, 1280x720): at GO the car sits on the centre line of the straight with the lights lit, and 6 ticks later it rolls at 70 MPH with the camera steady. At tick 1240 the toast reads `+1 CLEARED / LINE 2 NEXT`. At tick 1262 the view has cut to the run-up with the car at 70 MPH and the toast fading. On the second approach a taxi heads the row where the first approach showed one car.
+- The Ramp HUD now shows its next medal (`BRONZE 300`); before, the dare target line ran only for circuit events.
+- Author totals unchanged (ticks): Proving TT 28603, Airfield TT 28048, Launch TT 24195, Launch Trench 2665, The Pad TT 13506. All ghosts carry `"v":17`.
+- Gates: `npm test` 180/180 (175 before). `npm run test:server` 6/6. Exploits PASS on proving, airfield, launch, pad.
+- Open for the owner:
+  - Redeploy the Worker (`npx wrangler deploy` in `server/`). Until then it rejects version 17 runs with a 422.
+  - Local records reset again: the save key is `voltitude.save.v17`.
+  - Taste: the rolling start, the four `LINE_RUN` constants, and the medal thresholds are first guesses.
