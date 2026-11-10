@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { loadWorld } from '../tools/load-world.mjs';
 import { createRace, stepRace, createInput, eventsFor, botInput } from '../src/sim/race.js';
 import { lineFor } from '../src/sim/driver.js';
-import { createHints, hintHolds, brakeCue, wrongWay, placeCall } from '../src/hints.js';
-import { placeCar } from '../src/sim/drive.js';
+import { createHints, hintHolds, createBrakeCue, wrongWay, placeCall } from '../src/hints.js';
+import { placeCar, brakeAt } from '../src/sim/drive.js';
 
 const world = loadWorld('proving');
 const TT = eventsFor(world.track, world.venue).find((e) => e.id === 'tt');
@@ -52,37 +52,86 @@ test('the bot is taught the air verbs in order across its jumps', () => {
   assert.deepEqual(out.slice(0, 2), ['air', 'lift']);
 });
 
-test('the brake cue warns a flat-out driver two seconds before the first corner and stays quiet on the straight', () => {
-  const race = createRace(world, { event: TT }), inp = createInput(), line = lineFor(world.track), N = world.track.lap;
-  let on = false, first = -1, trouble = -1;
+const mustBrake = (w, line, c, share = 0.85) => {
+  const N = w.track.lap, lip = (j) => (w.track.airs ?? []).some((a) => (a.lip - j + N) % N < 8);
+  for (let k = 1; k < 250; k++) { const j = (c.hint + k) % N, v = line.vlim[j]; if (lip(j) && c.speed > 36) return false; if (!w.track.loopMask[j] && !lip(j) && c.speed - v > 4 && c.speed * c.speed - v * v > 2 * share * brakeAt(c.speed) * k) return true; }
+  return false;
+};
+
+function cueLap(w, drive, cue = createBrakeCue(w.track, lineFor(w.track)), laps = 1) {
+  const line = lineFor(w.track);
+  const ev = eventsFor(w.track, w.venue).find((e) => e.id === (laps > 1 ? 'pr' : 'tt')), race = createRace(w, { event: ev }), inp = createInput(), out = [];
+  let on = false, braking = false, lap = 0;
+  const log = () => ({ lit: 0, ticks: 0, rises: [], brakes: [], litBraking: 0, flicker: 0, off: 9 });
+  out.push(log());
+  for (let t = 0; t < 120 * 120 * laps && race.laps.length < laps; t++) {
+    botInput(race, inp, 1);
+    drive(race, inp, on, t);
+    stepRace(race, inp);
+    race.events.length = 0;
+    if (race.phase !== 'racing') continue;
+    if (race.laps.length > lap) { lap = race.laps.length; out.push(log()); }
+    const o = out[lap], c = race.car, was = on;
+    on = cue(c, 1 / 120);
+    o.ticks++; o.off++;
+    if (on) { o.lit++; if (c.brake > 0.5) o.litBraking++; }
+    if (on && !was) { if (o.off < 30) o.flicker++; o.rises.push(race.raceTick); }
+    if (!on && was) o.off = 0;
+    const b = c.brake > 0.3 && c.speed > 20;
+    if (b && !braking && mustBrake(w, line, c, 0.95)) o.brakes.push(race.raceTick);
+    braking = b;
+  }
+  return out.slice(0, laps).map((o, k) => ({ ...o, time: race.laps[k] }));
+}
+const lateBy = (ticks) => { const q = new Float32Array(ticks); return (race, inp, on, t) => { const want = inp.brake, b = q[t % ticks]; q[t % ticks] = want; inp.brake = b; inp.throttle = b > 0 ? 0 : want > 0 ? 1 : inp.throttle; }; };
+
+for (const id of ['proving', 'airfield', 'launch', 'pad']) test(`the brake cue stays dark for the AI driving a clean lap of ${id}`, () => {
+  const [o] = cueLap(id === 'proving' ? world : id === 'airfield' ? airfield : loadWorld(id), () => {});
+  assert.ok(o.rises.length <= 1 && o.lit / o.ticks < 0.01, `${id}: lit ${(100 * o.lit / o.ticks).toFixed(1)}% in ${o.rises.length} activations at ${o.rises}`);
+});
+
+test('the brake cue lights before every braking zone of a driver who brakes 0.3 s late, and never while they brake', () => {
+  for (const w of [world, airfield]) {
+    const [o] = cueLap(w, lateBy(36));
+    const zones = o.brakes.filter((b, k) => k === o.brakes.length - 1 || o.brakes[k + 1] - b > 480);
+    const missed = zones.filter((b) => !o.rises.some((r) => r <= b + 12 && r > b - 180));
+    assert.ok(zones.length >= 4 && missed.length === 0, `zones ${zones}, cues ${o.rises}, missed ${missed}`);
+    assert.ok(o.litBraking / o.ticks < 0.01 && o.flicker === 0, `lit while braking ${o.litBraking} ticks, flicker ${o.flicker}`);
+  }
+});
+
+test('a corner that needs only a lift never lights the cue, and one that needs the brakes does', () => {
+  const line = lineFor(world.track), N = world.track.lap, c = createRace(world, { event: TT }).car;
+  let apex = 0;
+  for (let i = 0; i < N; i++) if (line.vlim[i] < line.vlim[apex] && world.track.U[i * 3 + 1] > 0.9) apex = i;
+  const at = (gap, over) => { const cue = createBrakeCue(world.track, line), i = (apex - gap + N) % N; placeCar(c, world.track, i, 0); c.mode = 1; c.uy = 1; c.hint = i; c.brake = 0; c.speed = line.vlim[apex] + over; let on = false; for (let k = 0; k < 12; k++) on = cue(c, 1 / 120); return on; };
+  assert.equal(at(40, 2.5), false);
+  assert.equal(at(60, 30), true);
+  assert.equal(at(400, 30), false);
+});
+
+test('the brake cue warns a flat-out driver before the first corner and stays quiet on the straight', () => {
+  const race = createRace(world, { event: TT }), inp = createInput(), cue = createBrakeCue(world.track, lineFor(world.track));
+  let first = -1, trouble = -1;
   for (let t = 0; t < 120 * 20 && trouble < 0; t++) {
     inp.throttle = 1;
     stepRace(race, inp);
     if (race.phase === 'racing') {
-      on = brakeCue(line, N, race.car, on);
-      if (on && first < 0) first = race.raceTick;
+      if (cue(race.car, 1 / 120) && first < 0) first = race.raceTick;
       if (race.events.some((e) => e.type === 'scrape' || e.type === 'impact' || e.type === 'wreck')) trouble = race.raceTick;
     }
     race.events.length = 0;
   }
-  assert.ok(first > 240, `cue lit on the start straight at tick ${first}`);
-  assert.ok(trouble - first > 240, `cue at ${first}, wall at ${trouble}`);
+  assert.ok(first > 240 && trouble - first > 90, `cue at ${first}, wall at ${trouble}`);
 });
 
-test('a driver who brakes only on the cue laps within 8% of the bot', () => {
-  const lap = (obey) => {
-    const race = createRace(world, { event: TT }), inp = createInput(), line = lineFor(world.track), N = world.track.lap;
-    let on = false;
-    for (let t = 0; t < 120 * 200 && race.laps.length < 1; t++) {
-      botInput(race, inp, 1);
-      if (obey) { on = race.phase === 'racing' && brakeCue(line, N, race.car, on); inp.throttle = on ? 0 : 1; inp.brake = on ? 1 : 0; inp.boost = 0; }
-      stepRace(race, inp);
-      race.events.length = 0;
-    }
-    return race.laps[0];
-  };
-  const bot = lap(false), cued = lap(true);
-  assert.ok(cued && cued < bot * 1.08, `bot ${bot}, cue driver ${cued}`);
+test('a driver who brakes only on the cue laps within 8% of the bot, and the cue fades once a corner is taken cleanly twice', () => {
+  const line = lineFor(world.track);
+  let hold = false;
+  const obey = (race, inp, on) => { const c = race.car; hold = on || (hold && mustBrake(world, line, c, 0.7)); if (hold) { inp.throttle = 0; inp.brake = 1; } else if (inp.brake > 0 && mustBrake(world, line, c, 0.5)) { inp.throttle = 1; inp.brake = 0; } inp.boost = 0; };
+  const [bot] = cueLap(world, () => {}), laps = cueLap(world, obey, undefined, 3);
+  assert.ok(laps[0].time && laps[0].time < bot.time * 1.08, `bot ${bot.time}, cue driver ${laps[0].time}`);
+  assert.ok(laps[0].rises.length >= 4 && laps[2].rises.length < laps[0].rises.length * 0.6, `cues per lap ${laps.map((o) => o.rises.length)}`);
 });
 
 test('a car driving against the track is flagged, and one driving with it is not', () => {

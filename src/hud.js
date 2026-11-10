@@ -3,7 +3,7 @@ import { fmt, fmtDelta } from './time.js';
 import { raceClock } from './sim/race.js';
 import { turns } from './sim/drive.js';
 import { lineFor } from './sim/driver.js';
-import { brakeCue, wrongWay } from './hints.js';
+import { createBrakeCue, wrongWay } from './hints.js';
 
 const $ = (id) => document.getElementById(id);
 const TOWER_ROW = 27;
@@ -38,7 +38,8 @@ export function createHud(world, settings) {
   const NS = 'http://www.w3.org/2000/svg';
   let mapFn = null, meDot = null, ghostDot = null, cpDot = null, rivalDots = [];
   const v = new THREE.Vector3();
-  let deltaTimer = 0, hintTimer = 0, lastGas = 1, line = null, brake = false, wrong = 0;
+  let deltaTimer = 0, hintTimer = 0, lastGas = 1, cue = null, brake = false, wrong = 0;
+  const cues = new WeakMap();
   const gainLabels = new Map();
 
   function buildMap(event) {
@@ -68,7 +69,9 @@ export function createHud(world, settings) {
     begin(event, targetText) {
       track = event.spur ? world.track.spurs[event.spur] : world.track;
       buildMap(event);
-      line = track.closed && event.kind !== 'dare' ? lineFor(track) : null;
+      if (track.closed && event.kind !== 'dare' && !cues.has(track)) cues.set(track, createBrakeCue(track, lineFor(track)));
+      cue = track.closed && event.kind !== 'dare' ? cues.get(track) : null;
+      cue?.reset();
       brake = false; wrong = 0;
       setText(els.card, event.id === 'full' ? 'FULL RUN' : event.circuit || event.spur ? event.name.toUpperCase() : `S${event.card - 1}  ${event.name.toUpperCase()}`);
       els.cpLabel.firstChild.textContent = event.dare === 'ramp' ? 'TRY' : event.kind === 'dare' ? 'LINE' : event.circuit ? 'LAP' : 'CHECKPOINT';
@@ -185,12 +188,11 @@ export function createHud(world, settings) {
       const k = c.hint * 3, onRoad = Math.abs(c.lat) < (c.lat < 0 ? track.wallL : track.wallR)[c.hint] + 2;
       const alt = c.y - Math.max(terrain.height(c.x, c.z), onRoad ? track.H[k + 1] : -Infinity);
       const altText = alt > 3 ? (settings.units === 'kmh' ? ` ${Math.round(alt)} M` : ` ${Math.round(alt * 3.281)} FT`) : '';
-      brake = !!line && settings.cue && race.phase === 'racing' && brakeCue(line, track.lap, c, brake);
+      brake = !!cue && settings.cue && race.phase === 'racing' && cue(c, dt);
       wrong = track.closed && race.phase === 'racing' && wrongWay(track, c) ? wrong + dt : 0;
       const st = c.mode === 0 ? `AIR${altText}` : c.uy < 0.3 ? (c.uy < -0.5 ? 'INVERTED' : 'WALL') : wrong > 1 ? 'WRONG WAY' : brake ? 'BRAKE' : '';
       setText(els.state, st);
       toggle(els.state, 'warn', st === 'WRONG WAY' || st === 'BRAKE');
-      toggle(els.speed, 'warn', st === 'BRAKE');
       toggle(els.state, 'on', !!st && race.phase === 'racing');
       deltaTimer -= dt;
       if (deltaTimer <= 0) toggle(els.delta, 'on', false);
