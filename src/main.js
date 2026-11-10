@@ -574,10 +574,15 @@ function finishCircuit(ev) {
   }, m, before);
 }
 
+function bankDare(ev) {
+  const best = book[ev.id]?.best || 0;
+  if (race.dare.score > best) { book[ev.id] = { best: race.dare.score }; persist(); }
+  return best;
+}
+
 function finishDare(ev) {
-  const d = race.dare, best = book[ev.id]?.best || 0;
+  const d = race.dare, best = bankDare(ev);
   lastRun = encodeRun(race, recorder.bytes());
-  if (d.score > best) { book[ev.id] = { best: d.score }; persist(); }
   const speed = `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}`;
   const result = ev.dare === 'ramp'
     ? rampResults({ card: `${venue.name} · ${ev.name}`, score: d.score, best, tries: d.tries, speed, hasNext: !!EVENTS[ev.card] })
@@ -833,7 +838,11 @@ function menuKeys() {
   const back = any('Escape') || pad(1);
   if (mode === 'race') {
     if (any('Escape', 'KeyP') || pad(9)) pause();
-    else if (input.actionPressed('restart') || pad(8)) startRace(current);
+    else if (input.actionPressed('restart') || pad(8)) {
+      const over = race.phase === 'finished' || race.dare?.over;
+      if (over && race.dare && !dailyRun) bankDare(current);
+      if (!over || (race.dare && !dailyRun)) startRace(current);
+    }
   } else if (mode === 'replay') {
     if (back || any('Enter', 'Space') || pad(0, 9)) endReplay();
   } else if (menu.page) {
