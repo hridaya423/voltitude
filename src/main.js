@@ -178,9 +178,9 @@ const garageKeep = [camera, skyMesh, carView.root, sun.lights[0].parent];
 const rivalViews = venue.circuit ? ROSTER.map((r) => { const v = createCarView({ quality: 'low', envMap, color: r.color, lite: true }); v.root.visible = false; v.root.traverse((o) => { o.layers.set(1); o.castShadow = false; }); scene.add(v.root); return v; }) : [];
 for (const v of rivalViews) post.track(v.root);
 const rprev = rivalViews.map(() => ({ p: new THREE.Vector3(), q: new THREE.Quaternion() }));
-let ghostView = null;
+let ghostView = null, ghostHolo = null;
 function ensureGhostView() {
-  if (!ghostView) { ghostView = createCarView({ quality: 'low', envMap, ghost: true }); scene.add(ghostView.root); post.track(ghostView.root); }
+  if (!ghostView) { ghostView = createCarView({ quality: 'low', envMap, ghost: true }); scene.add(ghostView.root); post.track(ghostView.root); ghostView.root.traverse((o) => { if (o.isMesh) ghostHolo ||= o.material; }); }
   return ghostView;
 }
 
@@ -1082,8 +1082,9 @@ function draw(dt, ticks = -1) {
   if (!inGarage && ghost && ghostView) {
     pose(ghostView.root, gprev, ghost.race.car, a, gInterp);
     ghostView.update(dt, ghost.race.car, time);
-    const gd = gInterp.distanceTo(interp);
-    ghostView.root.visible = gd > 3 && ghost.race.phase !== 'finished';
+    const fade = Math.min(1, Math.max(0, (gInterp.distanceTo(interp) - 4) / 14));
+    ghostView.root.visible = fade > 0 && ghost.race.phase !== 'finished';
+    ghostHolo.opacity = 0.16 * fade;
   }
   const pixelScale = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
   if (!inGarage) dust.update(time, dt, interp, c, pixelScale);
