@@ -10,6 +10,8 @@ export function createChaseCamera(camera, height) {
   const offS = new THREE.Vector3(), lookS = new THREE.Vector3();
   const fromOff = new THREE.Vector3(), toOff = new THREE.Vector3(), aim = new THREE.Vector3();
   let fromFov = 70, fromShift = 0;
+  const lastU = new THREE.Vector3(), lastF = new THREE.Vector3();
+  let rig = 0, lead = 0;
   return {
     snap() { init = false; },
     from(cam, p) { fromOff.subVectors(cam.position, p); fromFov = cam.fov; fromShift = cam.filmOffset; blend = 0; },
@@ -21,9 +23,16 @@ export function createChaseCamera(camera, height) {
       if (blend >= 1 && camera.filmOffset !== 0) { camera.filmOffset *= Math.exp(-dt * 3); if (Math.abs(camera.filmOffset) < 0.01) camera.filmOffset = 0; camera.updateProjectionMatrix(); }
       const speed = c.speed;
       const grounded = c.mode !== 0;
+      const held = grounded && !c.wrecked && dt > 0;
       if (grounded && !c.wrecked) tmp.set(c.ux, c.uy, c.uz); else tmp.copy(UP);
-      if (!init) upS.copy(tmp);
-      upS.lerp(tmp, 1 - Math.exp(-dt * (grounded ? (tmp.y < upS.y - 0.02 ? 4.6 : 6.9) : upS.y < 0.3 ? 5 : 1.6))).normalize();
+      if (!init) { upS.copy(tmp); lastU.copy(tmp); lastF.set(c.fx, c.fy, c.fz); }
+      const turn = held ? Math.acos(Math.min(1, lastU.dot(tmp))) / dt : 0, pitch = held ? ((c.fx - lastF.x) * tmp.x + (c.fy - lastF.y) * tmp.y + (c.fz - lastF.z) * tmp.z) / dt : 0;
+      lastU.copy(tmp); lastF.set(c.fx, c.fy, c.fz);
+      const wantRig = held ? Math.min(1, Math.max(0, (turn - 0.8) / 1.2, (0.8 - tmp.y) / 0.3)) : 0;
+      rig += (wantRig - rig) * (1 - Math.exp(-dt * (wantRig > rig ? 12 : 2)));
+      lead += (Math.max(-0.6, Math.min(0.6, pitch / Math.max(8, speed) * 4)) - lead) * (1 - Math.exp(-dt * 20));
+      const tight = (r, k) => r + (k - r) * rig;
+      upS.lerp(tmp, 1 - Math.exp(-dt * tight(grounded ? (tmp.y < upS.y - 0.02 ? 4.6 : 6.9) : upS.y < 0.3 ? 5 : 1.6, 60))).normalize();
       vel.set(c.vx, c.vy, c.vz);
       if (grounded || speed < 8) {
         tmp.set(c.fx, c.fy, c.fz);
@@ -32,7 +41,7 @@ export function createChaseCamera(camera, height) {
       tmp.addScaledVector(upS, -tmp.dot(upS)).normalize();
       if (!init) dir.copy(tmp);
       if (c.wrecked) dir.addScaledVector(UP, -dir.dot(UP)).normalize().applyAxisAngle(UP, dt * WRECK_ORBIT);
-      else dir.lerp(tmp, 1 - Math.exp(-dt * (grounded ? 7 : 3))).normalize();
+      else dir.lerp(tmp, 1 - Math.exp(-dt * tight(grounded ? 7 : 3, 60))).normalize();
       hover += ((c.lifting && !grounded ? 1 : 0) - hover) * (1 - Math.exp(-dt * 2));
       const zoom = Math.sqrt(Math.tan(Math.PI / 9) / Math.tan(fov * Math.PI / 360));
       const wantBack = (7.5 + 1.5 * hover) * zoom;
@@ -40,15 +49,15 @@ export function createChaseCamera(camera, height) {
       const ahead = Math.max(9, Math.min(speed, 120) * 0.18);
       const bias = grounded ? Math.max(-0.14, Math.min(0.14, c.yawRate * 0.15)) * ahead : 0;
       want.copy(p).addScaledVector(dir, -back).addScaledVector(upS, (1.8 - 0.3 * Math.min(1, speed / 115) + (grounded ? 0 : 0.6) + hover) * zoom);
-      wantLook.copy(p).addScaledVector(dir, ahead).addScaledVector(upS, 0.25);
+      wantLook.copy(p).addScaledVector(dir, ahead).addScaledVector(upS, 0.25 + lead * ahead);
       if (bias) wantLook.x += c.rx * bias, wantLook.y += c.ry * bias, wantLook.z += c.rz * bias;
       want.sub(p); wantLook.sub(p);
       if (c.wrecked) { want.copy(dir).multiplyScalar(-WRECK_BACK).addScaledVector(UP, WRECK_UP); wantLook.set(0, 0, 0); }
       if (!init) { offS.copy(want); lookS.copy(wantLook); up.copy(upS); init = true; }
       if (stall > 0) stall -= dt;
       else {
-        offS.lerp(want, 1 - Math.exp(-dt * 9));
-        lookS.lerp(wantLook, 1 - Math.exp(-dt * 14));
+        offS.lerp(want, 1 - Math.exp(-dt * tight(9, 80)));
+        lookS.lerp(wantLook, 1 - Math.exp(-dt * tight(14, 80)));
       }
       pos.copy(p).add(offS);
       look.copy(p).add(lookS);
@@ -59,7 +68,7 @@ export function createChaseCamera(camera, height) {
       }
       const ground = height(pos.x, pos.z) + 1.0;
       if (pos.y < ground) pos.y = ground;
-      up.lerp(upS, 1 - Math.exp(-dt * 10)).normalize();
+      up.lerp(upS, 1 - Math.exp(-dt * tight(10, 60))).normalize();
       camera.position.copy(pos);
       camera.up.copy(up);
       camera.lookAt(look);

@@ -40,3 +40,32 @@ test('the speed rumble exists at top speed and stays small', () => {
   assert.ok(slow.roll < 1e-6, `rumble at 40 m/s: ${slow.roll}`);
   assert.ok(top.roll > 0.001 && top.roll < 0.0026, `rumble at top speed: ${top.roll.toFixed(5)} rad`);
 });
+
+test('the road ahead stays in view and the camera stays behind the car through a loop', () => {
+  const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.3, 9000), chase = createChaseCamera(camera, () => 0);
+  const R = 16, v = 50, L = 2 * Math.PI * R, p = new THREE.Vector3(), q = new THREE.Vector3(), F = new THREE.Vector3(), U = new THREE.Vector3(), fw = new THREE.Vector3();
+  const at = (s, pos, f, u) => {
+    const th = Math.max(0, Math.min(L, s)) / R;
+    pos.set(0, R + 0.5 - R * Math.cos(th), R * Math.sin(th) + Math.min(0, s) + Math.max(0, s - L));
+    f?.set(0, Math.sin(th), Math.cos(th)); u?.set(0, Math.cos(th), -Math.sin(th));
+    return pos;
+  };
+  const c = { speed: v, mode: 1, wrecked: false, yawRate: 0, lifting: false, boosting: false };
+  let worst = 1, behind = -Infinity, seen = Infinity, car = Infinity;
+  for (let s = -120; s < L + 40; s += v / 120) {
+    at(s, p, F, U);
+    Object.assign(c, { fx: F.x, fy: F.y, fz: F.z, ux: U.x, uy: U.y, uz: U.z, vx: F.x * v, vy: F.y * v, vz: F.z * v, rx: F.y * U.z - F.z * U.y, ry: F.z * U.x - F.x * U.z, rz: F.x * U.y - F.y * U.x });
+    chase.update(1 / 120, p, c, { reduced: false });
+    camera.updateMatrixWorld();
+    if (s < 0) continue;
+    camera.getWorldDirection(fw);
+    worst = Math.min(worst, fw.dot(F));
+    behind = Math.max(behind, q.subVectors(camera.position, p).dot(F));
+    q.copy(p).addScaledVector(U, 0.6).project(camera); car = Math.min(car, 0.6 - Math.abs(q.y));
+    for (const d of [8, 15]) { at(s + d, q).project(camera); seen = Math.min(seen, 1 - Math.max(Math.abs(q.x), Math.abs(q.y), q.z > 1 ? 9 : 0)); }
+  }
+  assert.ok(worst > 0.75, `camera forward against car forward: ${worst.toFixed(2)}`);
+  assert.ok(behind < -3, `camera offset along car forward: ${behind.toFixed(1)} m`);
+  assert.ok(car > 0, `car outside the middle of the view by ${(-car).toFixed(2)}`);
+  assert.ok(seen > 0, `road ahead outside the view by ${(-seen).toFixed(2)}`);
+});
