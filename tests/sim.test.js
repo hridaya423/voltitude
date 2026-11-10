@@ -220,10 +220,12 @@ test('reset returns the car to the last checkpoint', () => {
   const inp = createInput();
   while (race.splits.length === 0) { botInput(race, inp, 1); stepRace(race, inp); race.events.length = 0; }
   for (let t = 0; t < 240; t++) { botInput(race, inp, 1); stepRace(race, inp); race.events.length = 0; }
+  race.car.gas = 0;
   inp.reset = 1;
   stepRace(race, inp);
   assert.ok(race.events.some((e) => e.type === 'respawn'));
   assert.ok(Math.abs(race.car.hint - ev.cps[0]) < 4, `respawned at ${race.car.hint}`);
+  assert.equal(race.car.gas, 0);
 });
 
 test('a car pinned against a wall respawns within 180 ticks of stopping', () => {

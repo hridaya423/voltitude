@@ -129,7 +129,7 @@ function safeAt(track, i) {
   return !track.jumps.some((j) => i >= j.from && i <= j.to);
 }
 
-function respawn(race, e, from = e.lastIdx, fromSpeed = e.lastSpeed) {
+function respawn(race, e, from = e.lastIdx, fromSpeed = e.lastSpeed, floor = RESPAWN_GAS) {
   const { track } = race.world;
   const c = e.car;
   let i = from;
@@ -137,7 +137,7 @@ function respawn(race, e, from = e.lastIdx, fromSpeed = e.lastSpeed) {
   else while (i > 0 && !safeAt(track, i)) i--;
   const speed = Math.min(fromSpeed, safeAt(track, c.hint) ? 90 : 45);
   placeCar(c, track, i, speed, e.driver ? lineFor(track).off[i] : 0);
-  c.gas = Math.max(c.gas, RESPAWN_GAS);
+  c.gas = Math.max(c.gas, floor);
   e.lost = 0; e.respawnIn = 0; e.respawns++; e.still = 0;
   e.lastIdx = i;
   progress(race, e);
@@ -448,7 +448,7 @@ export function stepRace(race, inp) {
   }
   if (race.phase === 'racing') {
     if (inp.reset && !race.resetHeld && !race.dare?.over) {
-      if (race.event.dare !== 'ramp') respawn(race, race, race.cpIdx, race.cpSpeed);
+      if (race.event.dare !== 'ramp') respawn(race, race, race.cpIdx, race.cpSpeed, 0);
       else if (race.dare.phase !== 'wait') endTry(race, { points: 0, why: 'reset' });
     }
     race.resetHeld = !!inp.reset;
