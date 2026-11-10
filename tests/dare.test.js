@@ -12,9 +12,9 @@ const EVENTS = eventsFor(pad.track, pad.venue);
 const LINEUP = EVENTS.find((e) => e.id === 'lineup');
 
 test('the pad lists its dare first and keeps the circuit events', () => {
-  assert.deepEqual(EVENTS.map((e) => [e.id, e.card]), [['lineup', 1], ['ramp', 2], ['gp', 3], ['tt', 4], ['pr', 5]]);
+  assert.deepEqual(EVENTS.map((e) => [e.id, e.card]), [['lineup', 1], ['ramp', 2], ['hl', 3], ['gp', 4], ['tt', 5], ['pr', 6]]);
   assert.equal(LINEUP.kind, 'dare');
-  assert.deepEqual(eventsFor(loadWorld('proving').track, loadWorld('proving').venue).map((e) => e.id), ['gp', 'tt', 'pr']);
+  assert.deepEqual(eventsFor(loadWorld('proving').track, loadWorld('proving').venue).map((e) => e.id), ['hl', 'gp', 'tt', 'pr']);
 });
 
 test('a dare race has one entry and a dare state', () => {
@@ -22,6 +22,13 @@ test('a dare race has one entry and a dare state', () => {
   assert.equal(race.entries.length, 1);
   assert.deepEqual(race.dare, { count: 1, score: 0, mult: 1, cleared: 0, armed: false, wide: false, resetAt: 0, over: false, endAt: 0, near: [] });
   assert.equal(race.car.gas, 1);
+});
+
+test('the Hot Lap is a one-lap solo time trial with the same checkpoints as one Time Trial lap', () => {
+  const hl = EVENTS.find((e) => e.id === 'hl'), tt = EVENTS.find((e) => e.id === 'tt');
+  assert.deepEqual([hl.name, hl.kind, hl.laps, hl.circuit], ['Hot Lap', 'tt', 1, true]);
+  assert.deepEqual(hl.cps, tt.cps.slice(0, tt.perLap));
+  assert.equal(createRace(pad, { event: hl }).entries.length, 1);
 });
 
 
@@ -297,7 +304,7 @@ async function trenchRun(meddle = () => {}) {
 
 test('the trench is a timed spur on the launch complex with six gates, two of them on the ceiling', () => {
   assert.equal(launch.baked, true);
-  assert.deepEqual(eventsFor(launch.track, launch.venue).map((e) => e.id), ['trench', 'gp', 'tt', 'pr']);
+  assert.deepEqual(eventsFor(launch.track, launch.venue).map((e) => e.id), ['trench', 'hl', 'gp', 'tt', 'pr']);
   assert.equal(TRENCH.kind, 'trial');
   assert.equal(TRENCH.gates, 6);
   const spur = launch.track.spurs.trench;

@@ -57,7 +57,7 @@ export function eventsFor(track, venue = null) {
     const spur = (id, s = track.spurs[id]) => s.gates.length
       ? { ...mode(id, DARES[id], 'trial', 1), dare: id, spur: id, circuit: false, from: 1, to: s.finish, perLap: 0, cps: [...s.cps.filter((i) => i > 1 && i < s.finish), s.finish], gates: s.gates.length }
       : { ...mode(id, DARES[id], 'dare', 1), dare: id, spur: id, from: 10, to: s.n - 1, perLap: 0, cps: [] };
-    const list = [...(venue?.dares || []).map((id) => (track.spurs?.[id] ? spur(id) : mode(id, DARES[id], 'dare', 99))), mode('gp', 'Grand Prix', 'gp', 3), mode('tt', 'Time Trial', 'tt', 3), mode('pr', 'Practice', 'pr', 99)];
+    const list = [...(venue?.dares || []).map((id) => (track.spurs?.[id] ? spur(id) : mode(id, DARES[id], 'dare', 99))), mode('hl', 'Hot Lap', 'tt', 1), mode('gp', 'Grand Prix', 'gp', 3), mode('tt', 'Time Trial', 'tt', 3), mode('pr', 'Practice', 'pr', 99)];
     return list.map((e, k) => Object.assign(e, { card: k + 1 }));
   }
   const { sectors, cps, finish } = track;
