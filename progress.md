@@ -1805,3 +1805,19 @@ Worked on `advisor/integration` after plan 007. SIM_VERSION stays 17. Nothing pu
   - After the redeploy, post one author Hot Lap per venue and check for 201 or 503. If one lap still returns 503, choose the paid plan or dare-only dailies.
   - Card numbers after the dares moved up by one. Links use the event id, so `?event=gp` still works.
   - Ghost files are about a third larger.
+
+## Session 2026-11-10: gas economy and style (plan 009), SIM_VERSION 18
+
+Worked on `advisor/integration` after plan 008. SIM_VERSION 17 to 18. Nothing pushed or deployed. Status: DONE.
+
+- `tools/gas-econ.mjs` added. `GAIN` now: near_miss 0.2, clean 0.1, perfect 0.2, trick 0.12, air 0.06, wall 0.08, draft 0.1, gate 0.25 (unchanged).
+- Tanks per lap, rival AI at full pace, before to after: Proving TT 1.19 to 1.63, Proving GP 1.16 to 1.79, Airfield TT 0.36 to 0.47, Airfield GP 0.54 to 0.84, Launch TT 0.53 to 0.88, Launch GP 0.76 to 1.38, Pad TT 0.21 to 0.32, Pad GP 0.26 to 0.55. Both rows match the plan's figures exactly.
+- Author times, before to after: Proving tt 238.358 to 238.200 s, hl 82.608 unchanged; Airfield tt 233.733 to 233.292 s, hl 83.350 unchanged; Launch tt 201.625 to 200.692 s, hl 71.617 to 71.483 s, trench 22.208 unchanged; Pad tt 112.550 to 111.650 s, hl 38.283 to 38.175 s. All respawns 0, every move under 0.5%.
+- Proving bench lap ratios, before to after: rookie 1.038 to 1.033, easy 0.996 to 0.992, pro 0.970 to 0.963, elite 0.963 to 0.954 (floor 0.95). Every tier PASS.
+- Launch bench: all checks pass after; before, elite `contacts` failed at 3.8 (known noise), after it reads 1.
+- Exploits PASS on proving, airfield, launch, pad, before and after. The bump alone failed no test.
+- Style: `src/style.js` scores land (100 a trick plus 20 a second of air, ×1.5 on a perfect, 0 on a hard landing), near miss 75, wall and draft 25 a second. Counted in `handleEvents`, reset in `startRace`, best kept in `save.style['<venue>.<event>']`. The dead `usage` counter is gone.
+- Step 6 smoke, Proving GP on autopilot, exit 0, no errors: stats `Top speed 183 MPH, Best lap 1:17.042, Ideal lap 1:16.825, Resets 0, Style 862`; saved `{ "proving.gp": 862 }`. With a seeded best of 100 the stat reads `Style · new best 924`.
+- Frames at 1280x720: the results board shows five stats in one row, `STYLE · NEW BEST` included, none clipped.
+- Gates: `npm test` 189/189 (186 before). `npm run test:server` 6/6. The Lineup autopilot test still passes.
+- Open for the owner: redeploy the Worker (`npx wrangler deploy` in `server/`) for SIM_VERSION 18.
