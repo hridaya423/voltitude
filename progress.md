@@ -1946,3 +1946,14 @@ New: `src/render/carfx.js` (driver), `createSmoke` and `createSparks` in `src/re
   Every run, old and new, has frames over 20 ms, so `perf.mjs` prints FAIL on both builds.
 - `first-start` exit 0, no errors, new programs at the first start: Proving 16, Airfield 26, Pad 22, Launch night 12. The repeat start adds 0 everywhere. The old build's counts were not measured.
 - `npm test` 202/202, `npm run test:server` 13/13. `git diff --stat advisor/integration -- src/sim rl server` is empty.
+
+## Session 2026-11-10 (cont.): polish round 2 (advisor/polish-2)
+
+Worked on `advisor/polish-2`, cut from `advisor/integration` at a8bdac3. No change under `src/sim`, `rl` or `server`. Nothing merged or pushed. In progress; this section is updated per item.
+
+- Tooling: `tools/node_modules/playwright-core` is a symlink to `/Users/hridyaagrawal/pd-hero/pw/node_modules/playwright-core` (1.65.0); the repo had no install. Gitignored.
+- A1 done: `tools/offline.mjs` appends `api=` to every game URL a tool opens unless the URL names `api`. Logged smoke run that opens the leaderboard: 1 workers.dev request before, 0 after; a Lineup to results: 0.
+- A2 done: `placeCall` in `src/hints.js`; one place toast per change, the newest replacing the last. Proving GP with the player stopped at 20 s: toasts `P6 P6 P6 P8 P8` before, `P6 P8` after.
+- A3 done: each hint rule has a hold test (`hintHolds`); the hint clears the frame its state ends. The Pad air hint: on screen 0.5 s after landing before, gone after.
+- A4 done: smoke and dust fade near the camera and off the camera-to-car line (`clearView` in `src/render/fx.js`). Wreck on The Pad: car buried in smoke before, visible after.
+- A5 done: cause is the golden exposure floor (EV −0.6) against a target of −2.4 when the curl rolls the camera to face the sun-side sky. Soft floor in `ADAPT` (`src/render/post.js`).
