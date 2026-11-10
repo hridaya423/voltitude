@@ -1882,3 +1882,67 @@ Worked on `advisor/slide-and-bank`, cut from `advisor/integration` at 650dd8e. S
 - Gates: `npm test` 202/202 (193 before: 7 slide tests, 1 hint test, 1 farming test), `npm run test:server` 13/13, exploits PASS on proving, airfield, launch, pad, `first-start` exit 0 on airfield and proving (port 8795, no errors). `tests/handling.test.js` untouched. No existing test was edited.
 - Not verified: a human drive, a real pad, touch (`src/touch.js` does not set `slide`).
 - Open for the owner: redeploy the Worker for SIM_VERSION 20 (until then it rejects every run). Local records reset (`voltitude.save.v20`).
+
+## Session 2026-11-10 (cont.): visual polish (advisor/polish)
+
+Worked on `advisor/polish`, cut from `advisor/integration`. No change under `src/sim`, `rl` or `server`; SIM_VERSION stays 20. Nothing merged, pushed or deployed.
+
+### Step 1 audit (frames at 1280x720, headless Chrome, game stepped with `draw(1/60, 2)`)
+
+Covered: garage; Proving, Airfield, Launch and Pad by day; Launch at night; Proving golden; boost onset and hold (day and night); perfect and clean landings on The Pad; a scripted wall hit on Proving; reset after the hit; wall rides on the Proving sweeper, the Launch bowl and the Airfield hairpin; Lineup approach, clear and clip; results and the leaderboard; the Ramp lip; the Trench. Ranked, worst first:
+
+1. Wall scrape: the car grinds along the Proving fence at 75 mph and nothing on screen answers. No sparks, no debris, no dust. Severe.
+2. Landings: a perfect landing at 114 mph shows the toast and a camera thump only. The road shows no dust, puff or ring. Severe.
+3. Boost: the rear thrusters draw four short pale cones (0.3 to 1.1 m) and grey puffs. They read as exhaust smoke, not thrust. At night nothing lights the road behind the car. Severe.
+4. Speed: at 138 mph on the Airfield straight only the motion blur says speed; the screen edges are static. High.
+5. Slide: a held slide leaves skid marks only. No tyre smoke. (The scripted slide did not reach 7 m/s of slip on autopilot; checked again in Step 2.) High.
+6. Wall rides (Proving sweeper, Launch bowl, Airfield hairpin): nothing shows the fans holding the car to the wall. The frames look like ordinary driving on a tilted road. Moderate.
+7. Airfield banked hairpin: the retaining wall is a plain grey slab, identical to the Launch bowl wall. Moderate.
+8. Golden hour (Proving): haze turns everything past about 200 m into one low-contrast pink band. The far road and the mountains lose their shape. Moderate.
+9. Wreck and reset: a reset shows a 0.3 white flash and a toast. A wreck has no debris and no flash of its own. Moderate.
+10. Near miss: nothing on screen. No near miss happened in 33 s of Proving GP on autopilot, so this is from code reading (`handleEvents` only plays audio, waves the stands and cheers). Moderate.
+11. Touch controls have no slide button (`src/touch.js` never sets `slide`). Moderate, functional.
+12. Braking boards are 1.7 x 1.28 m and stand 4.7 m outside the wall. At chase distance they are a few pixels wide. Low to moderate.
+13. Ramp: after the lip the inverted camera faces the sky, and about 60% of the frame is a white cloud field. Low.
+14. The `In the air: W S tilt the nose` hint stays on screen after the landing. Low.
+
+Looks fine: the garage, the HUD panels, results and the leaderboard page, the Lineup boards, the Trench framing, Launch at night (the floodlit road reads well).
+
+### Step 2 effects (frames at game speed from the chase camera; pairs in `docs/sheets/2026-11-polish/`)
+
+New: `src/render/carfx.js` (driver), `createSmoke` and `createSparks` in `src/render/fx.js`. One draw call per system: smoke (Points, 2048 pooled), sparks (instanced streak quads, 1024 pooled), debris (InstancedMesh, 32), landing ring, two ground-glow planes on the player car. No textures. No per-frame allocation. All materials sit in the scene (sparks in `post.overlay`) before the boot compile.
+
+- Sparks (scrape, wall contact, car contact, hard landing, wreck): built. Streaks stream back with the car's velocity and fly off the wall. Thin streaks vanished under TAA (the history clamp kept the dark history), so sparks now draw after the TAA resolve into the resolved frame, with a manual test against the scene depth texture. Reads at speed: yes (`sparks-wall-after`). On the lite (phone) tier the depth test is off and sparks draw over everything.
+- Tyre smoke: built. Rear wheels, scaled by slip (from 2.5 m/s), 0.8 s on the launch, light on brake over 0.85 above 30 m/s. Smoke fades within 7 m of the camera; without that fade the start-line burnout hid the player car. Reads: yes, moderate (`tyre-smoke-slide-after`).
+- Landing dust: built. Every touchdown throws dust from both sides for 0.3 s, scaled by the vertical speed in the air. A perfect landing adds a larger burst and a cyan ring that grows from 3 m to 19 m in 0.4 s. A single-frame ring vanished behind the car at 120 mph, so the dust is emitted over 0.3 s. Reads: yes (`landing-perfect-after`).
+- Boost: strengthened. Plumes grow to about 3 m with a white core, violet and blue layers and moving shock bands (HDR, so they bloom). A violet glow lights the road behind the car. Ignition adds a chromatic kick (0.05, decays at 5/s). Down-thrusters: a hop on the ground throws a ring of puffs (`hop-after`). Reads: yes, day and night (`boost-speedlines-after`, `boost-night-after`).
+- Speed lines: built, in the composite pass. On from 64 m/s, or from 50 m/s under boost (the brief said about 80 m/s; that is 179 mph, above most straights, so no straight on autopilot reached it). Stronger under boost. Off under reduced motion and on the lite tier. Reads: yes, thin and at the edges only.
+- Wall ride: built. While `c.fan > 0.2` a cyan glow spreads on the surface under the car, and dust peels off both flanks. Both glow planes first sat at y = −0.56 in car space, under the road surface, and drew nothing; they now sit at −0.46. Reads: yes (`wallride-after`).
+- Wreck: built. 0.5 white flash (off under reduced motion), a 90-spark burst, 32 tumbling debris chunks, dark smoke. Reads: yes (`wreck-after`).
+- Near miss: built. A 0.3 s burst of lines down the side the rival passed; both sides over a Lineup row. Reads: yes (`nearmiss-after`).
+
+### Step 3 fixes
+
+- Golden haze: golden fog density 0.000476 to 0.00038. The far road and the mesas keep more shape. A small change; judge it in the pair (`golden-haze-*`).
+- Braking boards: they stood 4.7 m outside the wall, behind the catch fence, so no size would have read. Now 2.6 × 1.95 m on 1.6 m posts, 0.25 m outside the wall line. The 150 board reads at about 65 m (`braking-boards-*`, fixed camera on Proving).
+- Touch: SLIDE button. LIFT, SLIDE, BOOST on top; BRAKE (two columns) and GO below (`touch-slide-*`, 844 × 390).
+- Not fixed: the Airfield hairpin retaining wall (still a plain slab), the white sky after the Ramp lip, and the air hint that outlasts the landing.
+
+### Evidence and method
+
+- Frames come from a scratch harness that loads the game, steps it with `draw(1/60, 2)` (the clip exporter's path) and scripts inputs through `simIn`. The before frames load the `advisor/integration` copies of the changed files through Playwright routing. Autopilot runs are not identical from load to load, so a pair shows the same scripted moment (the same trigger and frame offset), not the same tick.
+- Every capture passes `&api=http://localhost:9`. The first audit pass did not: the Lineup results posted one autopilot run (score 10, Pad Lineup, all-time) to the live Worker named in `index.html`. It is still on that board. Remove it from D1 if it matters.
+
+### Perf and gates
+
+- `tools/perf.mjs`, 60 s, autopilot GP, port 8795 (new) and 8796 (an `advisor/integration` worktree, run interleaved). Proving p99 swings between 16 and 27 ms on both builds, so single runs do not settle it:
+
+  | Run | Launch night p50 / p99 (ms) | Proving day p50 / p99 (ms) |
+  |---|---|---|
+  | Baseline before any change | 7.1 / 11.9 | 10.6 / 26.2 |
+  | Old, interleaved | 7.1 / 13.5 | 9.1 / 17.6, 9.3 / 26.6 |
+  | New, interleaved | 7.1 / 12.7 | 9.5 / 26.9, 8.9 / 16.2 |
+
+  Every run, old and new, has frames over 20 ms, so `perf.mjs` prints FAIL on both builds.
+- `first-start` exit 0, no errors, new programs at the first start: Proving 16, Airfield 26, Pad 22, Launch night 12. The repeat start adds 0 everywhere. The old build's counts were not measured.
+- `npm test` 202/202, `npm run test:server` 13/13. `git diff --stat advisor/integration -- src/sim rl server` is empty.
