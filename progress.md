@@ -1769,3 +1769,19 @@ Worked on `advisor/integration` after plan 005. SIM_VERSION 16 → 17. Nothing p
   - Redeploy the Worker (`npx wrangler deploy` in `server/`). Until then it rejects version 17 runs with a 422.
   - Local records reset again: the save key is `voltitude.save.v17`.
   - Taste: the rolling start, the four `LINE_RUN` constants, and the medal thresholds are first guesses.
+
+## Session 2026-11-10: reward ladder and HUD calls (plan 007)
+
+Worked on `advisor/integration` after plan 006. SIM_VERSION stays 17. Nothing pushed or deployed. Status: DONE.
+
+- Big toast: `.toast.big` at 26 px. Gold big for two or more tricks landed perfectly, a ×3 clear, and taking P1 (with `LEADING` under it). A best lap is gold and reads `· BEST LAP`.
+- Calls: `FINAL LAP` toast when the last lap starts, and a red `P<n>` toast when the player loses a place.
+- Track limits toast reads `+<gain> S · TOTAL <penalty> S`. Checked by grep only: no autopilot run breached.
+- `WRONG WAY` red state label after 1 s facing more than 120° against a closed track (`wrongWay` in `src/hints.js`).
+- Circuit results: `Ideal lap` stat (`lapReview` in `src/time.js`) and a note naming the sector that lost the most time when the loss is over 0.1 s.
+- Voice: radio `gas_full` the first time the tank refills in a race; commentary `leading` after 15 s in P1.
+- Step 2 smoke, Pad GP on autopilot, exit 0, no errors: `P5, PERFECT LANDING, P4, LAP 1, LAP 2, FINAL LAP, P3, LAP 3`. With rival pace ×0.8 the autopilot wins: `P2`, `P1 LEADING` (gold big), `LAP 2 · BEST LAP` (gold), `FINAL LAP`, `WINNER`. With rival pace ×1.25 it loses places: `P7`, `P8` in red, once each.
+- Step 5 smoke, Pad TT on autopilot, exit 0: stats `Top speed 155 MPH, Best lap 0:37.758, Ideal lap 0:37.642, Resets 0`; note `Most time lost in sector 2 of lap 1: 0.28 s off your own best`.
+- Deviation: plan 002 had made the last `note` branch the track-limits text, not `''`. The sector note and the track-limits text now join with ` · `, so neither hides the other, and the sector note has no closing period.
+- Frames at 1280x720: the P1 toast is gold, larger, `LEADING` underneath, inside the screen; `LAP 2 · BEST LAP` and `FINAL LAP` stack without overlap; a lost-place `P7` is red; `WRONG WAY` sits red above the speed panel; the results board shows four stats in one row, none clipped. The WRONG WAY frame used a car turned round in the page, since a manual U-turn on The Pad ended in a reset.
+- Gates: `npm test` 185/185 (180 before).
