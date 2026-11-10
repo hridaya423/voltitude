@@ -10,7 +10,7 @@ const DUMP = process.env.DUMP?.split(',').map(Number) ?? [];
 const CAPTURE = process.env.CAPTURE ?? 'hq';
 const STRAIGHT = 'Math.abs(race.world.track.curv[c.hint]) < 0.004';
 const SHOTS = [
-  { name: 'lineup', query: 'venue=pad&event=lineup&golden', over: 'if (c.mode === 0 && c.air > 8 && Math.abs(c.barrel) < 5.9 && race.dare?.count === 2) i.roll = 1;', until: 'race.dare?.count >= 4 && c.mode === 1', after: 60, seconds: 13, zoom: 1.4 },
+  { name: 'lineup', query: 'venue=pad&event=lineup&golden', over: 'if (c.mode === 0 && c.air > 8 && Math.abs(c.barrel) < 5.9 && race.dare?.count === 2) i.roll = 1;', until: 'race.dare?.count >= 4 && c.mode === 1', after: 60, seconds: 13, zoom: 2.2 },
   { name: 'ramp', query: 'venue=pad&event=ramp&golden', until: 'race.dare?.tries.length >= 1', after: 30, seconds: 10 },
   { name: 'trench', query: 'venue=launch&event=trench&golden', until: 'race.raceTick > 120 * 13', after: 0, seconds: 12 },
   { name: 'loop', query: 'venue=proving&event=tt&golden', over: `if (c.hint > 1380 && c.hint < 2080 && c.gas > 0.05) i.boost = 1;`, until: 'race.raceTick > 1200 && c.hint >= 2075', after: 0, seconds: 12 },
