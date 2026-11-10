@@ -1965,3 +1965,14 @@ Worked on `advisor/polish-2`, cut from `advisor/integration` at a8bdac3. No chan
 - Clip pipeline: replays now pass events to carFx (sparks, rings, debris and the rush were missing from every replay and clip); speed lines are off on the broadcast camera; export adapts exposure on clip time.
 - B: `tools/trailer-clips.mjs` holds ten shots; `trailer/SHOTS.md` lists them. The clips total 146 MB in `trailer/assets/clips/` (gitignored). The exporter draws the canvas only, so no hint or toast can reach a clip. A `nohints` param would change nothing, so none was added. No GP near miss happened on autopilot; the near-miss shot is a Lineup clear.
 - Gates: `npm test` 205/205, `npm run test:server` 13/13, `first-start` exit 0 on proving and airfield (8795), no diff under `src/sim`, `rl` or `server`.
+
+## Session 2026-11-10 (cont.): trailer re-cut (advisor/trailer)
+
+Worked on `advisor/trailer`. No change under `src/`, the sim or the server. Nothing merged or pushed. Done.
+
+- Trailer re-cut from the ten new clips: 30 s, 1920x1080, 60 fps, 13 shots, a cold open on the wreck impact. Shot list, lines and review passes are in `trailer/REVIEW.md`. Lines: JUMP. ROLL. RIDE / WALLS. SLIDE. BOOST. LOOP IT. CRASH. GO AGAIN. The end card is unchanged apart from length (3.8 s).
+- Sound is the shots' own game audio, mixed by `trailer/mix-audio.mjs` into `assets/clips/mix.m4a`, because Strobe does not render per-clip audio fades. −14.3 LUFS, −1.6 dBTP, measured with `ebur128`. Not checked by ear: no earshot tools in this session.
+- Render: Strobe 0.1.0 on the Windows PC, three passes of about 30 s each for 1800 frames. Strobe needs `hyperframes@0.8.216` in the render folder; the project stays pinned to 0.9.2. The output is 169 MB (about 45 Mbit/s, no bitrate flag), at `trailer/out/voltitude-trailer.mp4`, gitignored.
+- The PC did not answer on 192.168.0.173 (no route). It answered on its Tailscale address 100.90.237.82 (`mmhv`), with the same host keys as the stored `win-pc` entry. Used `ssh -o HostName=100.90.237.82 -o HostKeyAlias=192.168.0.173 win-pc`; `~/.ssh/config` is unchanged.
+- Hero: `assets/hero.mp4` is now trailer 7.85–16.35 s (8.5 s, 720p, 30 fps, no audio, 1.07 MB), cut to cut so the loop seam is a hard cut. The poster stays `assets/og.jpg`: it is the OG card, not a frame of the hero. On port 8795 at 1440x900 the hero played behind the lockup (`currentTime` advancing, `duration` 8.5) and paused when loading finished.
+- Evidence: `docs/sheets/2026-11-10-trailer-recut.jpg`, one frame every 0.5 s of the final render.

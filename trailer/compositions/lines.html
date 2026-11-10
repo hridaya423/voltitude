@@ -2,17 +2,20 @@
   <style>
     @font-face { font-family: 'Archivo'; src: url('assets/fonts/archivo.woff2') format('woff2'); font-weight: 100 900; font-stretch: 62% 125%; }
     #root { position: absolute; inset: 0; }
-    .line { position: absolute; left: 144px; bottom: 140px; color: #f4f2ee; font: 800 expanded 68px/1 'Archivo'; letter-spacing: 0.01em; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45); display: flex; align-items: center; gap: 28px; }
+    .line { position: absolute; left: 192px; bottom: 140px; color: #f4f2ee; font: 800 expanded 68px/1 'Archivo'; letter-spacing: 0.01em; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45); display: flex; align-items: center; gap: 28px; }
     .line i { display: block; width: 64px; height: 10px; background: #e31937; transform-origin: left center; }
     .line span { display: inline-block; }
-    .claim { flex-direction: column; align-items: flex-start; gap: 14px; font-size: 56px; }
+    .stack { display: flex; flex-direction: column; gap: 8px; }
   </style>
   <div id="root" data-composition-id="lines" data-width="1920" data-height="1080">
-    <div id="l-fly" class="line clip" data-start="0.5" data-duration="2.6"><span>IT</span><span>FLIES.</span></div>
-    <div id="l-ramp" class="line clip" data-start="6.0" data-duration="1.9"><i></i><span>THE</span><span>RAMP</span></div>
-    <div id="l-trench" class="line clip" data-start="10.2" data-duration="2.2"><i></i><span>THE</span><span>TRENCH</span></div>
-    <div id="l-gp" class="line clip" data-start="16.4" data-duration="2.3"><i></i><span>GRAND</span><span>PRIX</span></div>
-    <div id="l-claim" class="line claim clip" data-start="24.0" data-duration="2.2"><div id="l-claim-a"><span>ONE</span> <span>DAILY</span> <span>CARD.</span></div><div id="l-claim-b"><span>EVERY</span> <span>GHOST</span> <span>ON</span> <span>IT.</span></div></div>
+    <div id="l-jump" class="line clip" data-start="1.75" data-duration="1.75"><i></i><span>JUMP.</span></div>
+    <div id="l-roll" class="line clip" data-start="8.1" data-duration="1.85"><i></i><span>ROLL.</span></div>
+    <div id="l-wall" class="line clip" data-start="10.4" data-duration="1.85"><i></i><b class="stack"><span>RIDE</span><span>WALLS.</span></b></div>
+    <div id="l-slide" class="line clip" data-start="12.6" data-duration="1.2"><i></i><span>SLIDE.</span></div>
+    <div id="l-boost" class="line clip" data-start="14.2" data-duration="1.95"><i></i><span>BOOST.</span></div>
+    <div id="l-loop" class="line clip" data-start="16.6" data-duration="2.15"><i></i><span>LOOP</span><span>IT.</span></div>
+    <div id="l-crash" class="line clip" data-start="21.75" data-duration="1.75"><i></i><span>CRASH.</span></div>
+    <div id="l-again" class="line clip" data-start="23.95" data-duration="2.05"><i></i><span>GO</span><span>AGAIN.</span></div>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
@@ -26,11 +29,14 @@
       if (bar) tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: "expo.out" }, at - 0.05);
       tl.to(box.children, { opacity: 0, filter: "blur(6px)", duration: 0.16, ease: "power3.in" }, end - 0.2);
     };
-    words("#l-fly", 0.5, 3.1);
-    words("#l-ramp", 6.0, 7.9);
-    words("#l-trench", 10.2, 12.4);
-    words("#l-gp", 16.4, 18.7);
-    words("#l-claim", 24.0, 26.2);
+    words("#l-jump", 1.75, 3.5);
+    words("#l-roll", 8.1, 9.95);
+    words("#l-wall", 10.4, 12.25);
+    words("#l-slide", 12.6, 13.8);
+    words("#l-boost", 14.2, 16.15);
+    words("#l-loop", 16.6, 18.75);
+    words("#l-crash", 21.75, 23.5);
+    words("#l-again", 23.95, 26.0);
     window.__timelines["lines"] = tl;
   </script>
 </template>
