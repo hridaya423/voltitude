@@ -276,7 +276,7 @@ export function createCarView({ quality, envMap, ghost = false, headlights = fal
   if (!ghost) {
     plume = createPlume(lite);
     holder.add(plume);
-    if (!lite) { glow = groundGlow('#8052ff', 4.4, 9, -5.2, headlights ? 0.9 : 1.6, 3.2); fanGlow = groundGlow('#5cc8ff', 5.2, 8.6, -0.4, headlights ? 0.5 : 4.5, 2.2); holder.add(glow, fanGlow); }
+    if (!lite) { glow = groundGlow('#8052ff', 4.4, 9, -5.2, headlights ? 0.9 : 1.6, 3.2); fanGlow = groundGlow('#5cc8ff', 5.2, 5.6, -0.2, headlights ? 0.5 : 2.4, 3.2); holder.add(glow, fanGlow); }
     if (mats.paint) { mats.paint.envMapIntensity = 1.2; mats.paint.clearcoatRoughness = Math.max(mats.paint.clearcoatRoughness, 0.06); if (!lite) grime(mats.paint, uDust, uCar); }
     if (mats.glass) { mats.glass.envMapIntensity = 2.2; mats.glass.roughness = 0.04; mats.glass.metalness = 0; mats.glass.color.set('#07090c'); }
     if (headlights) {
