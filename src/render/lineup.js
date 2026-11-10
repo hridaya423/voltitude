@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../../rl/vendor/three-r169/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
 import { lineupBoxes, LINEUP, HALF_W } from '../sim/lineup.js';
+import { boardTexture } from './circuit.js';
 
 const MAX = 64;
 const MODEL = { hatch: 'hatchback-sports', robotaxi: 'taxi', pickup: 'truck', van: 'van', semi: 'delivery' };
@@ -61,6 +62,18 @@ export function createLineup(world, fog) {
     for (const mesh of Object.values(meshes)) if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   };
 
+  const board = new THREE.MeshBasicMaterial({ map: boardTexture('', 'LINE'), toneMapped: false });
+  const sign = new THREE.PlaneGeometry(6.4, 4.8).rotateY(Math.PI).translate(0, 7.4, 0), leg = new THREE.BoxGeometry(0.3, 5, 0.3), legMat = new THREE.MeshStandardMaterial({ color: '#2a2c32', roughness: 0.7 });
+  for (const side of [-1, 1]) {
+    const k = track.lineup.lip * 3, at = new THREE.Group();
+    R.set(track.R[k], track.R[k + 1], track.R[k + 2]); U.set(track.U[k], track.U[k + 1], track.U[k + 2]); T.set(track.T[k], track.T[k + 1], track.T[k + 2]);
+    at.position.set(track.H[k], track.H[k + 1], track.H[k + 2]).addScaledVector(R, side * (track.halfW[track.lineup.lip] + 3));
+    at.quaternion.setFromRotationMatrix(basis.makeBasis(R.negate(), U, T));
+    at.add(new THREE.Mesh(sign, board));
+    for (const x of [-2.6, 2.6]) at.add(new THREE.Mesh(leg, legMat).translateX(x).translateY(2.5));
+    group.add(at);
+  }
+
   const loader = new GLTFLoader();
   Promise.all(LINEUP.map((v) => unitGeometry(loader, MODEL[v.kind]).then((r) => [v.kind, r]))).then((list) => {
     const mat = new THREE.MeshStandardMaterial({ map: list[0][1].map, roughness: 0.6, metalness: 0.1 });
@@ -81,6 +94,8 @@ export function createLineup(world, fog) {
       if (count === shown) return;
       shown = count;
       boxes = lineupBoxes(track, Math.min(count, MAX));
+      board.map.dispose();
+      board.map = boardTexture(String(count), 'LINE');
       flashK = -1;
       place();
     },

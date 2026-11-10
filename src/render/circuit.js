@@ -5,14 +5,16 @@ import { gridSlot } from '../sim/race.js';
 const BOARDS = [150, 100, 50];
 const SLOTS = 8;
 
-function boardTexture(text) {
+export function boardTexture(text, label = '') {
   const c = document.createElement('canvas');
   c.width = 128; c.height = 96;
   const g = c.getContext('2d');
   g.fillStyle = '#f2efe8'; g.fillRect(0, 0, 128, 96);
-  g.fillStyle = '#d4202c'; g.fillRect(0, 0, 128, 14);
-  g.fillStyle = '#101216'; g.font = '700 56px Archivo, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(text, 64, 56);
+  g.fillStyle = '#d4202c'; g.fillRect(0, 0, 128, label ? 22 : 14);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (label) { g.fillStyle = '#f2efe8'; g.font = '700 16px Archivo, sans-serif'; g.fillText(label, 64, 12); }
+  g.fillStyle = '#101216'; g.font = '700 56px Archivo, sans-serif';
+  g.fillText(text, 64, label ? 60 : 56);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
