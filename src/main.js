@@ -28,7 +28,7 @@ import { createAudio } from './audio.js';
 import { createHud, medalFor, medalTimes, MEDALS } from './hud.js';
 import { createHints } from './hints.js';
 import { fmt, fmtDelta } from './time.js';
-import { createMenu, pauseView, describe, dareResults, rampResults } from './menu.js';
+import { createMenu, pauseView, describe, dareResults, rampResults, dareMedal, DARE_MEDALS } from './menu.js';
 import { dailyFor, dayOf } from './sim/daily.js';
 import { createGarage } from './render/garage.js';
 import { createFestival } from './render/festival.js';
@@ -225,7 +225,7 @@ const book = venue.id === 'proving' ? save.events : (save.venues[venue.id] ||= {
 const persist = () => store(SAVE, save);
 const authorTime = (id) => author[id]?.total || 0;
 const PODIUM = [{ id: 'gold', name: 'Gold' }, { id: 'silver', name: 'Silver' }, { id: 'bronze', name: 'Bronze' }];
-const medalOf = (ev) => { const b = book[ev.id]?.best; if (!b || ev.kind === 'pr' || ev.kind === 'dare') return null; return ev.kind === 'gp' ? PODIUM[b - 1] || null : medalFor(b, authorTime(ev.id)); };
+const medalOf = (ev) => { const b = book[ev.id]?.best; if (!b || ev.kind === 'pr') return null; if (ev.kind === 'dare') return dareMedal(ev.id, b); return ev.kind === 'gp' ? PODIUM[b - 1] || null : medalFor(b, authorTime(ev.id)); };
 
 let mode = 'title', launching = false;
 let race = createRace(world, { event: EVENTS[0] }), ghost = null, replay = null, replayEnd = 0, recorder = null, finishAt = 0, current = EVENTS[0];
@@ -256,7 +256,7 @@ function medalDot(m) { return `<i class="medal ${m ? m.id : ''}"></i>`; }
 function eventRows() {
   return EVENTS.map((ev, k) => {
     const b = book[ev.id]?.best, gp = ev.kind === 'gp', dare = ev.kind === 'dare';
-    const ladder = gp ? PODIUM.map((m, j) => ({ ...m, time: `P${j + 1}`, t: j + 1 })) : ev.kind === 'pr' || dare ? [] : medalTimes(authorTime(ev.id)).map((m) => ({ ...m, time: fmt(m.t) }));
+    const ladder = gp ? PODIUM.map((m, j) => ({ ...m, time: `P${j + 1}`, t: j + 1 })) : ev.kind === 'pr' ? [] : dare ? (DARE_MEDALS[ev.id] || []).map(([id, name, t]) => ({ id, name, time: `${t}`, t })) : medalTimes(authorTime(ev.id)).map((m) => ({ ...m, time: fmt(m.t) }));
     return {
       id: ev.id, name: ev.name, circuit: !!ev.circuit,
       tag: ev.spur ? 'DR' : ev.circuit ? ev.kind.slice(0, 2).toUpperCase() : k === 0 ? 'RUN' : `S${k}`,
@@ -264,7 +264,7 @@ function eventRows() {
       medal: medalOf(ev),
       kicker: ev.spur ? `${venue.name} · Dare${dare ? '' : ' · Time attack'}` : ev.circuit ? `${venue.name} · ${dare ? 'Dare' : ev.kind === 'pr' ? 'Free laps' : `${ev.laps} laps`}` : k === 0 ? `${venue.name} · Full run` : `Practice · Sector ${k}`,
       brief: BRIEF[ev.id] || '',
-      ladder: ladder.map((m) => ({ id: m.id, name: m.name, time: m.time, got: !!b && b <= m.t })),
+      ladder: ladder.map((m) => ({ id: m.id, name: m.name, time: m.time, got: !!b && (dare ? b >= m.t : b <= m.t) })),
       bestLabel: ev.kind === 'pr' ? '' : gp ? 'BEST FINISH' : dare ? 'BEST SCORE' : 'PERSONAL BEST',
     };
   });
@@ -461,7 +461,10 @@ function startRace(ev = current, daily = dailyRun && ev === current) {
   hud.show(true);
   hud.begin(ev, targetFor(ev));
   const own = book[ev.id]?.run?.v === SIM_VERSION;
-  if (ev.circuit) hud.els.target.textContent = ev.kind === 'dare' ? (book[ev.id]?.best ? `BEST ${book[ev.id].best}` : '') : ref ? `${own ? 'BEST' : 'AUTHOR LAP'} ${fmt(ref.t)}` : '';
+  if (ev.kind === 'dare') {
+    const b = book[ev.id]?.best || 0, next = (DARE_MEDALS[ev.id] || []).slice().reverse().find((m) => b < m[2]);
+    hud.els.target.textContent = [b ? `BEST ${b}` : '', next ? `${next[1].toUpperCase()} ${next[2]}` : ''].filter(Boolean).join(' · ');
+  } else if (ev.circuit) hud.els.target.textContent = ref ? `${own ? 'BEST' : 'AUTHOR LAP'} ${fmt(ref.t)}` : '';
   hud.sectorsBegin(ev.kind === 'dare' ? 0 : ev.circuit ? ev.perLap : ev.cps.length);
   hud.tower([]);
   updateTower();
@@ -584,7 +587,7 @@ function bankDare(ev) {
 }
 
 function finishDare(ev) {
-  const d = race.dare, best = bankDare(ev);
+  const before = medalOf(ev), d = race.dare, best = bankDare(ev), m = dareMedal(ev.id, d.score);
   lastRun = encodeRun(race, recorder.bytes());
   const speed = `${Math.round(race.maxSpeed * speedUnit())} ${settings.units === 'kmh' ? 'KM/H' : 'MPH'}`;
   const result = ev.dare === 'ramp'
@@ -595,7 +598,8 @@ function finishDare(ev) {
     while (g.race.raceTick < linked.run.total && g.race.phase !== 'finished') g.step();
     result.note = `Linked ghost scored ${g.race.dare.score} · ${d.score > g.race.dare.score ? 'you beat it' : d.score === g.race.dare.score ? 'a tie' : 'it beat you'}`;
   }
-  showResults(result, null, null);
+  result.medal = medalLine(m, before);
+  showResults(result, m, before);
 }
 
 function finish() {
