@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -93,7 +94,7 @@ if (process.env.FRAMES) {
       const body = (await res.text()) + '\nwindow.__shot = { get race() { return race; }, fixedCam };';
       await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
     });
-    await page.goto(`http://localhost:${port}/index.html?${f.url}`);
+    await page.goto(offline(`http://localhost:${port}/index.html?${f.url}`));
     await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__shot?.race, null, { timeout: 240000, polling: 50 });
     await page.addStyleTag({ content: '#hud { display: none !important; }' });
     if (f.aim) await page.evaluate(f.aim);
@@ -120,7 +121,7 @@ for (const session of sessions) {
     const body = seeded + '\nwindow.__shot = { get race() { return race; }, carView, camera, THREE };';
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
-  await page.goto(`http://localhost:${port}/index.html?venue=${process.env.VENUE || 'proving'}&event=gp&autostart&autopilot&${session}`);
+  await page.goto(offline(`http://localhost:${port}/index.html?venue=${process.env.VENUE || 'proving'}&event=gp&autostart&autopilot&${session}`));
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__shot?.race.phase === 'racing', null, { timeout: 120000, polling: 50 });
   if (process.env.NOHUD) await page.addStyleTag({ content: '#hud { display: none !important; }' });
   for (const [name, at, edge] of MOMENTS) {

@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -14,7 +15,7 @@ for (const session of (process.env.SESSIONS || 'day,night').split(',')) {
     const body = (await res.text()) + '\nwindow.__g = { menu, sun, carView };';
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
-  await page.goto(`http://localhost:${port}/index.html?${session}`);
+  await page.goto(offline(`http://localhost:${port}/index.html?${session}`));
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__g, null, { timeout: 120000, polling: 100 });
   await page.waitForTimeout(3000);
   for (const p of PAGES) {

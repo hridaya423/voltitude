@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 
 const url = process.argv[2] || 'http://localhost:8765/index.html?autostart&autopilot';
 const seconds = Number(process.argv[3] || 180);
@@ -16,7 +17,7 @@ await page.addInitScript(() => {
   new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__long.push({ t: e.startTime, d: e.duration }); }).observe({ type: 'longtask', buffered: true });
 });
 const t0 = Date.now();
-await page.goto(url);
+await page.goto(offline(url));
 await page.waitForFunction(() => window.__perf && document.getElementById('loading').classList.contains('done'), null, { timeout: 60000 });
 const bootMs = Date.now() - t0;
 await page.evaluate(() => { window.__perf.frames.length = 0; window.__perf.scale.length = 0; window.__long.length = 0; window.__t0 = performance.now(); });

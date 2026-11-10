@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 
 const url = process.argv[2] || 'http://localhost:8790/?event=gp&autostart&autopilot&day';
 const seconds = Number(process.argv[3] || 12);
@@ -61,7 +62,7 @@ await page.addInitScript(() => {
     return gl;
   };
 });
-await page.goto(url);
+await page.goto(offline(url));
 await page.waitForFunction(() => window.__perf && document.getElementById('loading').classList.contains('done'), null, { timeout: 60000 });
 await page.waitForTimeout(3000);
 await page.evaluate(() => { for (const k in window.__gpuPasses) window.__gpuPasses[k].length = 0; window.__gpuFrames.length = 0; });

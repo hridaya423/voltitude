@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 import { writeFileSync, statSync, mkdirSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -43,7 +44,7 @@ async function open(query) {
     const body = (await res.text()) + HOOK;
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
-  await page.goto(`http://localhost:${port}/index.html?${query}`);
+  await page.goto(offline(`http://localhost:${port}/index.html?${query}`));
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__clip, null, { timeout: 180000, polling: 100 });
   return page;
 }

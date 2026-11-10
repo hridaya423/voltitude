@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -35,7 +36,7 @@ for (const s of SHOTS) {
     const body = (await res.text()) + HOOK;
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
-  await page.goto(`http://localhost:${port}/index.html?${s.query}&autostart&autopilot`);
+  await page.goto(offline(`http://localhost:${port}/index.html?${s.query}&autostart&autopilot`));
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__clip?.race.phase === 'racing', null, { timeout: 180000, polling: 100 });
   await page.waitForFunction(`(() => { const race = window.__clip.race; return ${s.until}; })()`, null, { timeout: 300000, polling: 50 });
   const t = await page.evaluate(() => window.__clip.race.raceTick);

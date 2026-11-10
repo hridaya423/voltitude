@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadWorld } from './load-world.mjs';
@@ -34,7 +35,7 @@ async function open(venue, extra = '') {
     const body = (await res.text()) + '\nwindow.__shot = { get race() { return race; } };';
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
-  await page.goto(`http://localhost:${port}/index.html?venue=${venue}&event=tt&autostart&autopilot&${session}${extra}`);
+  await page.goto(offline(`http://localhost:${port}/index.html?venue=${venue}&event=tt&autostart&autopilot&${session}${extra}`));
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__shot?.race.phase === 'racing', null, { timeout: 120000, polling: 50 });
   return { page, errors };
 }

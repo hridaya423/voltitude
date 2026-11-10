@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 
 const url = process.argv[2] || 'http://localhost:8790/?venue=proving&event=gp';
 const chrome = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -18,7 +19,7 @@ await page.addInitScript(() => {
 const cdp = await page.context().newCDPSession(page);
 await cdp.send('Profiler.enable');
 const t0 = Date.now();
-await page.goto(url);
+await page.goto(offline(url));
 await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__gl, null, { timeout: 180000 });
 const bootMs = Date.now() - t0;
 await page.waitForTimeout(4000);

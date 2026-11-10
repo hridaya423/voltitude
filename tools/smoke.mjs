@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 
 const [query = '', ...flags] = process.argv.slice(2);
 const opt = (name, fallback) => { const i = flags.indexOf(`--${name}`); return i < 0 ? fallback : flags[i + 1]; };
@@ -14,7 +15,7 @@ await page.route('**/src/main.js', async (route) => {
   await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
 });
 const t0 = Date.now();
-await page.goto(`http://localhost:${port}/index.html${query}`);
+await page.goto(offline(`http://localhost:${port}/index.html${query}`));
 await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__cap, null, { timeout: 180000, polling: 50 });
 const loadedMs = Date.now() - t0;
 for (const k of keys.split(',').filter(Boolean)) { if (/^\d+$/.test(k)) await page.waitForTimeout(Number(k)); else await page.keyboard.press(k); }

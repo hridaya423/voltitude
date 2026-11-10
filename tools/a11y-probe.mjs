@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -23,7 +24,7 @@ for (const [venue, event, session] of RUNS) {
     const body = (await res.text()) + '\nwindow.__g = { get race() { return race; }, hud };';
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
-  await page.goto(`http://localhost:${port}/index.html?venue=${venue}&event=${event}&autostart&autopilot&${session}`);
+  await page.goto(offline(`http://localhost:${port}/index.html?venue=${venue}&event=${event}&autostart&autopilot&${session}`));
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__g?.race.phase === 'racing', null, { timeout: 120000, polling: 100 });
   await page.waitForFunction(() => (document.querySelector('#sectors .now') || window.__g.race.dare) && window.__g.race.raceTick > 120 * 14, null, { timeout: 200000, polling: 250 });
   await page.evaluate(() => {

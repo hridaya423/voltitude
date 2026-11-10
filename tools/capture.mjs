@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { offline } from './offline.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -19,7 +20,7 @@ for (const venue of venues) for (const session of sessions) {
     const body = (await res.text()) + '\nwindow.__cap = { get race() { return race; } };';
     await route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-length': String(Buffer.byteLength(body)) } });
   });
-  await page.goto(`http://localhost:${port}/index.html?venue=${venue}&event=${event}&autostart&autopilot&${session}${extra}`);
+  await page.goto(offline(`http://localhost:${port}/index.html?venue=${venue}&event=${event}&autostart&autopilot&${session}${extra}`));
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('done') && window.__cap?.race.phase === 'racing', null, { timeout: 120000, polling: 50 });
   for (const at of moments) {
     const ok = await page.waitForFunction((at) => window.__cap.race.raceTick / 120 >= at || window.__cap.race.phase === 'finished', at, { timeout: 120000, polling: 50 }).then(() => true, () => false);
