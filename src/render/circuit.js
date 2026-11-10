@@ -46,7 +46,7 @@ export function createCircuitProps(world) {
   const { track } = world;
   const N = track.lap, group = new THREE.Group();
   const sites = brakingSites(track);
-  const post = new THREE.BoxGeometry(0.1, 1.4, 0.1).translate(0, 0.7, 0);
+  const post = new THREE.BoxGeometry(0.14, 1.6, 0.14).translate(0, 0.8, 0);
   const postMat = new THREE.MeshStandardMaterial({ color: '#2a2c32', roughness: 0.7 });
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), r = new THREE.Vector3(), u = new THREE.Vector3(), t = new THREE.Vector3();
   const frame = (i, off, side, lift) => {
@@ -58,12 +58,12 @@ export function createCircuitProps(world) {
   };
   BOARDS.forEach((d) => {
     const mat = new THREE.MeshBasicMaterial({ map: boardTexture(String(d)), toneMapped: false });
-    const board = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.7, 1.28).rotateY(Math.PI).translate(0, 1.55, 0), mat, sites.length);
+    const board = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.6, 1.95).rotateY(Math.PI).translate(0, 2.55, 0), mat, sites.length);
     const poles = new THREE.InstancedMesh(post, postMat, sites.length);
     sites.forEach((from, k) => {
       const curv = track.curv[(from + 120) % N];
       const side = curv > 0 ? -1 : 1;
-      frame(from - d, (side < 0 ? track.wallL : track.wallR)[((from - d) % N + N) % N] + 4.7, side, 0);
+      frame(from - d, (side < 0 ? track.wallL : track.wallR)[((from - d) % N + N) % N] + 0.25, side, 0);
       board.setMatrixAt(k, m.compose(p, q, new THREE.Vector3(1, 1, 1)));
       poles.setMatrixAt(k, m);
     });
