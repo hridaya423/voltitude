@@ -296,3 +296,8 @@ test('the flip input survives packing', () => {
   assert.equal(b.lift, 1);
   assert.equal(b.boost, 0);
 });
+
+test('an empty tank still rotates the car in the air', () => {
+  const { rate } = fall({ ...createInput(), pitch: 1 }, false, 0);
+  assert.ok(rate > 2.5, `pitch rate ${rate.toFixed(2)} rad/s`);
+});

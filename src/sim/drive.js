@@ -489,7 +489,7 @@ export function stepCar(c, inp, world, tick, assist) {
     const want = [tp, ty, tr];
     const axis = [[c.rx, c.ry, c.rz], [-c.ux, -c.uy, -c.uz], [c.fx, c.fy, c.fz]];
     let used = 0;
-    for (let a = 0; a < 3 && c.gas > 0; a++) {
+    for (let a = 0; a < 3; a++) {
       const acc = Math.max(-T.attitude[a], Math.min(T.attitude[a], (want[a] - rates[a]) * 14));
       TQ[0] += axis[a][0] * acc * INERTIA[a]; TQ[1] += axis[a][1] * acc * INERTIA[a]; TQ[2] += axis[a][2] * acc * INERTIA[a];
       used += Math.abs(acc) / T.attitude[a];
