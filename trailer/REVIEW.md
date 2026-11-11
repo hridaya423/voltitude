@@ -7,7 +7,7 @@ Footage: the ten game clips in `assets/clips/`, listed in `SHOTS.md`. All ten ar
 | 0.00 | Wreck: the impact, sparks and debris (`wreck` 4.95–5.65) | |
 | 0.70 | Night pack: boost flames off the grid (`gp-night` 0.30–1.00) | |
 | 1.40 | The Lineup, chase camera: 0.4 s of run-up, then the clear over the vehicles (`near-miss` 5.05–5.85) | JUMP. |
-| 2.20 | The Lineup, trackside: the leap and the landing ring, cropped 1.36x to 1.46x (`lineup` 1.50–3.70) | |
+| 2.20 | The Lineup, trackside, shot 2.2x closer at capture: the barrel roll and the landing (`lineup` 1.50–3.70, uncropped) | |
 | 4.40 | The Ramp: into the curl, inverted, out over the lip (`ramp` 5.60–7.90) | |
 | 6.70 | The Trench: the tube roll onto the ceiling (`trench` 4.00–6.30) | ROLL. |
 | 9.00 | Airfield: the banked hairpin as a wall ride, fan glow (`hairpin` 5.10–7.40) | RIDE / WALLS. |
@@ -16,8 +16,8 @@ Footage: the ten game clips in `assets/clips/`, listed in `SHOTS.md`. All ten ar
 | 16.70 | Proving Ground: through the loop (`loop` 0.00–3.00) | LOOP IT. |
 | 19.70 | Grand Prix night: the pack into the first corner (`gp-night` 7.15–9.60) | |
 | 22.15 | The Pad: the roll off the kicker and the wreck (`wreck` 3.15–5.75) | CRASH. |
-| 24.75 | White flash, then the clean landing with the ring; touchdown at 25.15 (`landing` 4.90–5.80) | GO AGAIN. (24.80) |
-| 25.65 | End card: the mark drops, the bar wipes, the wordmark wipes in; `Free in your browser` and the URL at 72 px from 26.95. The game's `finish` sting plays under it. | |
+| 24.75 | White flash, then the clean landing and its dust; touchdown at 25.15 (`landing` 3.85–5.25) | GO AGAIN. (24.80) |
+| 26.15 | End card: the mark drops, the bar wipes, the wordmark wipes in; `Free in your browser` and the URL at 72 px from 27.45. The game's `finish` sting plays under it. | |
 
 - Order: a cold open on the wreck impact (first cut at 0.70 s), then the verbs, then scale (night pack, loop), then the fail and the retry, then the end card. The longest shot is 3.0 s (the loop).
 - Dip cuts (45% for 0.1 s) at 13.8 and 22.15; a 55% white flash at 24.75 lands GO AGAIN; hard cuts elsewhere.
@@ -27,7 +27,7 @@ Footage: the ten game clips in `assets/clips/`, listed in `SHOTS.md`. All ten ar
 
 ## Render
 
-Strobe on the Windows PC: `strobe render <dir> --fps 60 -o out.mp4`, about 30 s for 1800 frames. Strobe 0.1.0 supports only HyperFrames 0.8.216, so the render folder installs `hyperframes@0.8.216`. The project scripts stay pinned to 0.9.2. The output is H.264 at about 45 Mbit/s, 169 MB, because Strobe has no bitrate flag. Keep it in `out/` (gitignored).
+Strobe on the Windows PC: `strobe render <dir> --fps 60 -o out.mp4`, about 30 s for 1800 frames. Strobe 0.1.0 supports only HyperFrames 0.8.216, so the render folder installs `hyperframes@0.8.216`. The project scripts stay pinned to 0.9.2. The output is H.264 High at about 57 Mbit/s, 214 MB, because Strobe has no bitrate flag. The PC's C: drive was full, so the render folder sat on D: with `TEMP` pointed there.
 
 ## Review passes
 
@@ -38,14 +38,15 @@ Strobe on the Windows PC: `strobe render <dir> --fps 60 -o out.mp4`, about 30 s 
 - Recut 2, pass 2: no score card or hint box; the only dark frames are the end card. The URL is 72 px Martian Mono, about 13.5 px tall at 360 px wide playback, readable for 3.0 s. Contact sheet: `docs/sheets/2026-11-10-trailer-recut-2.jpg`.
 - Before the first render, snapshots showed "RIDE THE WALL." and "RACE THE PACK." over the car's tail lights. They became "RIDE / WALLS." on two rows and "BOOST.".
 
+- Recut 3: all clips re-shot at 2x with the AO band fix; Lineup re-framed, crop removed. Contact sheet: `docs/sheets/2026-11-10-trailer-recut-3.jpg`. Full-size frames from the share copy: `docs/sheets/2026-11-polish-4/share-{night,day,fast}.png`, checked at 1:1.
+
 ## Known
 
-- The Lineup crop is upscaled 1.4x from 1080p, so it is soft.
-- The landing shot is 0.9 s, so the ring shows for 0.5 s before the end card.
+- No shot is scaled. The Lineup lens magnifies the golden sky texture about 5x; its compression shows faintly at 1:1 in the sky of that shot.
 - Not used: the Ramp sky after 7.6 s (near white), the hairpin's lit wall (3.8–4.5 s), the loop's sweeper wall ride (8–10.5 s).
 
 ## Hero loop
 
-`assets/hero.mp4` is trailer 11.3–19.7 s (slide, night boost, loop): 8.4 s, 1280x720, 30 fps, no audio, 1.06 MB (two-pass x264 at 1 Mbit/s). It was picked as the 8–9 s cut-to-cut stretch with the most frame-to-frame motion. It starts and ends on cuts, so the loop seam is a hard cut between two chase-camera shots.
+`assets/hero.mp4` is trailer 11.3–19.7 s (slide, night boost, loop): 8.4 s, 1280x720, 30 fps, no audio, 1.41 MB (two-pass x264 at 1.35 Mbit/s, cut from the Strobe master; 1 Mbit/s showed blocks on the night road). It was picked as the 8–9 s cut-to-cut stretch with the most frame-to-frame motion. It starts and ends on cuts, so the loop seam is a hard cut between two chase-camera shots.
 
-`out/voltitude-trailer-share.mp4`: H.264 CRF 23, AAC 160k, faststart, 32 MB.
+`out/voltitude-trailer.mp4` is the share copy: H.264 High, CRF 18, preset slow, AAC 192k, faststart, 83.5 MB, 30.0 s.

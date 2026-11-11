@@ -2038,3 +2038,21 @@ Measured with `node tools/brake-cue.mjs` (one lap per circuit; AI = `botInput` f
 - The late driver gets the cue 0.01–0.26 s before it brakes; it is on the AI's own braking point, so it cannot come earlier without lighting for the AI.
 - Look: the speed number no longer turns red. The red BRAKE label is the one element (`brake-cue-before-after.jpg`).
 
+
+### Part C: sharp trailer (done)
+
+- HQ capture (15943b9): `capture=hq` renders clips at 2x (3840x2160) and scales each frame down to 1920x1080, H.264 High at 80 Mbit/s, no grain, half the blur shutter, 4096 px shadows. Signboard textures are drawn at 2x.
+- Road bands (2b866be): GTAO took the surface normal from one-texel depth differences. At 2x the row steps are half as long, so the normal turned noisy on grazing tarmac and the AO drew regular horizontal bands. Evidence, one capture harness, gp-night frame 300: blur off kept the bands, AO off removed them, the raw AO buffer showed them at 2x and not at 1x, and both a true up-normal and a 3-texel stencil removed them. The stencil now scales with the buffer (one texel per 1080 rows, rounded), so 1080p play is unchanged. Normal play at DPR 2 (3840x2160) checked before and after: no bands. Crop: `docs/sheets/2026-11-polish-4/road-banding-before-after.jpg`.
+- Re-shoot (473be4d): all ten clips re-shot. Lineup is framed 2.2x closer at capture (`zoom: 2.2`); 1.4 left the car about 150 px tall. The broadcast camera cuts to chase at 3.75 s; the shot ends at 3.70. No clip is scaled in the edit. Shot times are unchanged: matching the old trailer against the new clips gave zero shift where the effects did not change, and every shot was checked by eye.
+- Render: Strobe 0.1.0 on the PC, `--fps 60`, 1800 frames in 125 s, 57 Mbit/s. The PC's C: drive was full (0 bytes free at one point, not from this work), so the render folder moved to `D:/vt-trailer-render` with `TEMP` on D:. Its SSH server refused connections for about 40 minutes after that.
+- Share copy: `trailer/out/voltitude-trailer.mp4`, H.264 High CRF 18 slow, AAC 192k, faststart, 83.5 MB, 30.0 s. −14.1 LUFS, −0.5 dBTP, LRA 2.2 LU (measured, not heard).
+- Evidence: contact sheet `docs/sheets/2026-11-10-trailer-recut-3.jpg`; full-size frames from the share copy `docs/sheets/2026-11-polish-4/share-night.png` (15.2 s), `share-day.png` (12.4 s), `share-fast.png` (17.1 s), checked at 1:1 for bands, upscale softness and blocks.
+- Hero: `assets/hero.mp4`, trailer 11.3–19.7 s, 1280x720, 30 fps, 1.41 MB. At 1 Mbit/s it showed blocks on the night road, so it is 1.35 Mbit/s.
+- Known: at the Lineup lens the golden sky texture (8192x2048 WebP) is magnified about 5x and its compression shows faintly at 1:1.
+
+### Gates (Part C)
+
+- `npm test` 212/212 (the brief expected 206; the brake-cue work added tests). `npm run test:server` 13/13.
+- `node tools/first-start.mjs http://localhost:8795/?venue=proving&event=gp` exits 0.
+- Perf, `tools/perf.mjs`, Launch GP night, 60 s, DSF 1, interleaved with 6805cac on port 8796. Quiet runs: base p50 6.8, 6.7, 6.9 ms; this branch 6.7, 6.8, 6.7 ms; p99 11.9–12.7 ms on both. Two earlier pairs ran while the mini was busy (p50 about 12.6 ms on both builds) and are left out.
+- `git diff --stat 0a17113 -- src/sim rl server` is empty.
