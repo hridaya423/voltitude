@@ -2056,3 +2056,70 @@ Measured with `node tools/brake-cue.mjs` (one lap per circuit; AI = `botInput` f
 - `node tools/first-start.mjs http://localhost:8795/?venue=proving&event=gp` exits 0.
 - Perf, `tools/perf.mjs`, Launch GP night, 60 s, DSF 1, interleaved with 6805cac on port 8796. Quiet runs: base p50 6.8, 6.7, 6.9 ms; this branch 6.7, 6.8, 6.7 ms; p99 11.9–12.7 ms on both. Two earlier pairs ran while the mini was busy (p50 about 12.6 ms on both builds) and are left out.
 - `git diff --stat 0a17113 -- src/sim rl server` is empty.
+
+## Retina frame rate (2026-11-11, branch advisor/perf-retina)
+
+Goal: hold frame rate on the owner's MacBook Pro display (1728x1117 CSS at DPR 2). Every earlier perf gate ran at DSF 1.
+
+Machine note: this mini is a plain Apple M4 with a 10-core GPU (`sysctl machdep.cpu.brand_string`, ANGLE renderer string), not an M4 Pro. The owner's M4 Pro has a 16- or 20-core GPU, so every number below should be lower on their machine.
+
+### Measured causes (before any change, Launch GP, DSF 2)
+
+- Frame time is linear in pixels plus a fixed cost. Day: 26.4 ms at scale 2 (7.7 Mpx), 18.6 at 1.5, 12.3 at 1, 7.1 at 0.25. At scale 2 the scene pass with shadows is about 15.5 ms and the post chain about 10.5 ms.
+- Per pass, frozen frame, scale 2, 4 interleaved reps (difference timing; `EXT_disjoint_timer_query_webgl2` exists under ANGLE Metal but returns cumulative command-buffer times, every pass about 15 ms, so it is unusable): GTAO with its blur 2.0 ms; bloom 0.5; TAA 0.5 to 1; velocity and car motion pass, auto exposure, motion blur, heat shimmer, sharpen and aberration each under the 1 ms noise; reflection probe 0 on average but 8 ms on the frames that render a face; shadows 0.8 to 1 ms.
+- Fixed cost: 7.1 ms at scale 0.25 on Launch day. The JS profile spends 60% of the frame in `uniformMatrix4fv`; the trace shows `CommandBufferHelper::WaitForAvailableEntries` 62% on the renderer main thread while the GPU process main thread is only 37 to 49% busy. It is GPU work, not JS. Hiding groups: flora far LOD 1.1 M triangles cost 2.5 ms, trackside tyre stacks (2852 instances, one track-wide mesh) 1.1 ms.
+- 753 `vertexAttribPointer` and 520 `bindBuffer` calls per frame: boulder, flora and scrub cells share one geometry, and three keys VAOs by geometry, so each cell re-specified its attributes every draw.
+- Draw calls 580 to 650, triangles 4.0 to 5.7 M per frame (including shadow and probe passes). Day shadows: three 2048 cascades, cascade 0 every frame, 1 every second, 2 every fourth. Probe: 256 px cube, one face every third frame, PMREM every 18th.
+- Hitches (200 to 900 ms): first use of a shader program mid-race. three's first-use info-log query blocks while ANGLE Metal builds the pipeline. Four separate gaps: objects outside the boot frustum or hidden at boot; basic and depth materials, whose programs never switch on a light change although their keys hold the light counts, so the boot's garage-lit `compile(scene)` left them on garage-keyed programs; shadow passes that run after a light-less probe face use a zero-light key; and each scaler step resized the canvas drawing buffer (200 to 250 ms in `setSize`).
+
+### Changes
+
+- 696e5a3: each instanced cell gets its own geometry view (`shared` moved from people.js to props.js). `vertexAttribPointer` 753 to 18 per frame.
+- 6088ef7, a4154c3: boot warm-up renders the race light state and the garage light state with frustum culling and LOD switching off and hidden objects shown (not objects that hold lights), twice for the shadow key, plus one frame after a probe face. The garage compile covers only the garage group, lit by the scene.
+- 4d654fe, de59627: flora cells 300 to 120 m and far flora ends at 200 m (was 260); tyre stacks and fence posts split into runs of 96. Scale 1 Launch day 12.6 to 9.8 ms, fixed cost 7.2 to 4.8 ms.
+- 6a9eb55: the canvas keeps a pixel ratio capped at 4.2 Mpx; `post.res` sets the internal fraction, so a scale step reallocates render targets only. The scaler targets the display refresh interval (smallest frame interval seen, at least 8.33 ms), steps down within 0.4 s when the average is 15% over, steps up 6% only after 2 s under 75%, and holds a floor of one device pixel per CSS pixel on retina (0.75 at DSF 1). Sprite and light point sizes use the internal height. Clip capture sets `post.res = 1` and the pixel ratio it used before.
+- de59627: the fence wire is alpha-blended instead of alpha-hashed; its shadow keeps the hashed cut.
+- 058480d, 84eeb94: `tools/perf.mjs` defaults to 1728x1117 at DSF 2, measures from one second after racing starts, and passes only on p50 at most 8.3 ms, p99 under 16.7 ms and no frame over 33 ms (`P50`, `P99` env override). It reports scale steps. `npm run perf -- <url> [seconds]`.
+
+### Results, 30 s, vsync off, mean of two runs (frames over 33 ms per run)
+
+| Scene | Before fps | p50 | p99 | max | >33 ms | avg/final scale | After fps | p50 | p99 | max | >33 ms | avg/final scale |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| proving-day | 39.1 | 25.3 | 32.4 | 353.7 | 11, 9 | 2.00/2 | 100.5 | 10.0 | 17.5 | 28.6 | 0, 0 | 1.00/1 |
+| proving-night | 40.6 | 24.4 | 36.8 | 58.9 | 12, 30 | 2.00/2 | 122.7 | 8.1 | 14.4 | 25.1 | 0, 0 | 1.00/1 |
+| airfield-day | 38.0 | 26.1 | 46.3 | 323.2 | 24, 15 | 2.00/2 | 102.4 | 9.6 | 16.9 | 29.5 | 0, 0 | 1.00/1 |
+| airfield-night | 43.1 | 23.3 | 33.5 | 41.4 | 12, 17 | 2.00/2 | 117.5 | 8.6 | 15.7 | 26.6 | 0, 0 | 1.02/1 |
+| launch-day | 36.5 | 26.6 | 50.7 | 389.3 | 26, 19 | 2.00/2 | 96.3 | 10.3 | 19.1 | 28.9 | 0, 0 | 1.00/1 |
+| launch-night | 42.2 | 23.3 | 38.9 | 373.8 | 29, 26 | 2.00/2 | 120.0 | 8.3 | 14.7 | 25.2 | 0, 0 | 1.00/1 |
+| pad-day | 39.0 | 24.5 | 45.8 | 494.2 | 34, 20 | 1.92/1.8 | 92.6 | 10.6 | 21.7 | 30.2 | 0, 0 | 1.00/1 |
+| pad-night | 40.4 | 24.6 | 39.0 | 364.3 | 21, 31 | 2.00/2 | 114.0 | 8.8 | 15.6 | 26.6 | 0, 0 | 1.00/1 |
+| lineup | 37.7 | 25.8 | 58.6 | 290.8 | 33, 32 | 2.00/2 | 92.3 | 11.0 | 19.8 | 30 | 0, 0 | 1.00/1 |
+| ramp | 43.8 | 22.9 | 37.6 | 289.8 | 24, 24 | 2.00/2 | 112.2 | 8.9 | 17.4 | 26.5 | 0, 0 | 1.00/1 |
+| trench | 49.9 | 18.0 | 51.3 | 833.6 | 86, 54 | 1.90/1.8 | 138.6 | 7.7 | 14.6 | 28.4 | 0, 0 | 1.13/1.134 |
+| dsf1-launch-night | 148.7 | 6.6 | 11.3 | 75.6 | 4, 4 | 1.00/1 | 162.0 | 6.2 | 9.8 | 13.3 | 0, 0 | 1.00/1 |
+
+- Zero frames over 33 ms after the first second of racing in every scene (before: 9 to 86 per run, max 290 to 830 ms).
+- 60 s scale traces: Launch day 0 steps. Trench: one step down at 0.7 s, two at the finish (24 to 25 s), then monotonic 6% steps up on the lighter results screen. No ping-pong.
+- Title at DSF 2: p50 8.0 ms day, 7.9 night, scale 1.30 to 1.33. Pause menu (3D garage): p50 4.2 ms.
+
+### Not reached
+
+- p50 8.3 ms: met at night on Proving and Launch and in Trench, about 8.6 to 8.9 elsewhere at night, 9.6 to 11.0 by day. The scaler sits on its floor (scale 1.0) in every race, so the last milliseconds cost resolution below one device pixel per CSS pixel. Day at scale 0.75 would be about 8 ms, with the softness of the crops below and worse.
+- p50 under 11 ms: The Lineup is at 10.9 and 11.1 ms.
+- p99 under 16.7 ms: met at night, not by day (16.9 to 21.7 ms). The slow frames come in bursts of about one second in heavy views, already at the floor scale.
+- Options for the remaining cost, measured: front-to-back opaque sort saves 0.8 ms at scale 1.5 (not applied: draw order can change which of two coplanar surfaces wins); GTAO off saves 0.7 to 1.2 ms; a basic-material override halves the scene pass (lit shading is half the per-pixel cost); shadows off saves 0.8 ms by day.
+- Countdown stalls remain (75 to 250 ms in the first 0.5 s of the countdown, GPU-side, and a 248 ms first use when The Lineup board appears). They are before racing and outside the gate.
+- The hidden-tab path is code-checked only: `visibilitychange` pauses and Chrome stops rAF in hidden documents. Headless `bringToFront` does not hide the page, so no runtime test.
+- While paused the 3D pause menu renders every frame (needed for its motion); it costs 4 ms.
+
+### Picture
+
+- 1:1 device-pixel crops, before at scale 2 and after at the settled scale 1.0: `docs/sheets/2026-11-11-perf/{day,night}-{fence,car,boards}.jpg`.
+- The after picture is softer: board text and car edges show it at 1:1, with some stair-stepping on the spoiler edge and exhaust lines. The fence no longer shimmers; the alpha-hashed wire was noise at scale 1.0 (checked with a native-resolution canvas too: no better, and 1.3 ms more). At night the blended wire reads lighter than the hashed one.
+- Trailer capture: `node tools/clip-test.mjs` PASS (1920x1080 title, 1080x1920 Lineup export with audio). Capture keeps its resolution path; the fence material and the far flora distance are content changes and also show in new captures.
+
+### Gates
+
+- `npm test` 212/212, `npm run test:server` 13/13, `node tools/first-start.mjs http://localhost:8811/?venue=proving&event=gp` exit 0 (4 new programs on the first start, 0 on restart). Boot is 0 to 400 ms longer from the warm-up.
+- `git diff --stat e74223e -- src/sim rl server` empty.
+- Measurements waited for zero other headless Chrome processes. A second session ("fix retina frame rate (continue)") measured on the same port for a while and killed browsers; its runs and the runs it touched are left out.
