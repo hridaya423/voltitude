@@ -3,7 +3,7 @@ import { GLTFLoader } from '../../rl/vendor/three-r169/examples/jsm/loaders/GLTF
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
 import { rng, shared, trackClearance } from './props.js';
 
-const CELL = 300, KEEP = ['wild_rooibos_bush_a', 'wild_rooibos_bush_b', 'wild_rooibos_bush_c'];
+const CELL = 120, KEEP = ['wild_rooibos_bush_a', 'wild_rooibos_bush_b', 'wild_rooibos_bush_c'];
 
 function variants(gltf) {
   gltf.scene.updateMatrixWorld(true);

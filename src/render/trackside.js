@@ -4,11 +4,13 @@ import { RAIL } from '../sim/drive.js';
 import { skyFog } from './sky.js';
 import { runs, extrude, barriers } from './road.js';
 import { RUNWAY } from './airfield.js';
+import { shared } from './props.js';
 
 const BOARD = 12.8;
 const ROWS = 8;
 const FENCE = 4.4;
 const TYRE = 0.66;
+const CHUNK = 96;
 const SPONSORS = [
   ['VOLTITUDE', '#e3263b', '#ffffff'], ['RDSTR', '#111216', '#f4f2ee'], ['HELIO CELLS', '#ffc21a', '#141414'], ['NORTHWIND', '#1069f0', '#ffffff'],
   ['KESTREL TYRES', '#17a84f', '#ffffff'], ['MERIDIAN', '#f4f2ee', '#d81f34'], ['AXIAL', '#ff6a14', '#ffffff'], ['TERRA GRID', '#08a6ab', '#ffffff'],
@@ -73,13 +75,16 @@ function frameAt(track, i, side, lat, h, out) {
   return out;
 }
 
-function instanced(geo, mat, sites, place) {
-  const mesh = new THREE.InstancedMesh(geo, mat, sites.length);
-  sites.forEach((s, k) => mesh.setMatrixAt(k, place(s)));
-  mesh.instanceMatrix.needsUpdate = true;
-  mesh.computeBoundingSphere();
-  mesh.castShadow = true; mesh.receiveShadow = true;
-  return mesh;
+function instanced(geo, mat, sites, place, color = null) {
+  const group = new THREE.Group();
+  for (let k0 = 0; k0 < sites.length; k0 += CHUNK) {
+    const part = sites.slice(k0, k0 + CHUNK), mesh = new THREE.InstancedMesh(shared(geo), mat, part.length);
+    part.forEach((s, k) => { mesh.setMatrixAt(k, place(s)); if (color) mesh.setColorAt(k, color(s)); });
+    mesh.computeBoundingSphere();
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    group.add(mesh);
+  }
+  return group;
 }
 
 export function createTrackside(world, sunUniform, fogDensity, night) {
@@ -147,9 +152,8 @@ export function createTrackside(world, sunUniform, fogDensity, night) {
     g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(shade), 3));
     return g;
   }));
-  const tyres = instanced(stack, tyreMat, tyreSites, ([i, side, , p]) => frameAt(track, i, side, 0, 0, _m).setPosition(p[0], p[1], p[2]));
   const red = new THREE.Color('#c8202e'), white = new THREE.Color('#e9e7e1');
-  tyreSites.forEach(([i, , row], k) => tyres.setColorAt(k, (Math.floor(i / 6) + row) % 2 ? red : white));
+  const tyres = instanced(stack, tyreMat, tyreSites, ([i, side, , p]) => frameAt(track, i, side, 0, 0, _m).setPosition(p[0], p[1], p[2]), ([i, , row]) => ((Math.floor(i / 6) + row) % 2 ? red : white));
 
   const hutSites = [], hutStep = Math.round(260 / track.step);
   for (const run of list) for (let i = run[0] + hutStep / 2; i < run[run.length - 1]; i += hutStep) hutSites.push([Math.round(i), (Math.round(i / hutStep) % 2) * 2 - 1]);
