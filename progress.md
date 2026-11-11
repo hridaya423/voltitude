@@ -2104,7 +2104,7 @@ Machine note: this mini is a plain Apple M4 with a 10-core GPU (`sysctl machdep.
 
 ### Not reached
 
-- p50 8.3 ms: met at night on Proving and Launch and in Trench, about 8.6 to 8.9 elsewhere at night, 9.6 to 11.0 by day. The scaler sits on its floor (scale 1.0) in every race, so the last milliseconds cost resolution below one device pixel per CSS pixel. Day at scale 0.75 would be about 8 ms, with the softness of the crops below and worse.
+- p50 8.3 ms: met at night on Proving and Launch and in Trench, about 8.6 to 8.9 elsewhere at night, 9.6 to 11.0 by day. The scaler sits on its floor (scale 1.0) in every race, so the last milliseconds cost resolution below one device pixel per CSS pixel. Day at scale 0.75 is estimated at 7.5 ms from the measured scale curve (4.8 ms at 0.25, 9.8 at 1.0); not run. It would be softer than the crops below.
 - p50 under 11 ms: The Lineup is at 10.9 and 11.1 ms.
 - p99 under 16.7 ms: met at night, not by day (16.9 to 21.7 ms). The slow frames come in bursts of about one second in heavy views, already at the floor scale.
 - Options for the remaining cost, measured: front-to-back opaque sort saves 0.8 ms at scale 1.5 (not applied: draw order can change which of two coplanar surfaces wins); GTAO off saves 0.7 to 1.2 ms; a basic-material override halves the scene pass (lit shading is half the per-pixel cost); shadows off saves 0.8 ms by day.
