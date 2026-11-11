@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { skyFog } from './sky.js';
+import { shared } from './props.js';
 
 const BASE = new URL('../../assets/crowd/', import.meta.url);
 const FRAMES = 12, NEAR = 48, VARIANTS = 8, POSES = 5, TILE_W = 1.7, TILE_H = 3.4, TILE_PX = 96;
@@ -280,13 +281,6 @@ export async function createPeople(renderer, sunUniform, fogDensity, cards = fal
   };
 }
 
-function shared(src) {
-  const g = new THREE.InstancedBufferGeometry();
-  g.index = src.index;
-  for (const k of Object.keys(src.attributes)) g.attributes[k] = src.attributes[k];
-  g.boundingSphere = src.boundingSphere;
-  return g;
-}
 
 function halfToFloat(h) {
   const e = (h >> 10) & 31, f = h & 1023, sg = h & 0x8000 ? -1 : 1;

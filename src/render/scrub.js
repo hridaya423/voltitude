@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { trackClearance } from './props.js';
+import { shared, trackClearance } from './props.js';
 
 const CELL = 160;
 
@@ -100,7 +100,7 @@ export function createScrub(world, fogPatch) {
       for (const t of list) center.add(p.setFromMatrixPosition(t));
       center.divideScalar(list.length);
       const back = new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z);
-      const inst = new THREE.InstancedMesh(kind.geo, mat, list.length);
+      const inst = new THREE.InstancedMesh(shared(kind.geo), mat, list.length);
       list.forEach((t, j) => inst.setMatrixAt(j, m.multiplyMatrices(back, t)));
       inst.computeBoundingSphere();
       inst.receiveShadow = true;

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../../rl/vendor/three-r169/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from '../../rl/vendor/three-r169/examples/jsm/utils/BufferGeometryUtils.js';
-import { rng, trackClearance } from './props.js';
+import { rng, shared, trackClearance } from './props.js';
 
 const CELL = 300, KEEP = ['wild_rooibos_bush_a', 'wild_rooibos_bush_b', 'wild_rooibos_bush_c'];
 
@@ -93,7 +93,7 @@ export async function createFlora(world, fogPatch) {
       lod.position.copy(c.divideScalar(list.length));
       const back = new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z);
       for (const [src, at, cast] of [[v, 0, true], [lo[k], 45, false]]) {
-        const inst = new THREE.InstancedMesh(src.geo, src.mats, list.length);
+        const inst = new THREE.InstancedMesh(shared(src.geo), src.mats, list.length);
         list.forEach((it, j) => inst.setMatrixAt(j, m.multiplyMatrices(back, it.m)));
         inst.computeBoundingSphere();
         inst.castShadow = cast;

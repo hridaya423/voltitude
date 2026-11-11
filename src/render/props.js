@@ -14,6 +14,15 @@ export function rng(seed) {
   };
 }
 
+export function shared(src) {
+  const g = new THREE.InstancedBufferGeometry();
+  g.index = src.index;
+  for (const k of Object.keys(src.attributes)) g.attributes[k] = src.attributes[k];
+  g.groups = src.groups;
+  g.boundingSphere = src.boundingSphere;
+  return g;
+}
+
 export function trackClearance(track) {
   const S = 24, grid = new Map();
   for (const t of [track, ...Object.values(track.spurs || {})]) for (let i = 0; i < t.n; i += 2) {
@@ -118,7 +127,7 @@ export async function createBoulders(world, fogPatch, lite = false) {
       lod.position.copy(center);
       const back = new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z);
       const build = (geo, cast) => {
-        const inst = new THREE.InstancedMesh(geo, kind.mat, list.length);
+        const inst = new THREE.InstancedMesh(shared(geo), kind.mat, list.length);
         list.forEach((it, j) => inst.setMatrixAt(j, m.multiplyMatrices(back, it.m)));
         inst.computeBoundingSphere();
         inst.castShadow = cast;
