@@ -1026,23 +1026,14 @@ ensureGhostView();
 for (const v of rivalViews) { v.root.visible = true; v.root.position.copy(interp); }
 const lods = [];
 scene.traverse((o) => { if (o.isLOD) { lods.push(o); o.autoUpdate = false; o.levels.forEach((l) => { l.object.visible = true; }); } });
-const culled = [], hidden = [];
-scene.traverse((o) => {
-  if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; }
-  if (!o.visible && !o.getObjectsByProperty('isLight', true).length) { hidden.push(o); o.visible = true; }
-});
 await post.compile(scene, camera);
-for (const l of sun.lights) l.shadow.needsUpdate = true;
 post.render(scene, camera);
-for (let i = 0; i < 18; i++) carView.reflect(renderer, scene, camera, false);
-for (const o of culled) o.frustumCulled = true;
-for (const o of hidden) o.visible = false;
 ghostView.root.visible = false;
 for (const v of rivalViews) v.root.visible = false;
 for (const o of lods) o.autoUpdate = true;
 post.render(scene, camera);
 garage.setActive(true, scene, garageKeep);
-await post.compile(scene, camera);
+await post.compile(garage.group, camera, scene);
 post.render(scene, camera);
 if (!PHONE && !params.has('tier')) {
   const t0 = performance.now();
@@ -1052,6 +1043,33 @@ if (!PHONE && !params.has('tier')) {
   perf.bench = (performance.now() - t0) / n;
   if (perf.bench > 28) { post.lite = true; perf.tier = 'lite'; }
 }
+async function warm(root, indoors) {
+  const culled = [], hidden = [], lods = [];
+  root.traverse((o) => {
+    if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; }
+    if (o.isLOD && o.autoUpdate) { lods.push(o); o.autoUpdate = false; }
+    if (!o.visible && !o.getObjectsByProperty('isLight', true).length) { hidden.push(o); o.visible = true; }
+  });
+  await post.compile(root, camera, scene);
+  for (let k = 0; k < 2; k++) {
+    for (const l of sun.lights) l.shadow.needsUpdate = true;
+    post.render(scene, camera);
+  }
+  for (let i = 0; i < 18; i++) carView.reflect(renderer, scene, camera, indoors);
+  for (let k = 0; k < 3; k++) {
+    carView.reflect(renderer, scene, camera, indoors);
+    for (const l of sun.lights) l.shadow.needsUpdate = true;
+    post.render(scene, camera);
+  }
+  for (const o of culled) o.frustumCulled = true;
+  for (const o of lods) o.autoUpdate = true;
+  for (const o of hidden) o.visible = false;
+}
+garage.setActive(false, scene, garageKeep);
+await warm(scene, false);
+garage.setActive(true, scene, garageKeep);
+await warm(garage.group, true);
+post.render(scene, camera);
 progress(1, 'Ready');
 const readyAt = performance.now();
 if (params.has('event')) { const ev = EVENTS.find((e) => e.id === params.get('event')); if (ev) { menu.open('board', { index: ev.card }); current = ev; } }
