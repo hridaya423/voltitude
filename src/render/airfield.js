@@ -220,10 +220,10 @@ export function createAirfield(world, sunUniform, fogDensity, renderer) {
   group.add(lp);
   return {
     group,
-    update(time, camera, night) {
+    update(time, camera, night, px) {
       lights.mat.uniforms.uTime.value = time;
       lights.mat.uniforms.uNight.value = night;
-      lights.mat.uniforms.uScale.value = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
+      lights.mat.uniforms.uScale.value = px;
       if (beam) { beam.rotation.y = time * 1.4; beam.visible = night > 0.5; }
     },
   };

@@ -430,8 +430,8 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
   let lastRender = 0, overlay = null;
   const far = new THREE.DataTexture(new Float32Array([1]), 1, 1, THREE.RedFormat, THREE.FloatType);
   far.needsUpdate = true;
-  const size = new THREE.Vector2();
-  let w = 0, h = 0, frame = 0, reset = true, writing = false;
+  const size = new THREE.Vector2(), one = new THREE.Vector2(1, 1);
+  let w = 0, h = 0, frame = 0, reset = true, writing = false, res = 1;
   const movers = [], roots = [];
   const carScene = new THREE.Scene();
   carScene.overrideMaterial = carMat;
@@ -485,6 +485,8 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
   return {
     set overlay(o) { overlay = o; },
     depth: shared.tDepth,
+    get res() { return res; },
+    set res(v) { res = v; },
     get lite() { return lite; },
     set lite(v) { lite = v; reset = true; },
     uniforms: comp.uniforms,
@@ -493,17 +495,17 @@ export function createPost(renderer, { levels = 4, msaa = 4, session = 'day', li
     taa: taa.uniforms,
     resize,
     track,
-    async compile(world, camera) {
-      renderer.getDrawingBufferSize(size);
+    async compile(world, camera, lit = world) {
+      renderer.getDrawingBufferSize(size).multiplyScalar(res).round().max(one);
       if (size.x !== w || size.y !== h) resize(size.x, size.y);
       const target = renderer.getRenderTarget();
       renderer.setRenderTarget(scene);
-      await renderer.compileAsync(world, camera);
+      await renderer.compileAsync(world, camera, lit);
       if (overlay) await renderer.compileAsync(overlay, camera);
       renderer.setRenderTarget(target);
     },
     render(world, camera, frameDt) {
-      renderer.getDrawingBufferSize(size);
+      renderer.getDrawingBufferSize(size).multiplyScalar(res).round().max(one);
       if (size.x !== w || size.y !== h) resize(size.x, size.y);
       camera.updateMatrixWorld();
       const proj = camera.projectionMatrix;

@@ -87,9 +87,13 @@ const PHONE = params.has('tier') ? params.get('tier') === 'phone' : matchMedia('
 if (!settings.reduced && !PHONE) $('hero').play().catch(() => {});
 const post = createPost(renderer, { msaa: params.has('msaa') ? Number(params.get('msaa')) : 0, session: SESSION, lite: PHONE, levels: PHONE ? 3 : 4 });
 const maxScale = PHONE ? 1 : Math.min(devicePixelRatio || 1, 2);
-let scale = Math.min(maxScale, Number(params.get('scale')) || maxScale);
-const minScale = Math.max(0.75, maxScale * 0.6);
-renderer.setPixelRatio(scale);
+const PIXELS = PHONE ? 1.5e6 : 4.2e6;
+const capScale = () => Math.min(maxScale, Math.sqrt(PIXELS / (innerWidth * innerHeight)));
+let scale = Math.min(maxScale, Number(params.get('scale')) || capScale());
+const minScale = Math.min(scale, Math.max(0.75, maxScale * 0.5));
+let ratio = Math.max(scale, capScale());
+renderer.setPixelRatio(ratio);
+post.res = scale / ratio;
 renderer.setSize(innerWidth, innerHeight, false);
 
 const scene = new THREE.Scene();
@@ -981,6 +985,10 @@ function menuKeys() {
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 addEventListener('gamepaddisconnected', () => pause());
 addEventListener('resize', () => {
+  ratio = Math.max(minScale, capScale());
+  scale = Math.min(scale, ratio);
+  renderer.setPixelRatio(ratio);
+  post.res = scale / ratio;
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
@@ -992,14 +1000,21 @@ function followSun(p) {
 }
 
 const fixedCam = params.has('cam') ? params.get('cam').split(',').map(Number) : null;
-const perf = (window.__perf = { frames: [], scale: [], calls: 0, tris: 0, longest: 0, scene, camera, tier: PHONE ? 'phone' : 'desktop', bench: 0 });
-let ema = 16.7, slowFor = 0, fastFor = 0;
+const perf = (window.__perf = { frames: [], scale: [], calls: 0, tris: 0, longest: 0, scene, camera, tier: PHONE ? 'phone' : 'desktop', bench: 0, get racing() { return mode === 'race' && race.phase === 'racing'; } });
+let refresh = 1000 / 60, span = 0, count = 0, settle = 0, fastFor = 0;
 function adaptResolution(ms) {
-  if (params.has('fixedres')) return;
-  ema += (ms - ema) * 0.05;
-  if (ema > 30) { slowFor += ms; fastFor = 0; } else if (ema < 14) { fastFor += ms; slowFor = 0; } else { slowFor = fastFor = 0; }
-  if (slowFor > 2500 && scale > minScale) { scale = Math.max(minScale, scale * 0.9); renderer.setPixelRatio(scale); slowFor = 0; ema = 20; }
-  else if (fastFor > 4000 && scale < maxScale) { scale = Math.min(maxScale, scale * 1.1); renderer.setPixelRatio(scale); fastFor = 0; }
+  if (params.has('fixedres') || ms > 50) return;
+  refresh = Math.max(1000 / 120, Math.min(refresh, ms));
+  span += ms; count++;
+  if (span < 400) return;
+  const avg = span / count;
+  span = count = 0;
+  if (settle) { settle--; return; }
+  let next = scale;
+  if (avg > refresh * 1.15) { next = Math.max(minScale, scale * Math.min(0.95, Math.max(0.8, Math.sqrt(refresh / avg)))); fastFor = 0; }
+  else if (avg < refresh * 0.75) { fastFor += 400; if (fastFor >= 2000) { next = Math.min(ratio, scale * 1.06); fastFor = 0; } }
+  else fastFor = 0;
+  if (next !== scale) { scale = next; post.res = scale / ratio; settle = 1; }
 }
 
 progress(0.75, 'Compiling shaders…');
@@ -1113,12 +1128,12 @@ function draw(dt, ticks = -1) {
     ghostView.root.visible = fade > 0 && ghost.race.phase !== 'finished';
     ghostHolo.opacity = 0.16 * fade;
   }
-  const pixelScale = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
+  const pixelScale = renderer.domElement.height * post.res * 0.5 / Math.tan(camera.fov * Math.PI / 360);
   if (!inGarage) dust.update(time, dt, interp, c, pixelScale);
   carView.vapour.update(time, pixelScale);
   flora.update(time);
   if (!inGarage && running) skids.update(carView.root.matrixWorld, c, dt);
-  if (!inGarage) carFx.update(dt, time, c, carView.root.matrixWorld, renderer.domElement.width, renderer.domElement.height, pixelScale, running);
+  if (!inGarage) carFx.update(dt, time, c, carView.root.matrixWorld, renderer.domElement.width * post.res, renderer.domElement.height * post.res, pixelScale, running);
   const broadcastCam = mode === 'replay' && !current.spur && !(clipping && !broadcast.onLine(c.hint));
   if (inGarage) {
     if (menu.dirty || menu.listening || garage.sliding) {
@@ -1135,9 +1150,9 @@ function draw(dt, ticks = -1) {
   if (!inGarage) {
     course.update(time, dt, race);
     facility.update(time);
-    venueArt?.update(time, camera, NIGHT ? 1 : 0);
+    venueArt?.update(time, camera, NIGHT ? 1 : 0, pixelScale);
     stands.update(time, dt, NIGHT ? 1 : 0, camera);
-    const px = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
+    const px = pixelScale;
     festival.update(time, px, race);
     range.update(time, px, NIGHT ? 1 : 0);
     fireworks.update(time, px);
@@ -1258,6 +1273,7 @@ async function ogImage() {
     if (ghostView) ghostView.root.visible = false;
     ghost = null;
     renderer.setPixelRatio(1);
+    post.res = 1;
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
@@ -1272,7 +1288,8 @@ async function ogImage() {
     replay = null;
     race = was.race;
     mode = was.mode;
-    renderer.setPixelRatio(scale);
+    renderer.setPixelRatio(ratio);
+    post.res = scale / ratio;
     renderer.setSize(innerWidth, innerHeight, false);
     camera.aspect = was.aspect;
     camera.updateProjectionMatrix();
@@ -1321,6 +1338,7 @@ async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
     if (ghostView) ghostView.root.visible = false;
     ghost = null;
     renderer.setPixelRatio(HQ ? 2 : 1);
+    post.res = 1;
     renderer.setSize(width, height, false);
     if (HQ) shadowRes(4096);
     camera.aspect = width / height;
@@ -1344,7 +1362,8 @@ async function exportClip({ seconds = 10, portrait = true, onProgress } = {}) {
     replay = null;
     race = was.race;
     mode = was.mode;
-    renderer.setPixelRatio(scale);
+    renderer.setPixelRatio(ratio);
+    post.res = scale / ratio;
     renderer.setSize(innerWidth, innerHeight, false);
     if (HQ) shadowRes(0);
     camera.aspect = was.aspect;

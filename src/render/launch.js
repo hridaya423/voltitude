@@ -253,9 +253,8 @@ export function createLaunchComplex(world, sunUniform, fogDensity, renderer, nig
 
   return {
     group,
-    update(t, camera, n) {
+    update(t, camera, n, scale) {
       time.value = t;
-      const scale = renderer.domElement.height * 0.5 / Math.tan(camera.fov * Math.PI / 360);
       lights.mat.uniforms.uTime.value = t;
       lights.mat.uniforms.uNight.value = n;
       lights.mat.uniforms.uScale.value = scale;
