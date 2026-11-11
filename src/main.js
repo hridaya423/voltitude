@@ -1011,8 +1011,17 @@ ensureGhostView();
 for (const v of rivalViews) { v.root.visible = true; v.root.position.copy(interp); }
 const lods = [];
 scene.traverse((o) => { if (o.isLOD) { lods.push(o); o.autoUpdate = false; o.levels.forEach((l) => { l.object.visible = true; }); } });
+const culled = [], hidden = [];
+scene.traverse((o) => {
+  if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; }
+  if (!o.visible && !o.getObjectsByProperty('isLight', true).length) { hidden.push(o); o.visible = true; }
+});
 await post.compile(scene, camera);
+for (const l of sun.lights) l.shadow.needsUpdate = true;
 post.render(scene, camera);
+for (let i = 0; i < 18; i++) carView.reflect(renderer, scene, camera, false);
+for (const o of culled) o.frustumCulled = true;
+for (const o of hidden) o.visible = false;
 ghostView.root.visible = false;
 for (const v of rivalViews) v.root.visible = false;
 for (const o of lods) o.autoUpdate = true;
