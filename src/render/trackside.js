@@ -118,9 +118,11 @@ export function createTrackside(world, sunUniform, fogDensity, night) {
   const boards = new THREE.Mesh(mergeGeometries([face(1), face(-1)]), boardMat);
   boards.receiveShadow = true;
 
-  const wireMat = new THREE.MeshStandardMaterial({ color: '#8d9298', roughness: 0.45, metalness: 0.7, alphaMap: wireTexture(), alphaHash: true, side: THREE.DoubleSide });
+  const wireTex = wireTexture();
+  const wireMat = new THREE.MeshStandardMaterial({ color: '#8d9298', roughness: 0.45, metalness: 0.7, alphaMap: wireTex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
   skyFog(wireMat, sunUniform, fogDensity);
   const wire = new THREE.Mesh(mergeGeometries([1, -1].map((side) => extrude(track, list, [(w, i) => [side * (at(side)[i] - 0.3), 1.16], (w, i) => [side * (at(side)[i] - 0.3), FENCE]]))), wireMat);
+  wire.customDepthMaterial = new THREE.MeshDepthMaterial({ alphaMap: wireTex, alphaHash: true, depthPacking: THREE.RGBADepthPacking });
   wire.castShadow = true;
 
   const steel = new THREE.MeshStandardMaterial({ color: '#6f747b', roughness: 0.4, metalness: 0.8 });

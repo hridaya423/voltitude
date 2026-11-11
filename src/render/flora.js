@@ -99,7 +99,7 @@ export async function createFlora(world, fogPatch) {
         inst.castShadow = cast;
         lod.addLevel(inst, at);
       }
-      lod.addLevel(new THREE.Object3D(), 260);
+      lod.addLevel(new THREE.Object3D(), 200);
       group.add(lod);
     }
   });
